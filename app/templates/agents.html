@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMAD Agent Selector</title>
+  <style>
+    :root {
+      --bg-start: #fef7ec;
+      --bg-end: #d1fae5;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --accent: #0f766e;
+      --accent-ink: #ffffff;
+      --border: #d1d5db;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 15% 20%, var(--bg-start), transparent 45%),
+                  radial-gradient(circle at 80% 10%, #fde68a, transparent 42%),
+                  linear-gradient(135deg, #ecfeff 0%, var(--bg-end) 100%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(720px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 40px rgba(15, 118, 110, 0.15);
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2vw + 1rem, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    button {
+      margin-top: 14px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 0.98rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .empty {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>BMAD Agents</h1>
+    <p>Select which BMAD agent should be active for response behavior. This list is auto-loaded from the <strong>skills/agent-*</strong> folders.</p>
+
+    {% if agents %}
+    <form method="post" action="{{ url_for('webhook.set_agent_selection') }}">
+      <label for="agent_code">Active Agent</label>
+      <select name="agent_code" id="agent_code" required>
+        {% for agent in agents %}
+        <option value="{{ agent.code }}" {% if agent.code == selected_agent_code %}selected{% endif %}>
+          {{ agent.name }}{% if agent.title %} - {{ agent.title }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit">Save Selection</button>
+    </form>
+    <div class="hint">Saved selection is stored in data/agent_selection.json and used by webhook response generation.</div>
+    {% else %}
+    <div class="empty">No BMAD agents found. Create one under skills/agent-*/customize.toml and refresh this page.</div>
+    {% endif %}
+  </main>
+</body>
+</html>

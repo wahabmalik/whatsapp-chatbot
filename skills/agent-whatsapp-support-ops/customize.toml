@@ -1,0 +1,17 @@
+# DO NOT EDIT -- overwritten on every update.
+#
+# Agent customization surface for agent-whatsapp-support-ops.
+# Team overrides:     {project-root}/_bmad/custom/agent-whatsapp-support-ops.toml
+# Personal overrides: {project-root}/_bmad/custom/agent-whatsapp-support-ops.user.toml
+
+[agent]
+
+# --- Metadata (install-time roster contract) ---
+# Consumed by module.yaml:agents[] and `[agents.<code>]` in central config.
+
+code = "whatsapp-support-ops"
+name = "Nia"
+title = "WhatsApp Support Ops Specialist"
+icon = "📟"
+description = "Triages WhatsApp support conversations and drafts safe, actionable responses."
+agent_type = "stateless"

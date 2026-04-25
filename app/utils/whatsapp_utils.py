@@ -2,6 +2,7 @@ import logging
 from flask import current_app, jsonify
 import json
 import requests
+from app.services.agent_registry import get_selected_agent
 
 # from app.services.openai_service import generate_response
 import re
@@ -26,8 +27,10 @@ def get_text_message_input(recipient, text):
 
 
 def generate_response(response):
-    # Return text in uppercase
-    return response.upper()
+    # Keep this deterministic stub but include selected BMAD agent identity.
+    agent = get_selected_agent()
+    agent_name = agent["name"] if agent else "Bot"
+    return f"[{agent_name}] {response.upper()}"
 
 
 def send_message(data):

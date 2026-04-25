@@ -1,9 +1,14 @@
 import logging
 import json
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, render_template, redirect, url_for
 
 from .decorators.security import signature_required
+from .services.agent_registry import (
+    list_bmad_agents,
+    get_selected_agent_code,
+    set_selected_agent_code,
+)
 from .utils.whatsapp_utils import (
     process_whatsapp_message,
     is_valid_whatsapp_message,
@@ -85,5 +90,34 @@ def webhook_get():
 @signature_required
 def webhook_post():
     return handle_message()
+
+
+@webhook_blueprint.route("/agents", methods=["GET"])
+def agents_page():
+    agents = list_bmad_agents()
+    selected_agent_code = get_selected_agent_code()
+    allowed_codes = {agent["code"] for agent in agents}
+
+    if agents and selected_agent_code not in allowed_codes:
+        selected_agent_code = agents[0]["code"]
+        set_selected_agent_code(selected_agent_code)
+
+    return render_template(
+        "agents.html",
+        agents=agents,
+        selected_agent_code=selected_agent_code,
+    )
+
+
+@webhook_blueprint.route("/agents/select", methods=["POST"])
+def set_agent_selection():
+    agents = list_bmad_agents()
+    allowed_codes = {agent["code"] for agent in agents}
+
+    selected_code = request.form.get("agent_code", "").strip()
+    if selected_code and selected_code in allowed_codes:
+        set_selected_agent_code(selected_code)
+
+    return redirect(url_for("webhook.agents_page"))
 
 
