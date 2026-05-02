@@ -89,3 +89,25 @@ target/
 
 # Exlcude the database file
 .db
+
+# Debug / test-run output files captured at the project root
+_val_out.txt
+pytest_output.txt
+test-results.txt
+test-write.txt
+.docker_ps_output.txt
+test_sprint_integrity_out.txt
+evaluate_out_*.txt
+t_out*.txt
+t_err*.txt
+t2_out.txt
+t2_err.txt
+t3_out.txt
+t3_err.txt
+t4_out.txt
+t4_err.txt
+test_*.txt
+test-*.txt
+
+# Temporary provider docker directories
+.tmp-evolution-api*/

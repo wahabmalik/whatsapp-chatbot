@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-28
-last_updated: 2026-05-02T02:20:00Z
+last_updated: 2026-05-02T15:03:00Z
 project: python-whatsapp-bot
 project_key: NOKEY
 tracking_system: file-system
@@ -38,20 +38,18 @@ development_status:
   epic-1: done
   1-1-startup-validation-and-setup-gating: done
   1-2-webhook-verification-and-signature-enforcement: done
-  1-3-correlation-logging-and-observability-baseline: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: done
   2-1-inbound-normalization-and-idempotency: done
   2-2-ai-reply-contract-and-failure-handling: done
   2-3-outbound-delivery-retry-and-fallback: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: done
-  3-1-runtime-agent-selection-control-plane: done
   3-2-setup-wizard-and-escalation-workflow: done
   3-3-conversation-context-and-operator-activity-views: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   epic-4: done
   4-1-automated-quality-and-launch-gates: done
@@ -66,10 +64,33 @@ development_status:
   5-4-setup-ux-and-escalation-precision-polish: done
   epic-5-retrospective: done
 
-  epic-6: in-progress
+  epic-6: done
   6-1-fallback-retry-contract-test: done
   6-2-secret-redaction-pattern-hardening: done
-  6-3-setup-step-progression-contract-test: ready-for-dev
-  6-4-deferred-delivery-observability-assertion: ready-for-dev
-  cf4-1-docs-runtime-endpoint-contract-test: done
-  epic-6-retrospective: optional
+  6-3-setup-step-progression-contract-test: done
+  6-4-deferred-delivery-observability-assertion: done
+  epic-6-retrospective: done
+
+  epic-7: done
+  7-1-ci-yaml-duplicate-key-gate: done
+  7-2-ops-doc-route-inventory-contract-test: done
+  7-3-operator-template-url-for-contract-test: done
+  7-4-setup-wizard-full-lifecycle-integration-test: done
+  7-5-operator-mobile-nav-all-page-keys-contract-test: done
+  7-6-retry-exhaustion-joint-postcondition-test: done
+  7-7-wa-id-end-to-end-propagation-contract-test: done
+  7-8-background-correlation-dispatch-convention: done
+  7-9-store-close-lifecycle-detectability-test: done
+  7-10-config-truthiness-boundary-contract-tests: done
+  7-11-secret-key-hardcoded-fallback-absence-test: done
+  7-12-test-coverage-map: done
+  epic-7-retrospective: done
+
+  # Epic 8 goal: close carry-forward reliability debt, then deliver first P1 slices with low-risk scope.
+  # Epic 8 user value: preserve MVP stability while showing roadmap momentum through actionable P1 groundwork.
+  epic-8: in-progress
+  8-1-close-pre-existing-epic-3-test-failure: done
+  8-2-multi-channel-delivery-interface-preparation: in-progress
+  8-3-conversation-analytics-event-foundation: ready-for-dev
+  8-4-optional-sqlite-persistence-rollout-slice: ready-for-dev
+  epic-8-retrospective: optional
