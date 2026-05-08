@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}WhatsApp Onboarding - MALIXIS{% endblock %}
+{% block content %}
+<section class="panel" style="max-width:860px;margin:auto;">
+  <h2>Connect WhatsApp</h2>
+  <p style="color:var(--muted);margin:8px 0 20px;">
+    Scan this QR code with WhatsApp to link your business number.
+  </p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
+    <div style="border:1px solid var(--border,#dfe3ea);border-radius:12px;padding:14px;background:#fff;">
+      <div id="qr-wrapper" style="display:flex;justify-content:center;align-items:center;min-height:300px;">
+        <p id="qr-loading" style="color:var(--muted);">Fetching QR code...</p>
+        <img id="qr-image" alt="WhatsApp QR code" style="display:none;max-width:100%;height:auto;border-radius:8px;" />
+      </div>
+      <p id="qr-meta" style="margin:10px 0 0;color:var(--muted);font-size:0.92rem;"></p>
+      <p id="qr-error" style="display:none;margin:12px 0 0;color:#b42318;font-weight:600;"></p>
+      <button id="retry-btn" class="button-link" style="display:none;margin-top:12px;">Retry QR fetch</button>
+    </div>
+
+    <div style="border:1px solid var(--border,#dfe3ea);border-radius:12px;padding:14px;background:#fff;">
+      <h3 style="margin-top:0;">Connection status</h3>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="status-dot" aria-hidden="true" style="width:11px;height:11px;border-radius:50%;background:#ea580c;"></span>
+        <strong id="status-label">disconnected</strong>
+      </div>
+      <p id="status-detail" style="margin-top:10px;color:var(--muted);font-size:0.92rem;">
+        Waiting for scan.
+      </p>
+      <p id="status-phone" style="margin-top:6px;color:#0f766e;font-weight:600;display:none;"></p>
+      <p id="status-error" style="margin-top:6px;color:#b42318;font-weight:600;display:none;"></p>
+      <a id="continue-link" href="{{ url_for('dashboard.dashboard_home') }}" class="button-link" style="display:none;margin-top:14px;">Continue to dashboard</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var qrImage = document.getElementById('qr-image');
+  var qrLoading = document.getElementById('qr-loading');
+  var qrMeta = document.getElementById('qr-meta');
+  var qrError = document.getElementById('qr-error');
+  var retryBtn = document.getElementById('retry-btn');
+
+  var statusDot = document.getElementById('status-dot');
+  var statusLabel = document.getElementById('status-label');
+  var statusDetail = document.getElementById('status-detail');
+  var statusPhone = document.getElementById('status-phone');
+  var statusError = document.getElementById('status-error');
+  var continueLink = document.getElementById('continue-link');
+
+  var statusSource = null;
+  var qrRefreshTimer = null;
+
+  function setStatus(status, detail, phone) {
+    var normalized = (status || 'disconnected').toLowerCase();
+    statusLabel.textContent = normalized;
+
+    if (normalized === 'connected') {
+      statusDot.style.background = '#0f766e';
+      statusDetail.textContent = detail || 'Connected successfully.';
+      continueLink.style.display = 'inline-flex';
+    } else if (normalized === 'connecting') {
+      statusDot.style.background = '#ea580c';
+      statusDetail.textContent = detail || 'QR scanned, finishing secure connection...';
+      continueLink.style.display = 'none';
+    } else {
+      statusDot.style.background = '#b91c1c';
+      statusDetail.textContent = detail || 'Waiting for scan.';
+      continueLink.style.display = 'none';
+    }
+
+    if (phone) {
+      statusPhone.style.display = 'block';
+      statusPhone.textContent = 'Connected phone: ' + phone;
+    } else {
+      statusPhone.style.display = 'none';
+      statusPhone.textContent = '';
+    }
+  }
+
+  function showQrError(message) {
+    qrError.textContent = message || 'Could not fetch a QR code.';
+    qrError.style.display = 'block';
+    retryBtn.style.display = 'inline-flex';
+    if (qrLoading) {
+      qrLoading.style.display = 'none';
+    }
+  }
+
+  function clearQrError() {
+    qrError.style.display = 'none';
+    qrError.textContent = '';
+    retryBtn.style.display = 'none';
+  }
+
+  function scheduleQrRefresh(seconds) {
+    if (qrRefreshTimer) {
+      window.clearTimeout(qrRefreshTimer);
+      qrRefreshTimer = null;
+    }
+    var refreshInMs = Math.max(15000, (Number(seconds || 60) - 5) * 1000);
+    qrRefreshTimer = window.setTimeout(fetchQr, refreshInMs);
+  }
+
+  function fetchQr() {
+    clearQrError();
+    statusError.style.display = 'none';
+    if (qrLoading) {
+      qrLoading.style.display = 'block';
+    }
+
+    fetch('/onboarding/qr-code', { method: 'GET' })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().then(function (payload) {
+            var msg = (payload && payload.message) || 'QR fetch failed';
+            throw new Error(msg);
+          }).catch(function () {
+            throw new Error('QR fetch failed');
+          });
+        }
+        return res.json();
+      })
+      .then(function (payload) {
+        if (!payload || !payload.ok || !payload.data || !payload.data.qr_image) {
+          throw new Error('QR payload missing image');
+        }
+        qrImage.src = payload.data.qr_image;
+        qrImage.style.display = 'block';
+        if (qrLoading) {
+          qrLoading.style.display = 'none';
+        }
+        var expiresIn = payload.data.expires_in_seconds || 60;
+        qrMeta.textContent = 'QR refreshes automatically (~' + expiresIn + 's TTL).';
+        setStatus('connecting');
+        scheduleQrRefresh(expiresIn);
+      })
+      .catch(function (err) {
+        showQrError((err && err.message) || 'Could not fetch a QR code.');
+      });
+  }
+
+  function startStatusStream() {
+    if (statusSource) {
+      statusSource.close();
+      statusSource = null;
+    }
+
+    statusSource = new EventSource('/onboarding/status-stream');
+    statusSource.onmessage = function (event) {
+      var payload = {};
+      try {
+        payload = JSON.parse(event.data || '{}');
+      } catch (e) {
+        payload = {};
+      }
+
+      if (payload.status === 'error') {
+        statusError.style.display = 'block';
+        statusError.textContent = 'Evolution API temporarily unavailable. Retry in a few seconds.';
+        return;
+      }
+
+      statusError.style.display = 'none';
+      setStatus(payload.status || 'disconnected', null, payload.phone || '');
+      if ((payload.status || '').toLowerCase() === 'connected') {
+        if (statusSource) {
+          statusSource.close();
+        }
+      }
+    };
+
+    statusSource.onerror = function () {
+      statusError.style.display = 'block';
+      statusError.textContent = 'Connection stream interrupted. Reconnecting...';
+    };
+  }
+
+  retryBtn.addEventListener('click', function () {
+    fetchQr();
+  });
+
+  fetchQr();
+  startStatusStream();
+})();
+</script>
+{% endblock %}

@@ -389,5 +389,173 @@ class OperatorApiRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+class ThreadInspectorApiTests(unittest.TestCase):
+    """Operator thread inspector API exposes safe recent context and activity."""
+
+    def setUp(self):
+        self._env = patch.dict(os.environ, _BASE_ENV, clear=False)
+        self._env.start()
+        self.app = _make_app()
+        self.client = self.app.test_client()
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.app.config["TESTING"] = True
+
+        with self.app.app_context():
+            from app.services.conversation_context import get_conversation_context_store
+            from app.services.message_log import get_message_log_buffer
+
+            get_conversation_context_store(self.app).clear()
+            get_message_log_buffer(self.app).clear()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def _operator_session(self, client):
+        with client.session_transaction() as sess:
+            sess["dashboard_role"] = "operator"
+
+    def test_thread_inspector_requires_operator_access(self):
+        response = self.client.get("/api/thread-inspector?user_id=15551234567")
+        self.assertIn(response.status_code, (302, 403))
+
+    def test_thread_inspector_requires_user_id(self):
+        self._operator_session(self.client)
+        response = self.client.get("/api/thread-inspector")
+        self.assertEqual(response.status_code, 400)
+        payload = response.get_json()
+        self.assertFalse(payload.get("ok", True))
+
+    def test_thread_inspector_returns_sanitized_context_and_masked_activity(self):
+        self._operator_session(self.client)
+
+        with self.app.app_context():
+            from app.services.conversation_context import get_conversation_context_store
+            from app.services.message_log import get_message_log_buffer
+
+            context_store = get_conversation_context_store(self.app)
+            log_buffer = get_message_log_buffer(self.app)
+
+            for i in range(6):
+                text = f"m{i} openai_api_key=sk-secret-abc123"
+                context_store.append_message(
+                    "15551234567",
+                    {
+                        "role": "user",
+                        "text": text,
+                        "timestamp": "2026-05-01T10:00:00Z",
+                        "message_id": f"ctx-{i}",
+                    },
+                )
+
+            log_buffer.add_message(
+                {
+                    "timestamp": "2026-05-01T10:00:00Z",
+                    "from": "15551234567",
+                    "message_id": "msg-1",
+                    "to_num": "1234567890",
+                    "agent": "test-agent",
+                    "preview": "authorization=Bearer abc",
+                    "reply_text": "ok",
+                    "status": "sent",
+                    "error": None,
+                    "operator_review_flagged": False,
+                    "operator_review_reason": None,
+                }
+            )
+            log_buffer.add_message(
+                {
+                    "timestamp": "2026-05-01T10:01:00Z",
+                    "from": "16667778888",
+                    "message_id": "msg-2",
+                    "to_num": "1234567890",
+                    "agent": "test-agent",
+                    "preview": "other-user",
+                    "reply_text": "ok",
+                    "status": "error",
+                    "error": "timeout",
+                    "operator_review_flagged": True,
+                    "operator_review_reason": "outbound_fallback_failure",
+                }
+            )
+
+        response = self.client.get("/api/thread-inspector?user_id=+1 (555) 123-4567")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload.get("ok"))
+
+        thread = payload["thread"]
+        self.assertEqual(thread["user_id_masked"], "155...4567")
+
+        context = thread["conversation_context"]
+        self.assertEqual(len(context), 5)
+        self.assertIn("[REDACTED]", context[0]["text"])
+        self.assertNotIn("sk-secret-abc123", context[0]["text"])
+
+        activity = thread["recent_activity"]
+        self.assertEqual(len(activity), 1)
+        self.assertEqual(activity[0]["from_masked"], "155...4567")
+        self.assertNotIn("from", activity[0])
+        self.assertIn("[REDACTED]", activity[0]["preview"])
+
+
+class OperatorDashboardInterventionSignalTests(unittest.TestCase):
+    """Dashboard shows explicit stop/clear intervention signals for operators."""
+
+    def setUp(self):
+        self._env = patch.dict(os.environ, _BASE_ENV, clear=False)
+        self._env.start()
+        self.app = _make_app()
+        self.client = self.app.test_client()
+
+        with self.app.app_context():
+            from app.services.message_log import get_message_log_buffer
+            get_message_log_buffer(self.app).clear()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def _operator_session(self):
+        with self.client.session_transaction() as sess:
+            sess["dashboard_role"] = "operator"
+
+    def _add_entry(self, *, flagged: bool, reason: str | None):
+        with self.app.app_context():
+            from app.services.message_log import get_message_log_buffer
+            get_message_log_buffer(self.app).add_message(
+                {
+                    "timestamp": "2026-05-01T10:00:00Z",
+                    "from": "15551234567",
+                    "message_id": "msg-1",
+                    "to_num": "1234567890",
+                    "agent": "test-agent",
+                    "preview": "hello",
+                    "reply_text": "ok",
+                    "status": "sent",
+                    "error": None,
+                    "operator_review_flagged": flagged,
+                    "operator_review_reason": reason,
+                }
+            )
+
+    def test_operator_dashboard_shows_stop_signal_when_escalation_flagged(self):
+        self._add_entry(flagged=True, reason="escalation_keyword")
+        self._operator_session()
+
+        response = self.client.get("/operator")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode()
+        self.assertIn("Automation stop signal active", body)
+        self.assertIn("escalation_keyword", body)
+
+    def test_operator_dashboard_shows_clear_signal_when_no_escalation(self):
+        self._add_entry(flagged=False, reason=None)
+        self._operator_session()
+
+        response = self.client.get("/operator")
+        self.assertEqual(response.status_code, 200)
+        body = response.data.decode()
+        self.assertIn("No active stop signal", body)
+
+
 if __name__ == "__main__":
     unittest.main()

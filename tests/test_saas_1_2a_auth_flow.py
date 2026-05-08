@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+import os
+
+import bcrypt
+import pytest
+
+
+_BASE_ENV = {
+    "WHATSAPP_PROVIDER": "meta",
+    "ACCESS_TOKEN": "token",
+    "YOUR_PHONE_NUMBER": "15551234567",
+    "APP_ID": "123456789",
+    "APP_SECRET": "supersecret",
+    "RECIPIENT_WAID": "15551234567",
+    "VERSION": "v18.0",
+    "PHONE_NUMBER_ID": "1234567890",
+    "VERIFY_TOKEN": "verify-token",
+    "OPENAI_API_KEY": "sk-test",
+    "FLASK_SECRET_KEY": "test-secret-key",
+}
+
+
+@pytest.fixture()
+def auth_app(tmp_path):
+    db_path = tmp_path / "saas_auth.db"
+    session_dir = tmp_path / "sessions"
+    session_dir.mkdir()
+
+    env = {
+        **_BASE_ENV,
+        "DATABASE_URL": f"sqlite:///{db_path}",
+        "SESSION_FILE_DIR": str(session_dir),
+    }
+
+    original = {key: os.environ.get(key) for key in env}
+    os.environ.update(env)
+    try:
+        from app import create_app
+
+        app = create_app()
+        app.config.update(TESTING=True)
+        yield app
+    finally:
+        for key, value in original.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+@pytest.fixture()
+def client(auth_app):
+    return auth_app.test_client()
+
+
+def _csrf_headers(client, token: str = "auth-csrf-token") -> dict[str, str]:
+    with client.session_transaction() as session:
+        session["_csrf_token"] = token
+    return {"X-CSRFToken": token}
+
+
+def _session_values(client):
+    with client.session_transaction() as session:
+        return dict(session)
+
+
+def _load_user_records(app):
+    from app.models import BotConfig, ConnectionState, Tenant, UsageCounter, User
+
+    db = app.extensions["saas_db"]
+    session = db.session()
+    try:
+        return {
+            "tenants": session.query(Tenant).all(),
+            "users": session.query(User).all(),
+            "bot_configs": session.query(BotConfig).all(),
+            "usage_counters": session.query(UsageCounter).all(),
+            "connection_states": session.query(ConnectionState).all(),
+        }
+    finally:
+        session.close()
+
+
+def test_signup_creates_tenant_and_user_atomically_and_logs_user_in(auth_app, client):
+    response = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/billing/plans")
+
+    data = _load_user_records(auth_app)
+    assert len(data["tenants"]) == 1
+    assert len(data["users"]) == 1
+    assert len(data["bot_configs"]) == 1
+    assert len(data["usage_counters"]) == 1
+    assert len(data["connection_states"]) == 1
+
+    user = data["users"][0]
+    assert user.email == "owner@example.com"
+    assert user.password_hash != "StrongPass123!"
+    assert bcrypt.checkpw("StrongPass123!".encode("utf-8"), user.password_hash.encode("utf-8"))
+
+    session_values = _session_values(client)
+    assert session_values.get("auth_user_id") == user.id
+    assert session_values.get("auth_tenant_id") == user.tenant_id
+
+
+def test_signup_rejects_duplicate_email(auth_app, client):
+    first = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-first"),
+    )
+    assert first.status_code == 302
+
+    second = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass456!"},
+        headers=_csrf_headers(client, "signup-second"),
+    )
+
+    assert second.status_code == 409
+    payload = second.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "EMAIL_TAKEN"
+
+
+def test_signup_rejects_weak_password_with_validation_error(client):
+    response = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "weak"},
+        headers=_csrf_headers(client),
+    )
+
+    assert response.status_code == 422
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "VALIDATION_ERROR"
+
+
+def test_login_creates_authenticated_session(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-token"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-token"))
+
+    response = client.post(
+        "/auth/login",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-token"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")
+
+    session_values = _session_values(client)
+    assert session_values.get("auth_user_id")
+    assert session_values.get("auth_tenant_id")
+
+
+def test_login_rejects_invalid_credentials(client):
+    response = client.post(
+        "/auth/login",
+        data={"email": "missing@example.com", "password": "WrongPass123!"},
+        headers=_csrf_headers(client),
+    )
+
+    assert response.status_code == 401
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "INVALID_CREDENTIALS"
+
+
+def test_login_rejects_disabled_account(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-token"),
+    )
+    assert signup.status_code == 302
+
+    from app.models import Tenant
+
+    db = auth_app.extensions["saas_db"]
+    session = db.session()
+    try:
+        tenant = session.query(Tenant).one()
+        tenant.is_active = False
+        session.commit()
+    finally:
+        session.close()
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-token"))
+
+    response = client.post(
+        "/auth/login",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-token"),
+    )
+
+    assert response.status_code == 403
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "ACCOUNT_DISABLED"
+
+
+def test_logout_invalidates_session_and_protected_page_redirects_to_login(client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-token"),
+    )
+    assert signup.status_code == 302
+
+    protected_before = client.get("/billing/plans", follow_redirects=False)
+    assert protected_before.status_code == 200
+
+    logout = client.post("/auth/logout", headers=_csrf_headers(client, "logout-token"), follow_redirects=False)
+    assert logout.status_code == 302
+    assert logout.headers["Location"].endswith("/auth/login")
+
+    session_values = _session_values(client)
+    assert "auth_user_id" not in session_values
+    assert "auth_tenant_id" not in session_values
+
+    protected_after = client.get("/billing/plans", follow_redirects=False)
+    assert protected_after.status_code == 302
+    assert "/auth/login" in protected_after.headers["Location"]
+
+
+@pytest.mark.parametrize("route,data", [
+    ("/auth/signup", {"email": "owner@example.com", "password": "StrongPass123!"}),
+    ("/auth/login", {"email": "owner@example.com", "password": "StrongPass123!"}),
+    ("/auth/logout", {}),
+    ("/auth/forgot-password", {"email": "owner@example.com"}),
+    ("/auth/reset-password", {"token": "any-token", "password": "StrongPass123!"}),
+])
+def test_auth_post_routes_require_csrf_with_400(route, data, client):
+    response = client.post(route, data=data)
+
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "CSRF_INVALID"

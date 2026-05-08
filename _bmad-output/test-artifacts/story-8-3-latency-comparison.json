@@ -1,0 +1,17 @@
+{
+  "scenario": "story-8-3-p95-regression-check",
+  "baseline": {
+    "sample_count": 200,
+    "p50_ms": 2.031,
+    "p95_ms": 6.055,
+    "max_ms": 9.397
+  },
+  "post_change": {
+    "sample_count": 200,
+    "p50_ms": 2.092,
+    "p95_ms": 6.239,
+    "max_ms": 30.271
+  },
+  "p95_delta_pct": 3.039,
+  "within_5pct_guardrail": true
+}

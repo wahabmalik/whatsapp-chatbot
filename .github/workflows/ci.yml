@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate sprint-status YAML integrity
+        run: python validate_sprint_status_integrity.py
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: sqlite:///./data/ci-saas.db
+        run: python -m alembic upgrade head
+
+      - name: Run test suite
+        env:
+          # Pin to Meta provider so config-validation tests are deterministic
+          WHATSAPP_PROVIDER: meta
+          FLASK_SECRET_KEY: ci-test-secret
+        run: python -m pytest tests/ -v --tb=short

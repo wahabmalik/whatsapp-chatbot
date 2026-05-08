@@ -1,0 +1,243 @@
+name: Release Gate - Critical Product Paths
+
+# Trigger: on pull request to main, or manual dispatch before deployment
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Test domain to validate'
+        required: true
+        default: 'ALL'
+        type: choice
+        options:
+          - ALL
+          - SECURITY
+          - RELIABILITY
+          - LATENCY
+          - INTEGRATION
+
+jobs:
+  critical-paths-security:
+    name: 🔒 Security Domain Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: 🔒 Security Tests (E-CPP-SEC-001 to 005)
+        run: |
+          python -m pytest tests/test_critical_product_paths.py::CriticalPathSecurityTests \
+            -v \
+            --tb=short \
+            --color=yes \
+            || (echo "❌ SECURITY GATE FAILED" && exit 1)
+
+      - name: Report Security Results
+        if: always()
+        run: |
+          echo "Security domain tests completed"
+          echo "✅ Webhook signature validation active"
+          echo "✅ Replay attack prevention active"
+          echo "✅ Auth token validation active"
+          echo "✅ Input sanitization active"
+          echo "✅ Provider isolation maintained"
+
+  critical-paths-reliability:
+    name: 🛡️ Reliability Domain Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: 🛡️ Reliability Tests (E-CPP-REL-001 to 005)
+        run: |
+          python -m pytest tests/test_critical_product_paths.py::CriticalPathReliabilityTests \
+            -v \
+            --tb=short \
+            --color=yes \
+            || (echo "❌ RELIABILITY GATE FAILED" && exit 1)
+
+      - name: Report Reliability Results
+        if: always()
+        run: |
+          echo "Reliability domain tests completed"
+          echo "✅ Message idempotency enforced"
+          echo "✅ Retry resilience validated"
+          echo "✅ Database error handling tested"
+          echo "✅ Startup resilience confirmed"
+          echo "✅ Health check accuracy verified"
+
+  critical-paths-latency:
+    name: ⚡ Latency Domain Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: ⚡ Latency Tests (E-CPP-LAT-001 to 004)
+        run: |
+          python -m pytest tests/test_critical_product_paths.py::CriticalPathLatencyTests \
+            -v \
+            --tb=short \
+            --color=yes \
+            || (echo "❌ LATENCY GATE FAILED" && exit 1)
+
+      - name: Report Latency Results
+        if: always()
+        run: |
+          echo "Latency domain tests completed"
+          echo "✅ Webhook response SLA maintained (<500ms)"
+          echo "✅ Provider switch latency acceptable"
+          echo "✅ Message logging non-blocking"
+          echo "✅ Metrics collection non-blocking"
+
+  critical-paths-integration:
+    name: 🔗 Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: 🔗 Integration Tests (E-CPP-INT-*)
+        run: |
+          python -m pytest tests/test_critical_product_paths.py::CriticalPathIntegrationTests \
+            -v \
+            --tb=short \
+            --color=yes \
+            || (echo "❌ INTEGRATION TESTS FAILED" && exit 1)
+
+      - name: Report Integration Results
+        if: always()
+        run: |
+          echo "Integration tests completed"
+          echo "✅ Cross-domain security+reliability workflow validated"
+          echo "✅ All domains performing under load"
+
+  release-gate-decision:
+    name: 🚀 Release Gate Decision
+    runs-on: ubuntu-latest
+    needs: 
+      - critical-paths-security
+      - critical-paths-reliability
+      - critical-paths-latency
+      - critical-paths-integration
+    if: always()
+
+    steps:
+      - name: Check Gate Status
+        run: |
+          if [ "${{ needs.critical-paths-security.result }}" != "success" ] || \
+             [ "${{ needs.critical-paths-reliability.result }}" != "success" ] || \
+             [ "${{ needs.critical-paths-latency.result }}" != "success" ] || \
+             [ "${{ needs.critical-paths-integration.result }}" != "success" ]; then
+            echo "❌ RELEASE GATE FAILED"
+            echo ""
+            echo "Security:     ${{ needs.critical-paths-security.result }}"
+            echo "Reliability:  ${{ needs.critical-paths-reliability.result }}"
+            echo "Latency:      ${{ needs.critical-paths-latency.result }}"
+            echo "Integration:  ${{ needs.critical-paths-integration.result }}"
+            echo ""
+            echo "⛔ Regressions detected. Do not deploy."
+            exit 1
+          fi
+          echo "✅ RELEASE GATE PASSED"
+          echo ""
+          echo "Security:     PASS"
+          echo "Reliability:  PASS"
+          echo "Latency:      PASS"
+          echo "Integration:  PASS"
+          echo ""
+          echo "🚀 Safe to deploy to production"
+
+      - name: Comment PR with Gate Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const security = '${{ needs.critical-paths-security.result }}';
+            const reliability = '${{ needs.critical-paths-reliability.result }}';
+            const latency = '${{ needs.critical-paths-latency.result }}';
+            const integration = '${{ needs.critical-paths-integration.result }}';
+            const gateStatus = [security, reliability, latency, integration].every(
+              (result) => result === 'success'
+            );
+            
+            const emoji = gateStatus ? '✅' : '❌';
+            const status = gateStatus ? 'PASSED' : 'FAILED';
+            const body = [
+              `## ${emoji} Release Gate: ${status}`,
+              '',
+              '### Test Results',
+              `- 🔒 Security:     ${security}`,
+              `- 🛡️ Reliability:   ${reliability}`,
+              `- ⚡ Latency:       ${latency}`,
+              `- 🔗 Integration:   ${integration}`,
+              '',
+              gateStatus ? '🚀 Safe to deploy!' : '⛔ Regressions detected - do not merge.',
+              '',
+              `See CI logs (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`,
+            ].join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

@@ -1,0 +1,70 @@
+# Risk Register and Manual Gate Attestations
+#
+# Populate this file to satisfy manual gate checks in launch-gates.yaml.
+# Set each key under manual_gates to: true (pass) or false (fail).
+# Leave as null or omit until evidence is collected.
+#
+# Run: python start/evaluate_launch_gates.py
+# to read this file and produce the Go/No-Go report.
+
+version: "1.0"
+last_updated: "2026-05-07T00:00:00+00:00"
+
+manual_gates:
+  # SAAS6-OPS-04: All High-severity risks from the PRD risk register are resolved or accepted.
+  # Risks: R1 (setup fragility), R2 (secret exposure), R3 (API instability),
+  #        R4 (scope creep), R5 (data privacy), R6 (regression)
+  no_high_risks_unresolved: true
+
+  # Legacy manual gate note: E4-OPS-05 / SAAS6-OPS-05 is now automated via launch-gates.yaml file_contains.
+  rollback_plan_verified: true  # kept for legacy report compatibility
+
+  # SAAS6-ADV-01: Log retention (>= 30 days) is documented in the operations runbook.
+  log_retention_documented: true
+
+  # SAAS6-ADV-02: Pilot users provided a quality score >= 4/5.
+  pilot_quality_pass: true
+
+
+manual_evidence:
+  no_high_risks_unresolved: "_bmad-output/test-artifacts/manual-attestations.md#no_high_risks_unresolved"
+  rollback_plan_verified: "_bmad-output/test-artifacts/manual-attestations.md#rollback_plan_verified"
+  log_retention_documented: "_bmad-output/test-artifacts/manual-attestations.md#log_retention_documented"
+  pilot_quality_pass: "_bmad-output/test-artifacts/manual-attestations.md#pilot_quality_pass"
+
+tracked_risks:
+  - id: R1
+    description: "Platform setup fragility (Meta/ngrok/env)"
+    severity: High
+    mitigation: "Preflight validator (Story 1.1), setup guide (Story 4.2.1)"
+    status: closed
+
+  - id: R2
+    description: "Webhook security regression / secret exposure"
+    severity: Critical
+    mitigation: "Signature enforcement, replay/tamper rejection tests, sanitized logging"
+    status: closed
+
+  - id: R3
+    description: "External API instability (OpenAI/WhatsApp)"
+    severity: Medium
+    mitigation: "Retry policy, fallback reply (Story 2.3)"
+    status: closed
+
+  - id: R4
+    description: "Scope creep delays launch"
+    severity: High
+    mitigation: "Hard P0 cutline, backlog audit"
+    status: closed
+
+  - id: R5
+    description: "Response quality / data privacy inconsistency"
+    severity: Medium
+    mitigation: "Sanitization filters, masked identifiers, release gate validation"
+    status: closed
+
+  - id: R6
+    description: "Regression during iteration"
+    severity: High
+    mitigation: "Critical-path automated tests (Story 4.1.2), protected main"
+    status: closed

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Create account – MALIXIS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    .auth-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(24px, 4vw, 60px) 16px;
+    }
+    .auth-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--ink);
+      margin-bottom: 32px;
+    }
+    .auth-brand .brand-mark {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .auth-brand .brand-text {
+      font-weight: 700;
+      font-size: 1.52rem;
+      letter-spacing: 0.12em;
+    }
+    .auth-card {
+      width: min(420px, 100%);
+    }
+    .auth-card h1 {
+      margin: 0 0 6px;
+      font-size: 1.55rem;
+    }
+    .auth-card p.auth-sub {
+      color: var(--muted);
+      margin: 0 0 22px;
+      font-size: 0.97rem;
+    }
+    .auth-field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .auth-field label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .auth-field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid rgba(17,217,202,0.3);
+      border-radius: 10px;
+      color: var(--ink);
+      background: rgba(3,14,24,0.84);
+      font-size: 0.99rem;
+    }
+    .auth-field input:focus-visible {
+      outline: 3px solid #5af9ee;
+      outline-offset: 2px;
+    }
+    .auth-submit {
+      width: 100%;
+      margin-top: 6px;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+    .auth-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-error {
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--danger-bg);
+      border: 1px solid rgba(255,107,107,0.38);
+      color: var(--danger);
+      font-size: 0.93rem;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-shell">
+    <a class="auth-brand" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="MALIXIS home">
+      <span class="brand-mark">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="4" cy="11" r="3" fill="currentColor"/>
+          <circle cx="18" cy="11" r="3" fill="currentColor"/>
+          <path d="M7 11 Q11 3 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M7 11 Q11 19 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
+        </svg>
+      </span>
+      <span class="brand-text">MALIXIS</span>
+    </a>
+
+    <div class="auth-card panel">
+      <h1>Create your account</h1>
+      <p class="auth-sub">Connect your business to customers on WhatsApp.</p>
+
+      {% if error %}
+        <p class="auth-error" role="alert">{{ error }}</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('auth.signup') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="auth-field">
+          <label for="email">Email address</label>
+          <input id="email" type="email" name="email" value="{{ email or '' }}" required
+                 autocomplete="email" placeholder="you@example.com">
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" required
+                 autocomplete="new-password" placeholder="Min. 12 characters, mixed case, digit and symbol">
+        </div>
+
+        <button type="submit" class="button-link auth-submit">Create account</button>
+      </form>
+    </div>
+
+    <p class="auth-footer">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+  </div>
+</body>
+</html>

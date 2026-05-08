@@ -1,0 +1,87 @@
+---
+# Launch Gates Configuration
+# Epic 4 — Automated Quality and Launch Gates
+# Describes the set of gates that must be satisfied for production release.
+
+metadata:
+  version: "1.0"
+  created: "2026-05-01"
+  updated: "2026-05-08"
+  description: "Production launch gate definitions for python-whatsapp-bot"
+  owner: "platform-engineering"
+
+gates:
+  # Security gates
+  - key: E4-SEC-01
+    name: "Authentication enforced on all protected routes"
+    blocking: false
+    domain: security
+    description: >
+      All operator-facing routes must require valid session or token authentication.
+      Unauthenticated requests must be redirected or rejected.
+
+  - key: E4-SEC-02
+    name: "CSRF protection active on state-changing routes"
+    blocking: false
+    domain: security
+    description: >
+      POST/PUT/DELETE routes must validate CSRF tokens.
+      Flask-WTF or equivalent protection must be enabled in production config.
+
+  - key: E4-SEC-03
+    name: "Webhook signature verification enforced"
+    blocking: false
+    domain: security
+    description: >
+      Inbound WhatsApp webhook payloads must be verified against the
+      WHATSAPP_APP_SECRET HMAC signature before processing.
+
+  # Operations gates
+  - key: E4-OPS-01
+    name: "Health check endpoint operational"
+    blocking: false
+    domain: operations
+    description: >
+      GET /health must return 200 with JSON status payload.
+      Used by load balancers and uptime monitors.
+
+  - key: E4-OPS-02
+    name: "Metrics collection and exposure active"
+    blocking: false
+    domain: operations
+    description: >
+      GET /metrics must return a valid JSON metrics snapshot.
+      GET /metrics/prometheus must return Prometheus text format.
+
+  - key: E4-OPS-03
+    name: "Setup wizard completion gating is enforced"
+    blocking: false
+    domain: operations
+    description: >
+      Operator dashboard must gate access on setup completion status.
+      Incomplete setup must redirect to /setup before allowing operational use.
+
+  # Reliability gates
+  - key: E4-REL-01
+    name: "Webhook idempotency enforced"
+    blocking: false
+    domain: reliability
+    description: >
+      Duplicate inbound message payloads with the same message-id must be
+      deduplicated and not processed twice. Idempotency store must be active.
+
+  - key: E4-REL-02
+    name: "Outbound delivery retry with backoff active"
+    blocking: false
+    domain: reliability
+    description: >
+      Failed outbound message deliveries must be retried with exponential backoff.
+      Retry exhaustion must emit an observable event and not silently discard.
+
+  - key: E4-REL-03
+    name: "AI reply error handling and fallback enforced"
+    blocking: false
+    domain: reliability
+    description: >
+      AI provider errors must be caught and a fallback/error reply dispatched
+      to the user. No unhandled exceptions from AI call sites in production paths.

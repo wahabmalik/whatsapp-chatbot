@@ -34,6 +34,12 @@ This guide will walk you through the process of creating a WhatsApp bot using th
 
 ## Get Started
 
+Operational documentation (canonical):
+- Setup guide: `docs/setup_guide.md`
+- On-call quick reference: `docs/on_call_quick_reference.md`
+- Operations runbook: `docs/operations_runbook.md`
+- Release smoke checklist: `docs/release_smoke_checklist.md`
+
 1. **Overview & Setup**: Begin your journey [here](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started).
 2. **Locate Your Bots**: Your bots can be found [here](https://developers.facebook.com/apps/).
 3. **WhatsApp API Documentation**: Familiarize yourself with the [official documentation](https://developers.facebook.com/docs/whatsapp).
@@ -83,6 +89,8 @@ Now we have to find the following information on the **App Dashboard**:
 #### Start your app
 - Make you have a python installation or environment and install the requirements: `pip install -r requirements.txt`
 - Run your Flask app locally by executing [run.py](https://github.com/daveebbelaar/python-whatsapp-bot/blob/main/run.py)
+- Run a production-style server cross-platform with `python serve.py` (Gunicorn on Linux/macOS, Waitress on Windows)
+- Deploy with Gunicorn directly using `gunicorn -c gunicorn.conf.py wsgi:app` on Linux/macOS hosts
 
 #### Launch ngrok
 

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Customer Dashboard{% endblock %}
+{% block content %}
+<section class="agency-hero" id="overview">
+  <div class="hero-copy">
+    <p class="eyebrow">CUSTOMER DASHBOARD</p>
+    <h1>
+      Track Your WhatsApp Growth
+      <span class="accent-text">In One Place</span>
+    </h1>
+    <p class="hero-lead">See conversation outcomes, response performance, and your next best actions without digging through technical screens.</p>
+
+    <div class="hero-actions">
+      <a class="button-link" href="#results">View results</a>
+      <a class="ghost-link" href="#activity">See activity</a>
+    </div>
+
+    <p class="tiny-note">Built for teams who want clarity first and complexity second.</p>
+  </div>
+
+  <section class="growth-card" aria-label="Today's performance snapshot">
+    <header class="growth-head">
+      <div>
+        <h2>Today at a glance</h2>
+        <p>Updated in near real-time</p>
+      </div>
+      <div class="window-dots" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </header>
+
+    <section class="grid-metrics" id="results">
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-counter="webhook.processed_messages_total">{{ metrics.counters.get('webhook.processed_messages_total', 0) }}</strong>
+        <h3>Messages handled</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-duration="webhook.handle_message_seconds">
+          {% if metrics.durations.averages.get('webhook.handle_message_seconds') is not none %}
+            {{ "%.2fs"|format(metrics.durations.averages.get('webhook.handle_message_seconds', 0.0)) }}
+          {% else %}
+            No data
+          {% endif %}
+        </strong>
+        <h3>Avg response time</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.logs_page') }}">
+        <strong data-metric-counter="webhook.internal_errors_total">{{ metrics.counters.get('webhook.internal_errors_total', 0) }}</strong>
+        <h3>Follow-ups needed</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-counter="ai.reply_success">{{ metrics.counters.get('ai.reply_success', 0) }}</strong>
+        <h3>AI replies</h3>
+      </a>
+    </section>
+  </section>
+</section>
+
+<section class="detail-grid" id="activity">
+  <section class="panel">
+    <header class="panel-head">
+      <h3>Next best actions</h3>
+      <a href="{{ url_for('dashboard.metrics_page') }}">Open details</a>
+    </header>
+    <ul class="check-grid">
+      <li class="ok"><span class="dot dot-green"></span><span>Review this week's conversion trend</span></li>
+      <li class="ok"><span class="dot dot-green"></span><span>Follow up with unresponded leads</span></li>
+      <li class="ok"><span class="dot dot-green"></span><span>Check response times during peak hours</span></li>
+      <li class="ok"><span class="dot dot-green"></span><span>Share weekly snapshot with your team</span></li>
+    </ul>
+  </section>
+
+  <section class="panel" id="help">
+    <header class="panel-head">
+      <h3>Need help?</h3>
+      <a href="{{ url_for('dashboard.setup') }}">Contact support</a>
+    </header>
+    <dl class="meta-grid">
+      <div><dt>System status</dt><dd class="status-line"><span class="dot {{ 'dot-green' if health.status == 'running' else 'dot-red' }}"></span><span>{{ health.status|title }}</span></dd></div>
+      <div><dt>Dashboard uptime</dt><dd data-health-uptime>{{ uptime_label }}</dd></div>
+      <div><dt>Support owner</dt><dd>{{ active_agent_name }}</dd></div>
+      <div><dt>Last issue</dt><dd data-health-error>{{ health.last_error or 'No issues reported' }}</dd></div>
+    </dl>
+  </section>
+</section>
+
+<section class="panel" aria-label="Recent customer activity">
+  <header class="panel-head">
+    <h3>Recent activity</h3>
+    <a href="{{ url_for('dashboard.logs_page') }}">View all</a>
+  </header>
+  {% if recent_logs %}
+    <ul class="activity-list">
+      {% for row in recent_logs %}
+      <li>
+        <span>{{ row.timestamp }}</span>
+        <span>{{ row.status|upper }}</span>
+        <span>{{ row.preview }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No customer activity yet. New conversations will appear here automatically.</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.dashboardBoot = { autoRefresh: true };
+</script>
+{% endblock %}

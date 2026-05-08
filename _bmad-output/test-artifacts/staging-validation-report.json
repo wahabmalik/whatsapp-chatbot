@@ -1,0 +1,98 @@
+{
+  "generated": "2026-05-01T10:37:00.480130+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "payload_kind": "status",
+  "sample_count": 1000,
+  "sample_count_ok": true,
+  "run_duration_seconds": 28.522,
+  "successes": 1000,
+  "failures": 0,
+  "success_rate_pct": 100.0,
+  "latency_p50_seconds": 0.0202,
+  "latency_p95_seconds": 0.0511,
+  "throughput_msg_per_sec": 35.061,
+  "latency_p50_ok": true,
+  "latency_p95_ok": true,
+  "success_rate_ok": true,
+  "throughput_ok": true,
+  "fallback_timing_ok": true,
+  "fallback_timing_seconds": 7.0114,
+  "fallback_timing_note": "Fallback probe passed",
+  "health_pre_check": "running",
+  "pre_run_metrics": {
+    "counters": {
+      "ai.reply_attempt": 0,
+      "ai.reply_auth_error": 0,
+      "ai.reply_provider_error": 0,
+      "ai.reply_rate_limited": 0,
+      "ai.reply_success": 0,
+      "ai.reply_timeout": 0,
+      "webhook.blocked_config_invalid_total": 0,
+      "webhook.duplicates_total": 0,
+      "webhook.internal_errors_total": 0,
+      "webhook.invalid_events_total": 0,
+      "webhook.json_decode_errors_total": 0,
+      "webhook.processed_messages_total": 0,
+      "webhook.requests_total": 1000,
+      "webhook.status_updates_total": 1000,
+      "whatsapp.fallback_failed": 0,
+      "whatsapp.fallback_sent": 0,
+      "whatsapp.send_attempt": 0,
+      "whatsapp.send_error": 0,
+      "whatsapp.send_success": 0
+    },
+    "durations": {
+      "averages": {
+        "webhook.handle_message_seconds": 0.0043750650997390035
+      },
+      "counts": {
+        "ai.reply_duration": 0,
+        "webhook.handle_message_seconds": 1000,
+        "whatsapp.send_duration": 0
+      },
+      "totals": {
+        "ai.reply_duration": 0.0,
+        "webhook.handle_message_seconds": 4.375065099739004,
+        "whatsapp.send_duration": 0.0
+      }
+    }
+  },
+  "post_run_metrics": {
+    "counters": {
+      "ai.reply_attempt": 0,
+      "ai.reply_auth_error": 0,
+      "ai.reply_provider_error": 0,
+      "ai.reply_rate_limited": 0,
+      "ai.reply_success": 0,
+      "ai.reply_timeout": 0,
+      "webhook.blocked_config_invalid_total": 0,
+      "webhook.duplicates_total": 0,
+      "webhook.internal_errors_total": 0,
+      "webhook.invalid_events_total": 0,
+      "webhook.json_decode_errors_total": 0,
+      "webhook.processed_messages_total": 0,
+      "webhook.requests_total": 2000,
+      "webhook.status_updates_total": 2000,
+      "whatsapp.fallback_failed": 0,
+      "whatsapp.fallback_sent": 0,
+      "whatsapp.send_attempt": 0,
+      "whatsapp.send_error": 0,
+      "whatsapp.send_success": 0
+    },
+    "durations": {
+      "averages": {
+        "webhook.handle_message_seconds": 0.00392348849933478
+      },
+      "counts": {
+        "ai.reply_duration": 0,
+        "webhook.handle_message_seconds": 2000,
+        "whatsapp.send_duration": 0
+      },
+      "totals": {
+        "ai.reply_duration": 0.0,
+        "webhook.handle_message_seconds": 7.846976998669561,
+        "whatsapp.send_duration": 0.0
+      }
+    }
+  }
+}

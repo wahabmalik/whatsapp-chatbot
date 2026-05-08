@@ -1,0 +1,55 @@
+name: release-quality-gates
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run full unit test suite
+        run: python -m unittest discover tests
+
+      - name: Run security-critical reliability subset
+        run: |
+          python -m unittest \
+            tests.test_reliability.SecurityDecoratorTests \
+            tests.test_release_gates.ReleaseSecurityGateTests \
+            tests.test_release_gates.ReleaseWebhookVerificationTests \
+            tests.test_release_gates.ReleaseOutboundGateTests
+
+      - name: Generate test results summary
+        run: python start/generate_test_results_summary.py
+
+      - name: Evaluate launch gates
+        run: python start/evaluate_launch_gates.py
+
+      - name: Upload release gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-artifacts
+          if-no-files-found: warn
+          path: |
+            _bmad-output/test-artifacts/test-results-summary.json
+            _bmad-output/test-artifacts/staging-validation-report.json
+            _bmad-output/test-artifacts/risk-register.yaml
+            _bmad-output/test-artifacts/go-no-go-report.md

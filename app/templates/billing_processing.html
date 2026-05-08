@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Subscription Processing – MALIXIS{% endblock %}
+{% block content %}
+<section class="panel" style="text-align:center;max-width:480px;margin:auto;">
+  <h2>Payment received</h2>
+  <p style="color:var(--muted);margin:12px 0 0;">
+    Your payment is being confirmed. Your subscription will be activated within a few moments.
+  </p>
+  <p style="margin-top:24px;color:var(--muted);font-size:0.9rem;">
+    You will receive an email confirmation from Stripe once your subscription is active.
+    This page does not need to remain open.
+  </p>
+  <p style="margin-top:32px;">
+    <a class="button-link" href="{{ url_for('onboarding.onboarding_page') }}">Continue to WhatsApp onboarding</a>
+  </p>
+</section>
+{% endblock %}

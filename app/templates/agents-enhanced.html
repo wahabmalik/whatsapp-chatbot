@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Agents{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Agent selector</h2>
+  <p>Pick the active runtime agent. Changes apply to the next inbound message.</p>
+
+  {% if agents %}
+  <form id="agent-form" class="agent-grid" method="post" action="{{ url_for('dashboard.set_agent_selection') }}">
+    {% for agent in agents %}
+    <label class="agent-card {% if agent.code == selected_agent_code %}active{% endif %}">
+      <input type="radio" name="agent_code" value="{{ agent.code }}" {% if agent.code == selected_agent_code %}checked{% endif %}>
+      <span class="agent-name">{{ agent.name }}</span>
+      {% if agent.title %}<span class="agent-title">{{ agent.title }}</span>{% endif %}
+      {% if agent.description %}<span class="agent-description">{{ agent.description }}</span>{% endif %}
+      {% if agent.code == selected_agent_code %}<span class="badge">Active</span>{% endif %}
+    </label>
+    {% endfor %}
+    <div class="form-actions">
+      <button id="save-agent" type="submit" {% if agents|length <= 1 %}disabled{% endif %}>Save Selection</button>
+    </div>
+  </form>
+  {% else %}
+    <div class="empty-state-box">
+      <p>No BMAD agents are available yet. Finish setup, then add or enable an agent skill to start routing live messages.</p>
+      <a href="{{ url_for('dashboard.setup') }}">Open setup checklist</a>
+      <a href="docs/botpress_connection.md">Read integration docs</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

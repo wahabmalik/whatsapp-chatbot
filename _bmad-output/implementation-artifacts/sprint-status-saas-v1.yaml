@@ -1,0 +1,260 @@
+fix all the risks# generated: 2026-05-04
+# last_updated: 2026-05-05
+# project: Malixis Reply v1
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+#
+# SOURCE DOCUMENTS:
+#   epics:  _bmad-output/planning-artifacts/epics-saas-v1.md
+#   prd:    _bmad-output/planning-artifacts/prd-whatsapp-ai-bot-saas-v1.md
+#   arch:   _bmad-output/planning-artifacts/architecture-whatsapp-ai-bot-saas-v1.md
+#
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog:     Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done:        All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done:    Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog:       Story only exists in epic file
+#   - ready-for-dev: Story file created in implementation-artifacts folder
+#   - in-progress:   Developer actively working on implementation
+#   - review:        Ready for code review (via code-review workflow)
+#   - done:          Story completed and tests passing
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done:     Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Amelia uses [DS] Dev Story skill to implement each story in sequence.
+# - All 20 stories must follow the dependency graph in epics-saas-v1.md §Story Dependency Graph.
+# - Story 1.1 is the only story with no dependencies; start here.
+# - Stories 4.1, 4.2, 4.3 can begin in parallel once Story 3.2 is done.
+# - Retrospectives are optional — run at epic boundaries to capture learnings.
+# - Security gate (6.1) and metering gate (6.2) are hard launch blockers before 6.3.
+#
+# DELIVERY PHASES (from PRD):
+# ===========================
+# Phase 1 — Foundation:      Epic 1
+# Phase 2 — Activation:      Epics 2 + 3
+# Phase 3 — Operations:      Epic 4
+# Phase 4 — Internal Control: Epics 5 + 6
+#
+# ENFORCEMENT RULES (arch §8) — must be verified before marking stories done:
+#   ENF-01: No AI reply unless subscriptions.status IN ('active', 'trialing')
+#   ENF-02: No AI reply if usage_counters.is_blocked = TRUE
+#   ENF-03: No AI reply if tenants.is_active = FALSE
+#   ENF-04: No AI reply unless connection_states.status = 'connected'
+#   ENF-05: Idempotency check before count increment
+#   ENF-06: usage_events INSERT + usage_counters UPDATE in same DB transaction
+#   ENF-07: is_blocked set atomically when used >= limit
+#   ENF-08: Enforcement check executes BEFORE OpenAI call
+#   ENF-09: Failed AI generation → no count, no reply
+#   ENF-10: Failed send (Evolution) → no count
+#   ENF-11: Plan upgrade → unblock if new limit > current used
+#   ENF-12: Billing period reset → conversations_used = 0, is_blocked = FALSE
+
+generated: 2026-05-04
+last_updated: 2026-05-05
+project: WhatsApp AI Bot SaaS v1
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PHASE 1 — FOUNDATION
+  # Epic 1: Multi-Tenant Foundation and Authentication
+  # FR covered: FR1, FR2
+  # depends-on: (none — Phase 1 entry point)
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-1: done
+
+  # Story 1.1 — DB schema bootstrap: tenants, users, subscriptions, usage_counters,
+  #   usage_events, connection_states, bot_configs, audit_log + Flask extension lifecycle.
+  # depends-on: none
+  saas-1-1-database-schema-bootstrap-and-tenant-model: done
+
+  # Story 1.2a — Email/password signup, login, logout, and CSRF protection.
+  #   Atomic tenant+user creation on signup; login session; logout session invalidation.
+  # depends-on: saas-1-1
+  saas-1-2a-email-password-signup-login-and-logout: done
+
+  # Story 1.2b — Password reset flow: short-lived signed single-use token,
+  #   email dispatch, token expiry and invalidation.
+  # depends-on: saas-1-2a
+  saas-1-2b-password-reset-flow: done
+
+  # Story 1.3 — Cross-tenant access-denial tests; repository isolation contract; CI gate.
+  # depends-on: saas-1-1, saas-1-2a
+  saas-1-3-tenant-isolation-contract-and-cross-tenant-access-denial-tests: done
+
+  epic-saas-1-retrospective: optional
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PHASE 2 — ACTIVATION
+  # Epic 2: Subscription and Billing Wiring
+  # FR covered: FR3, FR4
+  # depends-on: Epic 1
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-2: done
+
+  # Story 2.1 — Plan selection page (Starter/Pro/Business), Stripe Checkout redirect,
+  #   subscription created in pending_webhook state.
+  # depends-on: saas-1-3
+  saas-2-1-plan-selection-ui-and-stripe-checkout-flow: done
+
+  # Story 2.2 — Stripe webhook ingestion, idempotent billing_events ledger,
+  #   entitlement state machine, audit_log transitions.
+  # depends-on: saas-2-1
+  saas-2-2-stripe-webhook-ingestion-and-entitlement-state-machine: done
+
+  # Story 2.3 — Quota mapping from plan_key (2000/5000/15000), usage_counters init,
+  #   plan-change propagation without billing boundary.
+  # depends-on: saas-2-2
+  saas-2-3-quota-entitlement-mapping-and-plan-limit-assignment: done
+
+  epic-saas-2-retrospective: optional
+
+  # Epic 3: WhatsApp QR Onboarding and Connection Lifecycle
+  # FR covered: FR5, FR6
+  # depends-on: Epics 1, 2
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-3: done
+
+  # Story 3.1 — QR code fetch from Evolution API per tenant instance, real-time SSE
+  #   status stream (disconnected → connecting → connected), retry affordance.
+  # depends-on: saas-2-2, saas-2-3
+  saas-3-1-evolution-api-qr-fetch-display-and-status-polling: done
+
+  # Story 3.2 — Bot live state transition on QR connected; inbound routing from
+  #   Evolution instance_name → tenant_id; cross-tenant routing rejection.
+  # depends-on: saas-3-1
+  saas-3-2-bot-live-state-transition-and-inbound-routing-per-tenant: done
+
+  epic-saas-3-retrospective: optional
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PHASE 3 — OPERATIONS
+  # Epic 4: Dashboard, Bot Config, Usage Enforcement, and Billing Lifecycle
+  # FR covered: FR7, FR8, FR9, FR10, FR11, FR12, FR14
+  # depends-on: Epics 1, 2, 3
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-4: done
+
+  # Story 4.1 — Customer dashboard: connection status, conversations used/limit/remaining,
+  #   progress bar, reset date, ≤60 s freshness, ≤2 s page load, ≤500 ms API.
+  # depends-on: saas-3-2, saas-2-3
+  # NOTE: can be developed in parallel with 4.2 and 4.3 once 3.2 is done.
+  saas-4-1-customer-dashboard-connection-status-and-usage-summary: done
+
+  # Story 4.2 — Bot config page: business_name + ai_persona_prompt per tenant,
+  #   live prompt injection without redeploy, CSRF protection, input sanitisation.
+  # depends-on: saas-1-2 (tenant context), saas-3-2 (bot is live)
+  # NOTE: can be developed in parallel with 4.1 and 4.3 once 3.2 is done.
+  saas-4-2-bot-configuration-business-name-and-persona-prompt: done
+
+  # Story 4.3 — Atomic idempotent usage increment: usage_events UNIQUE key,
+  #   usage_counters atomic increment, same-tx enforcement (ENF-05, ENF-06,
+  #   ENF-09, ENF-10). Smoke test: replay same message_id twice → used_count +1 only.
+  # depends-on: saas-3-2, saas-2-3
+  # NOTE: can be developed in parallel with 4.1 and 4.2 once 3.2 is done.
+  saas-4-3-atomic-usage-metering-with-idempotency: done
+
+  # Story 4.4 — Pre-send enforcement guard: reads is_blocked before every OpenAI call,
+  #   dashboard blocked overlay, upgrade CTA, zero replies while blocked.
+  # depends-on: saas-4-3
+  saas-4-4-usage-limit-enforcement-bot-blocking-and-upgrade-cta: done
+
+  # Story 4.5 — Billing cycle reset (invoice.paid new period) + plan upgrade auto-resume:
+  #   new usage_counters row, is_blocked cleared, test: set used=limit → webhook → reply resumes.
+  # depends-on: saas-2-2, saas-4-4
+  saas-4-5-billing-cycle-reset-and-plan-upgrade-auto-resume: done
+
+  epic-saas-4-retrospective: optional
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PHASE 4 — INTERNAL CONTROL
+  # Epic 5: Internal Admin Panel and Audit Trail
+  # FR covered: FR13
+  # depends-on: Epics 1, 4
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-5: done
+
+  # Story 5.1 — Admin tenant list: all tenants with plan/subscription/connection/usage/state,
+  #   admin role guard (403 for non-admin), ≤2 min diagnostic SLA.
+  # depends-on: saas-1-1, saas-2-2, saas-3-2, saas-4-3
+  saas-5-1-admin-tenant-list-and-status-view: done
+
+  # Story 5.2 — Admin search/filter + per-tenant detail (subscription history last 3,
+  #   usage, WhatsApp session, blocked state); no secrets on admin pages.
+  # depends-on: saas-5-1
+  saas-5-2-admin-tenant-search-filter-and-per-tenant-detail: done
+
+  # Story 5.3 — Admin disable/enable with confirmation step; audit_log append-only record
+  #   (actor, action, target, request_id, timestamp); session invalidation on disable.
+  # depends-on: saas-5-1, saas-5-2
+  saas-5-3-admin-disable-enable-tenant-and-audit-logging: done
+
+  epic-saas-5-retrospective: optional
+
+  # Epic 6: Launch Hardening and Readiness Gates
+  # FR covered: All NFRs
+  # depends-on: Epics 1–5
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-6: done
+
+  # Story 6.1 — Security baseline test suite: cross-tenant isolation (100% pass),
+  #   CSRF bypass → 400, admin 403 guards, password-reset token single-use/expiry,
+  #   no secrets in logs. HARD LAUNCH GATE A.
+  # depends-on: saas-1-3, saas-5-3
+  saas-6-1-security-baseline-tenant-isolation-and-auth-tests: done
+
+  # Story 6.2 — Metering + billing lifecycle automated tests: idempotency (same ID × 2 = +1),
+  #   concurrency stress (2× peak → zero over-limit), all 5 Stripe event types replay-idempotent,
+  #   enforcement guard zero-reply-while-blocked, auto-resume after reset. HARD LAUNCH GATE B.
+  # depends-on: saas-4-3, saas-4-4, saas-4-5, saas-2-2
+  saas-6-2-usage-metering-and-billing-lifecycle-automated-tests: done
+
+  # Story 6.3 — Staging E2E run: all 3 plans activated (≤10 min median), all ENF rules
+  #   evidenced, all SM-* metrics recorded, go-no-go-report.md produced. NO-GO if any
+  #   Critical/High risk unresolved.
+  # depends-on: saas-6-1, saas-6-2, and all Epic 1–5 stories done
+  saas-6-3-staging-end-to-end-validation-and-go-no-go-report: done
+
+  # Story 6.4 — Ops docs updated: setup_guide.md (SaaS onboarding path), operations_runbook.md
+  #   (disable/enable, Evolution reset, webhook replay, usage reconciliation, entitlement rollback),
+  #   release_smoke_checklist.md (SaaS-specific gates).
+  # depends-on: saas-6-3
+  saas-6-4-operational-documentation-update-for-saas-v1: done
+
+  epic-saas-6-retrospective: done
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # CLOSURE SPRINT — Pre-Existing Issue Resolution
+  # Epic 8: Close Epic 3 pre-existing test failure
+  # Mandatory closure item before QA phase
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-saas-8: done
+
+  # Closure Story: Fix OperatorLogsViewTests::test_logs_filter_status_error
+  # Issue: test_logs_filter_status_error was failing because raw phone numbers
+  #   were rendered in hidden HTML spans, causing assertNotIn("111", body) to fail
+  #   even though the number wasn't visibly displayed.
+  # Solution: Removed raw phone numbers from template context before rendering.
+  #   - Modified app/views_dashboard.py logs_page() to pop the "from" field
+  #   - Modified app/templates/logs.html to only render masked_from
+  #   - Ensures sensitive data never appears in HTML source
+  # Status: Implementation complete, fix verified
+  close-epic-3-pre-existing-test-failure: done
+
+  epic-saas-8-retrospective: optional

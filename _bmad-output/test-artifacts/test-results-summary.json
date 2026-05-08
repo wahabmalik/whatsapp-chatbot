@@ -1,0 +1,10 @@
+{
+  "generated": "2026-05-07T15:35:02.145970+00:00",
+  "security_tests_all_pass": true,
+  "security_replay_test_pass": true,
+  "idempotency_memory_pass": true,
+  "idempotency_sqlite_pass": false,
+  "sqlite_fallback_pass": true,
+  "outbound_retry_test_pass": true,
+  "outbound_fallback_test_pass": true
+}

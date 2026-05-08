@@ -1,0 +1,47 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot
+configfile: pytest.ini
+collecting ... collected 38 items
+
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSignatureVerification::test_invalid_signature_returns_400 PASSED [  2%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSignatureVerification::test_valid_signature_accepted PASSED [  5%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestIdempotency::test_duplicate_event_id_is_noop PASSED [  7%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestIdempotency::test_different_event_ids_both_stored PASSED [ 10%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestCheckoutSessionCompleted::test_checkout_completed_activates_pending_subscription PASSED [ 13%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestCheckoutSessionCompleted::test_checkout_completed_creates_sub_when_webhook_arrives_first PASSED [ 15%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestCheckoutSessionCompleted::test_checkout_completed_writes_audit_log PASSED [ 18%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestCheckoutSessionCompleted::test_checkout_completed_enables_can_activate_bot PASSED [ 21%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaid::test_invoice_paid_activates_subscription PASSED [ 23%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaid::test_invoice_paid_writes_audit_log PASSED [ 26%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaid::test_invoice_paid_unknown_sub_returns_200 PASSED [ 28%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[active-active] PASSED [ 31%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[trialing-trialing] PASSED [ 34%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[past_due-past_due] PASSED [ 36%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[unpaid-past_due] PASSED [ 39%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[canceled-canceled] PASSED [ 42%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[incomplete-past_due] PASSED [ 44%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[incomplete_expired-canceled] PASSED [ 47%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_status_mapping[paused-past_due] PASSED [ 50%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionUpdated::test_subscription_updated_writes_audit_log PASSED [ 52%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionDeleted::test_subscription_deleted_cancels PASSED [ 55%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestSubscriptionDeleted::test_subscription_deleted_writes_audit_log PASSED [ 57%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaymentFailed::test_payment_failed_marks_past_due PASSED [ 60%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaymentFailed::test_payment_failed_writes_audit_log PASSED [ 63%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestInvoicePaymentFailed::test_payment_failed_blocks_bot PASSED [ 65%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestUnhandledEventType::test_unknown_event_acknowledged_200 PASSED [ 68%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestUnhandledEventType::test_unknown_event_does_not_mutate_subscriptions PASSED [ 71%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestEntitlementGuard::test_can_activate_bot_per_status[active-True] PASSED [ 73%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestEntitlementGuard::test_can_activate_bot_per_status[trialing-True] PASSED [ 76%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestEntitlementGuard::test_can_activate_bot_per_status[pending_webhook-False] PASSED [ 78%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestEntitlementGuard::test_can_activate_bot_per_status[past_due-False] PASSED [ 81%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestEntitlementGuard::test_can_activate_bot_per_status[canceled-False] PASSED [ 84%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestWebhookConfiguration::test_missing_webhook_secret_returns_503 PASSED [ 86%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestReplayIdempotency::test_replay_is_idempotent[checkout.session.completed-<lambda>-active] PASSED [ 89%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestReplayIdempotency::test_replay_is_idempotent[invoice.paid-<lambda>-active] PASSED [ 92%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestReplayIdempotency::test_replay_is_idempotent[customer.subscription.updated-<lambda>-active] PASSED [ 94%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestReplayIdempotency::test_replay_is_idempotent[customer.subscription.deleted-<lambda>-canceled] PASSED [ 97%]
+tests/test_saas_2_2_stripe_webhook_ingestion_and_entitlement_state_machine.py::TestReplayIdempotency::test_replay_is_idempotent[invoice.payment_failed-<lambda>-past_due] PASSED [100%]
+
+======================== 38 passed in 62.66s (0:01:02) ========================

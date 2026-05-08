@@ -44,5 +44,5 @@ Epic 5 retrospective flagged retry semantics as partially implicit. Current cove
 
 ## Story Completion Status
 
-- Story document created and context-complete for implementation.
-- Status set to `ready-for-dev`.
+- Story implemented with deterministic retry/fallback contract coverage.
+- Status set to `done`.

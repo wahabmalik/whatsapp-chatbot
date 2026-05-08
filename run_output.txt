@@ -1,0 +1,14 @@
+2026-05-04 18:19:24,583 - root - INFO - [corr=n/a] CONFIG_READINESS key=OPENAI_API_KEY ready=True
+2026-05-04 18:19:24,584 - root - INFO - [corr=n/a] CONFIG_READINESS key=EVOLUTION_API_URL ready=True
+2026-05-04 18:19:24,584 - root - INFO - [corr=n/a] CONFIG_READINESS key=EVOLUTION_API_KEY ready=True
+2026-05-04 18:19:24,585 - root - INFO - [corr=n/a] CONFIG_READINESS key=EVOLUTION_INSTANCE_NAME ready=True
+2026-05-04 18:19:24,585 - app.saas_db - WARNING - [corr=n/a] SAAS_DB_SKIP DATABASE_URL is not set; SaaS database extension will not be initialised. SaaS features (auth, billing, usage) will be unavailable.
+2026-05-04 18:19:24,643 - root - INFO - [corr=n/a] Flask app started
+ * Serving Flask app 'app'
+ * Debug mode: off
+2026-05-04 18:19:26,000 - werkzeug - INFO - [corr=n/a] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.2.2:8000
+2026-05-04 18:19:26,000 - werkzeug - INFO - [corr=n/a] [33mPress CTRL+C to quit[0m
+^C

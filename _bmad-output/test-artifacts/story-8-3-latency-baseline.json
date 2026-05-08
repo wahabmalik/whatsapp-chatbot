@@ -1,0 +1,7 @@
+{
+  "scenario": "story-8-3-baseline",
+  "sample_count": 200,
+  "p50_ms": 10.075,
+  "p95_ms": 181.554,
+  "max_ms": 688.502
+}

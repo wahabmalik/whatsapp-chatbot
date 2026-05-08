@@ -1,0 +1,104 @@
+# generated: 2026-05-08
+# last_updated: 2026-05-08T00:00:00Z
+# project: python-whatsapp-bot
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+# source_plan: _bmad-output/planning-artifacts/sprint-plan-next-iteration-2026-05-07.md
+# source_epics: _bmad-output/planning-artifacts/epics-next-cycle.md
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in implementation artifacts
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Pull Condition (Epic 12):
+#   Epic 12 stories are pulled ONLY after all Epic 9, 10, and 11 P0 gate criteria
+#   are green AND the full test suite remains clean.
+
+generated: 2026-05-08
+last_updated: 2026-05-08T00:00:00Z
+project: python-whatsapp-bot
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ---------------------------------------------------------------------------
+  # SPRINT 1: Reliability Governance and First Production Adapter
+  # Gate B: CI governance active + adapter parity suite passing + staging pass
+  # ---------------------------------------------------------------------------
+  epic-9: backlog
+  # Story 9.1 — Governance Baseline Upgrade
+  # CI enforcement of contract-test categories and story closure evidence template.
+  9-1-governance-baseline-upgrade: backlog
+
+  # Story 9.2 — Production Adapter Delivery (Single Non-WhatsApp Channel)
+  # First production adapter wired behind existing ChannelAdapter interface.
+  9-2-production-adapter-delivery: backlog
+
+  # Story 9.3 — Adapter Parity Contract Suite and Mixed-Channel Staging Gate
+  # Shared outbound contract suite parameterized for WhatsApp + new adapter.
+  9-3-adapter-parity-contract-suite: backlog
+
+  epic-9-retrospective: optional
+
+  # ---------------------------------------------------------------------------
+  # SPRINT 2: Analytics Productization and SQLite Operational Readiness
+  # Gate C: analytics freshness <=60s + retention verified + SQLite soak + rollback drill
+  # ---------------------------------------------------------------------------
+  epic-10: backlog
+  # Story 10.1 — Analytics Reporting API
+  # GET /api/analytics/summary — volume, escalation, outcome, latency from event foundation.
+  10-1-analytics-reporting-api: backlog
+
+  # Story 10.2 — Dashboard Analytics v1
+  # Lightweight operator dashboard section — trends and escalation indicators.
+  10-2-dashboard-analytics-v1: backlog
+
+  epic-10-retrospective: optional
+
+  epic-11: backlog
+  # Story 11.1 — SQLite 24h Soak Automation and Evidence Artifact
+  # Automated soak harness producing sqlite-soak-evidence-<date>.md artifact.
+  11-1-sqlite-soak-automation: backlog
+
+  # Story 11.2 — Rollback Drill Automation and Acceptance Artifact
+  # Timed rollback drill producing sqlite-rollback-drill-<date>.md artifact.
+  11-2-sqlite-rollback-drill: backlog
+
+  epic-11-retrospective: optional
+
+  # ---------------------------------------------------------------------------
+  # SPRINT 3 (CONDITIONAL): SaaS v1 Customer Value Pull
+  # Pull condition: Epic 9 Gate B + Epic 10/11 Gate C both green AND suite clean.
+  # If either gate is incomplete at Sprint 2 close, Epic 12 defers to next cycle.
+  # Gate D: no open High risks + runbook updated + smoke checklist passes
+  # ---------------------------------------------------------------------------
+  epic-12: backlog
+  # Story 12.1 — Notification Center (Billing and Usage Alerts)
+  # In-app trial/payment/usage alerts; tenant-isolated; Stripe webhook triggered.
+  12-1-notification-center: backlog
+
+  # Story 12.2 — Conversation History Viewer (Read-Only v1)
+  # Paginated conversation list with thread view; tenant-isolated; search by wa_id+date.
+  12-2-conversation-history-viewer: backlog
+
+  # Story 12.3 — Reconnection Assistant (Guided Troubleshooting Path)
+  # Connection status + guided QR reconnect flow + common failure plain-language guidance.
+  12-3-reconnection-assistant: backlog
+
+  epic-12-retrospective: optional

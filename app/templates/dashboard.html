@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="panel signal-banner {{ 'signal-stop' if escalation.has_stop_signal else 'signal-clear' }}" aria-live="polite">
+  {% if escalation.has_stop_signal %}
+    <h2>Automation stop signal active</h2>
+    <p>
+      {{ escalation.pending_reviews }} conversation{% if escalation.pending_reviews != 1 %}s{% endif %} flagged for operator review.
+      {% if escalation.latest_reason %}Latest reason: <strong>{{ escalation.latest_reason }}</strong>.{% endif %}
+    </p>
+    <p class="subtle-help">
+      {{ escalation.operator_action }}
+      {% if escalation.latest_timestamp %}Last flagged at {{ escalation.latest_timestamp }}.{% endif %}
+    </p>
+    <a class="button-link" href="{{ url_for('dashboard.logs_page') }}">Review flagged conversations</a>
+  {% else %}
+    <h2>No active stop signal</h2>
+    <p class="subtle-help">Automation is currently clear. Escalated threads will appear here as soon as they are flagged.</p>
+  {% endif %}
+</section>
+
+<section class="agency-hero" id="services">
+  <div class="hero-copy">
+    <p class="eyebrow">ELITE DIGITAL AGENCY</p>
+    <h1>
+      We Build Digital Systems That
+      <span class="accent-text">Grow Your Business</span>
+    </h1>
+    <p class="hero-lead">Marketing, websites, SEO, and automation &mdash; everything you need to scale in one place.</p>
+
+    <div class="hero-actions">
+      <a class="button-link" href="{{ url_for('dashboard.setup') }}">Book a Free Consultation</a>
+            <a class="ghost-link" href="{{ url_for('dashboard.metrics_page') }}#results">View Our Work</a>
+    </div>
+
+    <p class="tiny-note">Trusted by growing businesses</p>
+  </div>
+
+  <div class="growth-card">
+    <div class="growth-head">
+      <div>
+        <h2>Growth Dashboard</h2>
+        <p>Live Metrics</p>
+      </div>
+      <div class="window-dots" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <div class="chart-kpis" aria-hidden="true">
+      <span>Response stability</span>
+      <span>Lead flow</span>
+      <span>Error trend</span>
+    </div>
+
+    <div class="chart-frame" aria-hidden="true">
+      <svg viewBox="0 0 600 240" preserveAspectRatio="none" role="presentation">
+        <path class="chart-area" d="M0,220 L60,195 L120,202 L180,160 L240,170 L300,120 L360,132 L420,98 L480,110 L540,78 L600,88 L600,240 L0,240 Z"></path>
+        <path class="chart-line" d="M0,220 L60,195 L120,202 L180,160 L240,170 L300,120 L360,132 L420,98 L480,110 L540,78 L600,88"></path>
+        <circle class="chart-dot" cx="300" cy="120" r="6"></circle>
+        <circle class="chart-dot" cx="540" cy="78" r="6"></circle>
+      </svg>
+    </div>
+
+    <section class="grid-metrics" id="results">
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-counter="webhook.processed_messages_total">{{ metrics.counters.get('webhook.processed_messages_total', 0) }}</strong>
+        <h3>Leads</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-duration="webhook.handle_message_seconds">
+          {% if metrics.durations.averages.get('webhook.handle_message_seconds') is not none %}
+            {{ "%.2fs"|format(metrics.durations.averages.get('webhook.handle_message_seconds', 0.0)) }}
+          {% else %}
+            No data
+          {% endif %}
+        </strong>
+        <h3>Conversion</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-counter="webhook.internal_errors_total">{{ metrics.counters.get('webhook.internal_errors_total', 0) }}</strong>
+        <h3>Visibility</h3>
+      </a>
+      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+        <strong data-metric-counter="ai.reply_success">{{ metrics.counters.get('ai.reply_success', 0) }}</strong>
+        <h3>AI Replies</h3>
+      </a>
+    </section>
+  </div>
+</section>
+
+<section class="hero-summary" id="system" aria-label="Agency snapshot">
+  <div class="hero-stats" aria-label="Platform summary">
+    <div class="hero-stat">
+      <strong>24/7</strong>
+      <span>Campaign and lead visibility</span>
+    </div>
+    <div class="hero-stat">
+      <strong>5</strong>
+      <span>Delivery systems in one stack</span>
+    </div>
+    <div class="hero-stat">
+      <strong>30s</strong>
+      <span>Live reporting refresh cadence</span>
+    </div>
+  </div>
+
+  <section class="panel runtime-panel" id="process">
+    <header class="panel-head">
+      <h3>Runtime health</h3>
+      <a href="{{ url_for('dashboard.agents_page') }}">Operator process</a>
+    </header>
+    <dl class="meta-grid">
+      <div><dt>Status</dt><dd class="status-line"><span class="dot {{ 'dot-green' if health.status == 'running' else 'dot-red' }}"></span><span>{{ health.status|title }}</span></dd></div>
+      <div><dt>Uptime</dt><dd data-health-uptime>{{ uptime_label }}</dd></div>
+      <div><dt>Active Agent</dt><dd>{{ active_agent_name }}</dd></div>
+      <div><dt>Last Error</dt><dd data-health-error>{{ health.last_error or 'None' }}</dd></div>
+    </dl>
+  </section>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h3>Recent activity</h3>
+    <a href="{{ url_for('dashboard.logs_page') }}">View All</a>
+  </header>
+  {% if recent_logs %}
+    <ul class="activity-list">
+      {% for row in recent_logs %}
+      <li>
+        <span>{{ row.timestamp }}</span>
+        <span>{{ row.status|upper }}</span>
+        <span>{{ row.preview }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No data yet - waiting for first message.</p>
+  {% endif %}
+</section>
+
+<section class="detail-grid">
+  <section class="panel" id="pricing">
+    <header class="panel-head">
+      <h3>Pricing</h3>
+    </header>
+    <p class="subtle-help">Engagements are structured around retained growth support, performance reporting, and implementation sprints.</p>
+    <ul class="check-grid">
+      <li class="ok"><span class="dot dot-green"></span><span>Strategy and delivery planning</span></li>
+      <li class="ok"><span class="dot dot-green"></span><span>Build, launch, and optimization cycles</span></li>
+    </ul>
+  </section>
+
+  <section class="panel" id="faq">
+    <header class="panel-head">
+      <h3>FAQ</h3>
+    </header>
+    <div class="faq-stack">
+      <article>
+        <h4>How quickly can we launch?</h4>
+        <p class="subtle-help">Most teams can move from setup to a live reporting loop within the first implementation sprint.</p>
+      </article>
+      <article>
+        <h4>What does the engagement cover?</h4>
+        <p class="subtle-help">Web presence, automation, SEO support, reporting, and ongoing system refinement.</p>
+      </article>
+    </div>
+  </section>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.dashboardBoot = { autoRefresh: true };
+</script>
+{% endblock %}

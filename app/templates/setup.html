@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+{% block content %}
+<section class="panel wizard">
+  <h2>Setup wizard</h2>
+  <p>Use this operator-only checklist to move from missing environment values to a verified webhook without leaving the dashboard.</p>
+
+  <div class="copy-row" data-setup-status-url="{{ setup_status_url }}">
+    <h3>Guided completion signals</h3>
+    <p class="subtle-help" data-setup-status-summary>Loading setup status...</p>
+    <ul class="setup-next-steps" data-setup-next-steps></ul>
+  </div>
+
+  <ol class="step-list" aria-label="Setup progress">
+    <li{% if setup_current_step == 1 %} aria-current="step"{% endif %}>Welcome</li>
+    <li{% if setup_current_step == 2 %} aria-current="step"{% endif %}>Validate required keys</li>
+    <li{% if setup_current_step == 3 %} aria-current="step"{% endif %}>Copy webhook URL</li>
+    <li{% if setup_current_step == 4 %} aria-current="step"{% endif %}>Verify webhook access</li>
+    <li{% if setup_current_step == 5 %} aria-current="step"{% endif %}>Finish</li>
+  </ol>
+
+  <h3>Required keys</h3>
+  <ul class="check-grid">
+    {% for item in setup_items %}
+      <li class="{{ 'ok' if item.present else 'missing' }}">
+        <span>{{ '✓' if item.present else '✗' }}</span>
+        <strong>{{ item.key }}</strong>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <h3>Set OpenAI key</h3>
+  <form class="copy-row" data-openai-key-form data-save-url="{{ url_for('dashboard.setup_save_openai_key') }}">
+    <label for="openai-key-input">OPENAI_API_KEY</label>
+    <input
+      id="openai-key-input"
+      type="password"
+      name="openai_api_key"
+      placeholder="Paste OpenAI key"
+      autocomplete="off"
+      required
+    >
+    <button type="submit">Save key</button>
+    <p class="subtle-help">This updates OPENAI_API_KEY in your local .env file.</p>
+    <p class="ok-text hide" data-openai-save-success role="status" aria-live="polite"></p>
+    <p class="warning-text hide" data-openai-save-error role="alert"></p>
+  </form>
+
+  <div class="copy-row">
+    <label for="webhook-url">Webhook URL</label>
+    <input id="webhook-url" type="text" readonly value="{{ webhook_url }}">
+    <button type="button" data-copy-target="webhook-url">Copy</button>
+  </div>
+
+  <div class="verify-block">
+    <button
+      type="button"
+      class="button-link"
+      data-setup-verify
+      data-verify-url="{{ url_for('dashboard.setup_verify') }}"
+      {% if not setup_complete %}disabled aria-disabled="true"{% endif %}
+      aria-describedby="verify-help"
+    >
+      Send test ping
+    </button>
+    <p id="verify-help" class="subtle-help">Verification is enabled only after all required keys are present.</p>
+    <p class="ok-text hide" data-setup-verify-success role="status" aria-live="polite"></p>
+    <p class="warning-text hide" data-setup-verify-error role="alert"></p>
+  </div>
+
+  {% if setup_complete %}
+    <p class="ok-text">Setup is complete. You can move into the operator dashboard and start validating live traffic.</p>
+    <a class="button-link" href="{{ url_for('dashboard.operator_dashboard') }}">Go to Dashboard</a>
+  {% else %}
+    <p class="warning-text">Complete all five required keys before you run the verification step.</p>
+    {% if setup_missing_keys %}
+      <p class="warning-text">Still missing: {{ setup_missing_keys|join(', ') }}</p>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

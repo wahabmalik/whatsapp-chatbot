@@ -1,0 +1,29 @@
+[Unit]
+Description=WhatsApp Bot (Flask + Gunicorn)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+User=botuser
+Group=botuser
+WorkingDirectory=/opt/whatsapp-bot
+EnvironmentFile=/opt/whatsapp-bot/.env
+ExecStart=/opt/whatsapp-bot/.venv/bin/gunicorn \
+    --config /opt/whatsapp-bot/gunicorn.conf.py \
+    wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=whatsapp-bot
+
+# Basic hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

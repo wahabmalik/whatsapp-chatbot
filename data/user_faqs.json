@@ -1,0 +1,377 @@
+{
+  "default": [
+    {
+      "questions": [
+        "what are your working hours",
+        "working hours",
+        "when are you open",
+        "what time do you open",
+        "are you open on weekends",
+        "office hours",
+        "support hours",
+        "what days are you available"
+      ],
+      "answer": "Our support hours are Monday to Friday, 9:00 AM to 6:00 PM. We are closed on weekends and public holidays. Outside these hours our AI assistant is available 24/7 to help you."
+    },
+    {
+      "questions": [
+        "speak to a human",
+        "talk to a person",
+        "real agent",
+        "human agent",
+        "human support",
+        "escalate",
+        "talk to someone",
+        "connect me to an agent",
+        "I want to speak to a person",
+        "need human help",
+        "live agent",
+        "live support"
+      ],
+      "answer": "To reach a human agent, simply type 'human' or 'escalate' and your conversation will be flagged for immediate review by our support team. During business hours (Mon–Fri 9 AM–6 PM) an agent will follow up as soon as possible."
+    },
+    {
+      "questions": [
+        "how does this bot work",
+        "what can you do",
+        "what can the bot do",
+        "how does the ai work",
+        "what is this bot",
+        "who are you",
+        "are you a bot",
+        "are you human",
+        "are you ai",
+        "is this automated"
+      ],
+      "answer": "I am an AI-powered WhatsApp assistant. I can answer common questions, look up information, and connect you to a human agent when needed. I use OpenAI to generate responses and I'm available around the clock. For complex issues I will escalate to a human support agent."
+    },
+    {
+      "questions": [
+        "how do i create an account",
+        "sign up",
+        "register",
+        "how to register",
+        "create account",
+        "new account",
+        "get started",
+        "how do i get started"
+      ],
+      "answer": "To create an account, visit our website and click 'Sign Up'. Enter your email address and a password. You will receive a confirmation and can then choose a subscription plan to activate your bot."
+    },
+    {
+      "questions": [
+        "forgot my password",
+        "reset password",
+        "password reset",
+        "cant login",
+        "can't log in",
+        "lost my password",
+        "change my password",
+        "how do i reset my password"
+      ],
+      "answer": "To reset your password, go to the login page and click 'Forgot password'. Enter your registered email and we will send you a password reset link. The link is valid for 30 minutes. Check your spam folder if you don't see the email."
+    },
+    {
+      "questions": [
+        "how do i log in",
+        "login",
+        "sign in",
+        "how to sign in",
+        "trouble logging in",
+        "account locked",
+        "account disabled"
+      ],
+      "answer": "Visit the login page and enter your registered email and password. If your account is locked or disabled, please contact our support team for assistance."
+    },
+    {
+      "questions": [
+        "how do i delete my account",
+        "delete account",
+        "close account",
+        "remove my account",
+        "deactivate account",
+        "cancel account"
+      ],
+      "answer": "To delete or deactivate your account, please contact our support team directly. We will confirm your identity and process the request within 3 business days."
+    },
+    {
+      "questions": [
+        "how do i log out",
+        "logout",
+        "sign out",
+        "log out",
+        "sign off",
+        "exit account"
+      ],
+      "answer": "To log out, click the logout button in the top-right corner of your account dashboard. You will be signed out immediately and will need to re-enter your credentials to log back in."
+    },
+    {
+      "questions": [
+        "what plans do you offer",
+        "pricing",
+        "how much does it cost",
+        "subscription plans",
+        "available plans",
+        "what are the plans",
+        "starter plan",
+        "pro plan",
+        "business plan",
+        "plan options",
+        "cost of the service"
+      ],
+      "answer": "We offer three plans: Starter, Pro, and Business. Each plan includes a monthly conversation limit and access to AI-powered WhatsApp automation. Visit our pricing page for current rates or contact support for a custom quote."
+    },
+    {
+      "questions": [
+        "how do i upgrade my plan",
+        "upgrade plan",
+        "upgrade subscription",
+        "move to a higher plan",
+        "switch to pro",
+        "switch to business plan",
+        "change my plan"
+      ],
+      "answer": "You can upgrade your plan at any time from the billing section of your account dashboard. The new plan takes effect immediately and billing is prorated for the remainder of your current period."
+    },
+    {
+      "questions": [
+        "how do i downgrade my plan",
+        "downgrade plan",
+        "switch to a cheaper plan",
+        "reduce my subscription"
+      ],
+      "answer": "To downgrade your plan, visit the billing section of your account dashboard and select a lower tier. The change takes effect at the start of your next billing period."
+    },
+    {
+      "questions": [
+        "how do i cancel my subscription",
+        "cancel subscription",
+        "cancel my plan",
+        "stop subscription",
+        "unsubscribe",
+        "end my subscription"
+      ],
+      "answer": "You can cancel your subscription from the billing section of your account dashboard. Your service will remain active until the end of the current billing period, after which no further charges will be made."
+    },
+    {
+      "questions": [
+        "refund",
+        "get my money back",
+        "request a refund",
+        "refund policy",
+        "can i get a refund"
+      ],
+      "answer": "Refund requests are reviewed on a case-by-case basis. Please contact our support team within 7 days of the charge with your account email and the reason for the request. We will respond within 2 business days."
+    },
+    {
+      "questions": [
+        "how do i pay",
+        "payment methods",
+        "accepted payment",
+        "can i pay by credit card",
+        "billing payment",
+        "how is billing handled"
+      ],
+      "answer": "We accept major credit and debit cards (Visa, Mastercard, Amex) via Stripe. Payment details are securely stored by Stripe and are never held on our servers."
+    },
+    {
+      "questions": [
+        "invoice",
+        "get my invoice",
+        "billing receipt",
+        "download invoice",
+        "payment history"
+      ],
+      "answer": "Invoices are automatically emailed to your registered address after each billing cycle. You can also access payment history from the billing section of your account dashboard."
+    },
+    {
+      "questions": [
+        "how many conversations do i get",
+        "conversation limit",
+        "message limit",
+        "usage limit",
+        "how many messages",
+        "monthly limit",
+        "quota"
+      ],
+      "answer": "Your conversation limit depends on your plan (Starter, Pro, or Business). You can track your current usage in the dashboard. When your limit is reached, the bot will pause until the next billing period or until you upgrade your plan."
+    },
+    {
+      "questions": [
+        "why is the bot not responding",
+        "bot not working",
+        "bot not replying",
+        "no response from bot",
+        "bot stopped working",
+        "bot is down",
+        "not getting a reply"
+      ],
+      "answer": "If the bot is not responding, it may be due to: (1) your conversation limit being reached for this billing period, (2) a temporary service interruption, or (3) a configuration issue. Please check your dashboard for status, or type 'human' to reach a support agent."
+    },
+    {
+      "questions": [
+        "why is the reply slow",
+        "slow response",
+        "taking too long to reply",
+        "bot is slow",
+        "delay in response",
+        "response time"
+      ],
+      "answer": "AI responses typically arrive within a few seconds. Occasional delays of up to 30 seconds can occur due to high demand or AI provider latency. If delays persist beyond this, please contact support."
+    },
+    {
+      "questions": [
+        "how do i connect whatsapp",
+        "connect whatsapp",
+        "link whatsapp",
+        "scan qr code",
+        "whatsapp setup",
+        "how to connect my whatsapp",
+        "qr code"
+      ],
+      "answer": "To connect your WhatsApp number, log in to the dashboard and go to the onboarding or connection page. A QR code will be displayed — scan it with the WhatsApp app on your phone under Settings > Linked Devices. The connection is confirmed automatically."
+    },
+    {
+      "questions": [
+        "whatsapp disconnected",
+        "whatsapp connection lost",
+        "bot is disconnected",
+        "how do i reconnect whatsapp",
+        "reconnect"
+      ],
+      "answer": "If your WhatsApp connection is lost, go to the connection page in your dashboard and scan the QR code again. Connections can drop if the phone associated with the WhatsApp account is offline for an extended period."
+    },
+    {
+      "questions": [
+        "is my data safe",
+        "data privacy",
+        "privacy policy",
+        "what data do you store",
+        "how is my data used",
+        "gdpr",
+        "data security",
+        "personal data"
+      ],
+      "answer": "We take data privacy seriously. Message content processed by the AI is used only to generate responses and is not stored beyond the session. Account and billing data is held securely and never shared with third parties without consent. Please refer to our Privacy Policy for full details."
+    },
+    {
+      "questions": [
+        "how do i change my email",
+        "update email",
+        "change email address",
+        "new email address"
+      ],
+      "answer": "To change your registered email address, please contact our support team. We will verify your identity and update your email within 1 business day."
+    },
+    {
+      "questions": [
+        "my message was not understood",
+        "bot misunderstood me",
+        "wrong answer",
+        "incorrect response",
+        "bot gave wrong information",
+        "bad response"
+      ],
+      "answer": "I'm sorry if my response wasn't helpful. The AI does its best but can make mistakes. For accurate or sensitive information, please type 'human' to be connected to a support agent who can assist you directly."
+    },
+    {
+      "questions": [
+        "can i use this in multiple languages",
+        "does the bot support other languages",
+        "language support",
+        "non-english",
+        "spanish",
+        "french",
+        "arabic"
+      ],
+      "answer": "The AI assistant can understand and respond in multiple languages. Simply write your message in your preferred language and the bot will respond accordingly. Response quality may vary by language."
+    },
+    {
+      "questions": [
+        "how do i report a problem",
+        "report a bug",
+        "something is broken",
+        "technical issue",
+        "found a bug",
+        "submit feedback",
+        "report an issue"
+      ],
+      "answer": "To report a technical issue or bug, please type 'human' to reach our support team, or contact us directly through the dashboard. Please describe what you were doing, what you expected to happen, and what actually happened."
+    },
+    {
+      "questions": [
+        "what is the refund policy",
+        "terms and conditions",
+        "terms of service",
+        "service terms",
+        "agreement"
+      ],
+      "answer": "Our Terms of Service and refund policy are available on our website. For specific billing queries, please contact our support team directly."
+    },
+    {
+      "questions": [
+        "how do i contact support",
+        "contact us",
+        "get in touch",
+        "support email",
+        "reach support",
+        "customer service"
+      ],
+      "answer": "You can reach our support team by typing 'human' in this chat to flag your conversation for agent review. You can also contact us via the support email listed on our website. Our team is available Monday to Friday, 9 AM to 6 PM."
+    },
+    {
+      "questions": [
+        "do you have an api",
+        "api access",
+        "developer api",
+        "integrate with api",
+        "webhook"
+      ],
+      "answer": "Yes. We provide webhook endpoints for receiving messages and REST API endpoints for monitoring and automation. See our Developer Documentation at /docs/api or type 'human' to request API key provisioning. Business plan members get priority developer support."
+    },
+    {
+      "questions": [
+        "can i customise the bot",
+        "customize the bot",
+        "change bot name",
+        "bot persona",
+        "custom ai persona",
+        "change bot personality",
+        "personalise the bot"
+      ],
+      "answer": "Yes. From the account dashboard you can set your business name and a custom AI persona prompt. This shapes how the bot introduces itself and the tone it uses when responding to your customers."
+    },
+    {
+      "questions": [
+        "how do i add a team member",
+        "add user",
+        "invite team member",
+        "multiple users",
+        "team access"
+      ],
+      "answer": "Multi-user team access is available on Pro and Business plans. From your account dashboard, go to Team > Invite Members and enter the email address of the team member. Starter plan users should contact support for options."
+    },
+    {
+      "questions": [
+        "where is my order",
+        "order status",
+        "track my order",
+        "order tracking",
+        "delivery status",
+        "when will my order arrive"
+      ],
+      "answer": "To check your order status, log into your account dashboard and go to Orders. You will see real-time tracking for each order. Alternatively, provide your order number and we will look into it for you. Deliveries typically arrive within 2–5 business days."
+    }
+  ],
+  "users": {
+    "15551234567": [
+      {
+        "questions": [
+          "where is my order",
+          "order status"
+        ],
+        "answer": "Your order is currently in transit and should arrive within 2 business days."
+      }
+    ]
+  }
+}

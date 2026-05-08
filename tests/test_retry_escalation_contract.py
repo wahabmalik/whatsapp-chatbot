@@ -237,6 +237,23 @@ class FallbackSemanticsTests(unittest.TestCase):
         if result["operator_review_flagged"]:
             self.assertTrue(result.get("operator_review_reason"), "reason must be set")
 
+    def test_retry_exhaustion_sets_fallback_sent_and_operator_review_flagged_together(self):
+        """Joint invariant: retry exhaustion with successful fallback sets both flags true."""
+        effect, _count = _counter_side_effect(fail_count=5)
+        result = self._run(
+            side_effect=effect,
+            extra_config={"WHATSAPP_FALLBACK_MAX_RETRIES": 2},
+        )
+
+        self.assertEqual(result["status"], "fallback_sent")
+        self.assertEqual(
+            (
+                bool(result.get("fallback_sent")),
+                bool(result.get("operator_review_flagged")),
+            ),
+            (True, True),
+        )
+
 
 # ---------------------------------------------------------------------------
 # Deferred retry (WHATSAPP_DEFER_RETRIES) contracts

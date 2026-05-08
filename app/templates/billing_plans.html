@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Choose a plan – MALIXIS{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Choose your plan</h2>
+  <p style="color:var(--muted);margin:8px 0 24px;">Select a plan to activate your WhatsApp AI bot.</p>
+
+  <div class="plan-cards" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+    {% for plan in plans %}
+    <div class="plan-card" style="border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:24px;min-width:200px;max-width:240px;display:flex;flex-direction:column;gap:12px;{% if current_plan == plan.key %}border-color:#0f766e;box-shadow:0 0 0 2px #0f766e22;{% endif %}">
+      <h3 style="margin:0;font-size:1.15rem;">{{ plan.name }}</h3>
+      <p style="margin:0;font-size:2rem;font-weight:700;">${{ plan.price_usd }}<span style="font-size:1rem;font-weight:400;color:var(--muted)">/mo</span></p>
+      <p style="margin:0;color:var(--muted);font-size:0.95rem;">{{ "{:,}".format(plan.conversations) }} conversations/mo</p>
+      {% if current_plan == plan.key %}
+      <p style="margin:0;color:#0f766e;font-weight:600;font-size:0.9rem;">Current plan</p>
+      {% else %}
+      <button
+        class="plan-subscribe-btn button-link"
+        data-plan-key="{{ plan.key }}"
+        style="margin-top:auto;cursor:pointer;text-align:center;"
+        {% if current_plan %}disabled style="opacity:0.5;cursor:not-allowed;"{% endif %}
+      >Subscribe</button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if current_plan %}
+  <p style="margin-top:24px;">
+    <a href="{{ url_for('auth.billing_portal') }}" class="button-link">Manage billing</a>
+  </p>
+  {% endif %}
+
+  <p id="plan-error" style="color:#dc2626;margin-top:16px;display:none;"></p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')
+      ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      : '';
+
+    document.querySelectorAll('.plan-subscribe-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var planKey = btn.getAttribute('data-plan-key');
+        var errEl = document.getElementById('plan-error');
+        if (errEl) errEl.style.display = 'none';
+
+        btn.disabled = true;
+        btn.textContent = 'Redirecting…';
+
+        var formData = new FormData();
+        formData.append('plan_key', planKey);
+        formData.append('csrf_token', csrfToken);
+
+        fetch('/billing/checkout', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken },
+          body: formData,
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (json) {
+            if (json.ok && json.data && json.data.checkout_url) {
+              window.location.href = json.data.checkout_url;
+            } else {
+              if (errEl) {
+                errEl.textContent = (json.message || 'Checkout failed. Please try again.');
+                errEl.style.display = 'block';
+              }
+              btn.disabled = false;
+              btn.textContent = 'Subscribe';
+            }
+          })
+          .catch(function () {
+            if (errEl) {
+              errEl.textContent = 'Network error. Please try again.';
+              errEl.style.display = 'block';
+            }
+            btn.disabled = false;
+            btn.textContent = 'Subscribe';
+          });
+      });
+    });
+  })();
+</script>
+{% endblock %}

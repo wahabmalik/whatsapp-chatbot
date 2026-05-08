@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Message Log{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Thread inspector</h2>
+  </header>
+  <form class="filter-row" data-thread-inspector-form data-endpoint="{{ url_for('dashboard.thread_inspector_api') }}">
+    <label for="thread-user-id">User thread</label>
+    <input id="thread-user-id" name="user_id" type="text" inputmode="numeric" autocomplete="off" placeholder="15551234567" required>
+    <button type="submit">Inspect thread</button>
+  </form>
+  <p class="subtle-help">Shows last 5 context messages and last 10 activity entries for a user, with masking and sanitization by default.</p>
+
+  <p class="hide warning-text" data-thread-inspector-error role="alert"></p>
+  <div class="hide" data-thread-inspector-results>
+    <p><strong>Thread:</strong> <span data-thread-inspector-user></span></p>
+    <div class="detail-grid">
+      <section>
+        <h3>Recent context</h3>
+        <ul class="activity-list" data-thread-context-list></ul>
+      </section>
+      <section>
+        <h3>Recent activity</h3>
+        <div class="table-wrap">
+          <table class="metrics-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>From</th>
+                <th>Status</th>
+                <th>Preview</th>
+              </tr>
+            </thead>
+            <tbody data-thread-activity-body></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Recent message log</h2>
+    <form method="get" class="filter-row">
+      <label for="status">Status</label>
+      <select id="status" name="status" onchange="this.form.submit()">
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+        <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>Sent</option>
+        <option value="error" {% if status_filter == 'error' %}selected{% endif %}>Error</option>
+      </select>
+      <a href="{{ url_for('dashboard.logs_page') }}">Reset</a>
+    </form>
+  </header>
+
+  <div class="table-wrap">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>From</th>
+          <th>Status</th>
+          <th>Escalation</th>
+          <th>Preview</th>
+          <th>Agent</th>
+          <th>Details</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in entries %}
+        <tr class="{{ 'row-error' if row.status == 'error' else '' }}">
+          <td>{{ row.timestamp }}</td>
+          <td><span data-masked>{{ row.masked_from }}</span></td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.operator_review_reason or '-' }}</td>
+          <td>{{ row.preview }}</td>
+          <td>{{ row.agent }}</td>
+          <td>{% if row.error or row.reply_text %}Available{% else %}-{% endif %}</td>
+          <td>
+            {% if row.error or row.reply_text %}
+            <button type="button" class="link-button" data-toggle-detail aria-expanded="false">Expand</button>
+            {% endif %}
+            <button type="button" class="link-button" data-reveal-number aria-expanded="false">Reveal</button>
+          </td>
+        </tr>
+        {% if row.error or row.reply_text %}
+        <tr class="hide" data-detail-row>
+          <td colspan="8">
+            {% if row.reply_text %}<p><strong>Reply:</strong> {{ row.reply_text }}</p>{% endif %}
+            {% if row.error %}<p><strong>Error:</strong> {{ row.error }}</p>{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {% if not entries %}
+        <tr><td colspan="8">No message activity yet. Finish setup and send a test WhatsApp message to populate this log.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

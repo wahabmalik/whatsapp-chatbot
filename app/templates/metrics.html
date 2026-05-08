@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Metrics{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Metrics</h2>
+    <div class="meta-actions">
+      <button type="button" data-refresh-metrics>Refresh</button>
+      <small>Last refreshed: <span data-refreshed-at>{{ refreshed_at.strftime('%H:%M:%S UTC') }}</span></small>
+    </div>
+  </header>
+
+  <table class="metrics-table">
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody data-counters-table>
+      {% for key, value in snapshot.counters.items()|sort %}
+      <tr><td>{{ key }}</td><td>{{ value }}</td></tr>
+      {% endfor %}
+      {% if not snapshot.counters %}
+      <tr><td colspan="2">No delivery metrics yet. Finish setup and process a test message to start this feed.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>Average durations</h3>
+  <div class="bar-stack" data-duration-bars>
+    {% for bar in duration_bars %}
+    <div class="bar-row">
+      <span>{{ bar.name }}</span>
+      <div class="bar-track"><i style="width: {{ bar.ratio }}%"></i></div>
+      <em>{{ "%.2fs"|format(bar.value) }}</em>
+    </div>
+    {% endfor %}
+    {% if not duration_bars %}
+    <p>No timing data yet. The first processed message will establish response-time baselines.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.metricsBoot = true;
+</script>
+{% endblock %}

@@ -1,0 +1,341 @@
+﻿============================= test session starts =============================
+collecting ... collected 16 items
+
+tests/test_critical_product_paths.py::CriticalPathSecurityTests::test_sec_001_webhook_signature_validation_rejects_tampering PASSED [  6%]
+tests/test_critical_product_paths.py::CriticalPathSecurityTests::test_sec_002_replay_attack_prevention PASSED [ 12%]
+tests/test_critical_product_paths.py::CriticalPathSecurityTests::test_sec_003_auth_token_validation_required PASSED [ 18%]
+tests/test_critical_product_paths.py::CriticalPathSecurityTests::test_sec_004_input_sanitization_prevents_injection PASSED [ 25%]
+tests/test_critical_product_paths.py::CriticalPathSecurityTests::test_sec_005_provider_switch_maintains_security_context PASSED [ 31%]
+tests/test_critical_product_paths.py::CriticalPathReliabilityTests::test_rel_001_message_idempotency_prevents_duplicates PASSED [ 37%]
+tests/test_critical_product_paths.py::CriticalPathReliabilityTests::test_rel_002_retry_resilience_with_backoff PASSED [ 43%]
+tests/test_critical_product_paths.py::CriticalPathReliabilityTests::test_rel_003_database_error_handling_graceful_degradation PASSED [ 50%]
+tests/test_critical_product_paths.py::CriticalPathReliabilityTests::test_rel_004_missing_config_doesnt_crash_setup_mode PASSED [ 56%]
+tests/test_critical_product_paths.py::CriticalPathReliabilityTests::test_rel_005_health_check_accuracy PASSED [ 62%]
+tests/test_critical_product_paths.py::CriticalPathLatencyTests::test_lat_001_webhook_response_time_sla PASSED [ 68%]
+tests/test_critical_product_paths.py::CriticalPathLatencyTests::test_lat_002_provider_switch_latency_acceptable PASSED [ 75%]
+tests/test_critical_product_paths.py::CriticalPathLatencyTests::test_lat_003_message_log_buffer_nonblocking PASSED [ 81%]
+tests/test_critical_product_paths.py::CriticalPathLatencyTests::test_lat_004_metrics_collection_nonblocking PASSED [ 87%]
+tests/test_critical_product_paths.py::CriticalPathIntegrationTests::test_int_001_security_reliability_message_flow PASSED [ 93%]
+tests/test_critical_product_paths.py::CriticalPathIntegrationTests::test_int_002_all_domains_under_load FAILED [100%]
+
+================================== FAILURES ===================================
+E   AssertionError: 5.768073600018397 not less than 5.0 : 10 concurrent requests took 5.768s, should be <5s
+---------------------------- Captured stdout call -----------------------------
+2026-05-07 11:30:01,905 - root - WARNING - [corr=n/a] FLASK_SECRET_KEY is not set ù using a random secret key. All user sessions will be invalidated on every restart. Set FLASK_SECRET_KEY in your .env file for production.
+2026-05-07 11:30:01,938 - root - INFO - [corr=n/a] CONFIG_READINESS key=OPENAI_API_KEY ready=True
+2026-05-07 11:30:01,939 - root - INFO - [corr=n/a] CONFIG_READINESS key=ACCESS_TOKEN ready=True
+2026-05-07 11:30:01,939 - root - INFO - [corr=n/a] CONFIG_READINESS key=APP_SECRET ready=True
+2026-05-07 11:30:01,939 - root - INFO - [corr=n/a] CONFIG_READINESS key=VERSION ready=True
+2026-05-07 11:30:01,939 - root - INFO - [corr=n/a] CONFIG_READINESS key=PHONE_NUMBER_ID ready=True
+2026-05-07 11:30:01,939 - root - INFO - [corr=n/a] CONFIG_READINESS key=VERIFY_TOKEN ready=True
+2026-05-07 11:30:01,940 - app.saas_db - WARNING - [corr=n/a] SAAS_DB_SKIP DATABASE_URL is not set; SaaS database extension will not be initialised. SaaS features (auth, billing, usage) will be unavailable.
+2026-05-07 11:30:01,940 - root - WARNING - [corr=n/a] SMTP_HOST not configured ù password reset emails will not be sent in production. Set SMTP_HOST (and related SMTP_* env vars) to enable.
+2026-05-07 11:30:02,038 - root - INFO - [corr=aaeb3b9a-9839-40d0-89e9-1e5906f61339] Processing webhook event request_id=aaeb3b9a-9839-40d0-89e9-1e5906f61339
+2026-05-07 11:30:02,108 - root - INFO - [corr=9532e3bd-d1f0-4d0d-a58c-2cdbaee8fb65] Processing webhook event request_id=9532e3bd-d1f0-4d0d-a58c-2cdbaee8fb65
+2026-05-07 11:30:02,167 - root - INFO - [corr=fcdba417-ec31-454a-903f-f66d50ec0a33] Processing webhook event request_id=fcdba417-ec31-454a-903f-f66d50ec0a33
+2026-05-07 11:30:02,635 - root - INFO - [corr=7b40912a-805f-4d77-8757-bcb0fc2a5b10] Processing webhook event request_id=7b40912a-805f-4d77-8757-bcb0fc2a5b10
+2026-05-07 11:30:02,892 - root - INFO - [corr=343da0b9-9999-41d8-87b1-1926689b6207] Processing webhook event request_id=343da0b9-9999-41d8-87b1-19...6689b6207
+2026-05-07 11:30:04,241 - root - INFO - [corr=b0f7955c-ba00-44c4-8dd6-511ff63b22b3] Processing webhook event request_id=b0f7955c-ba00-44c4-8dd6-511ff63b22b3
+2026-05-07 11:30:06,970 - root - INFO - [corr=cf166cec-3b0f-47b9-a790-907ceff31414] Processing webhook event request_id=cf166cec-3b0f-47b9-a790-907ceff31414
+2026-05-07 11:30:07,269 - root - INFO - [corr=4c46a831-d310-4bb6-b95e-c0113a0deb99] Processing webhook event request_id=4c46a831-d310-4bb6-b95e-c0113a0deb99
+2026-05-07 11:30:07,453 - root - INFO - [corr=b5a9ff61-b1ab-4336-bdae-62a655c5ed71] Processing webhook event request_id=b5a9ff61-b1ab-4336-bdae-62a655c5ed71
+2026-05-07 11:30:07,634 - root - INFO - [corr=ebf7a242-d97c-487a-8bb6-68776cbd8b2a] Processing webhook event request_id=ebf7a242-d97c-487a-8bb6-68776cbd8b2a
+2026-05-07 11:30:07,795 - root - ERROR - [corr=e35395ad-8367-4267-988a-213832f95633] Request failed due to: 401 Client Error: Unauthorized for url: https://graph.facebook.com/v18.0/1234567890/messages attempt=2 request_id=e35395ad-8367-4267-988a-2...3832f95633
+------------------------------ Captured log call ------------------------------
+WARNING  root:config.py:163 FLASK_SECRET_KEY is not set ù using a random secret key. All user sessions will be invalidated on every restart. Set FLASK_SECRET_KEY in your .env file for production.
+C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\unittest\case.py:732: AssertionError: 5.768073600018397 not less than 5.0 : 10 concurrent requests took 5.768s, should be <5s
+=========================== short test summary info ===========================
+FAILED tests/test_critical_product_paths.py::CriticalPathIntegrationTests::test_int_002_all_domains_under_load
+======================== 1 failed, 15 passed in 40.84s ========================
+c:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Scripts\pyth
+on.exe : --- Logging error ---
+At line:1 char:1
++ c:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Sc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--- Logging error ---:String) [], 
+    RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 594, in _complete_send_message
+    result = _try_send_once(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 435, in _try_send_once
+    logging.info(
+Message: 'Sending WhatsApp message attempt=%s request_id=%s'
+Arguments: (3, 'e35395ad-8367-4267-988a-2...3832f95633')
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 444, in _try_send_once
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Lib\
+site-packages\requests\models.py", line 1028, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 594, in _complete_send_message
+    result = _try_send_once(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 468, in _try_send_once
+    logging.error(
+Message: 'Request failed due to: %s attempt=%s request_id=%s'
+Arguments: (HTTPError('401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages'), 3, 
+'e35395ad-8367-4267-988a-2...3832f95633')
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 594, in _complete_send_message
+    result = _try_send_once(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 435, in _try_send_once
+    logging.info(
+Message: 'Sending WhatsApp message attempt=%s request_id=%s'
+Arguments: (4, 'e35395ad-8367-4267-988a-2...3832f95633')
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 444, in _try_send_once
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Lib\
+site-packages\requests\models.py", line 1028, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 594, in _complete_send_message
+    result = _try_send_once(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 468, in _try_send_once
+    logging.error(
+Message: 'Request failed due to: %s attempt=%s request_id=%s'
+Arguments: (HTTPError('401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages'), 4, 
+'e35395ad-8367-4267-988a-2...3832f95633')
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 526, in _send_fallback
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Lib\
+site-packages\requests\models.py", line 1028, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 609, in _complete_send_message
+    result = _send_fallback(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 543, in _send_fallback
+    logging.error(
+Message: 'Primary outbound delivery failed after retries; fallback attempt 
+failed request_id=%s attempt=%s/%s error=%s'
+Arguments: ('e35395ad-8367-4267-988a-2...3832f95633', 1, 2, HTTPError('401 
+Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages'))
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 526, in _send_fallback
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\.venv\Lib\
+site-packages\requests\models.py", line 1028, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\logging\__in
+it__.py", line 1153, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: I/O operation on closed file.
+Call stack:
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1012, in _bootstrap
+    self._bootstrap_inner()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 1041, in _bootstrap_inner
+    self.run()
+  File 
+"C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\threading.py", 
+line 992, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 93, in _worker
+    work_item.run()
+  File "C:\Users\wahab\AppData\Local\Programs\Python\Python313\Lib\concurrent\f
+utures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 655, in _complete_deferred_delivery
+    result = dict(_complete_send_message(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 609, in _complete_send_message
+    result = _send_fallback(
+  File "C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot\app\utils\
+whatsapp_utils.py", line 543, in _send_fallback
+    logging.error(
+Message: 'Primary outbound delivery failed after retries; fallback attempt 
+failed request_id=%s attempt=%s/%s error=%s'
+Arguments: ('e35395ad-8367-4267-988a-2...3832f95633', 2, 2, HTTPError('401 
+Client Error: Unauthorized for url: 
+https://graph.facebook.com/v18.0/1234567890/messages'))

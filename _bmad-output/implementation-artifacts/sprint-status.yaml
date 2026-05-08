@@ -28,7 +28,7 @@
 #   - done: Retrospective has been completed
 
 generated: 2026-04-28
-last_updated: 2026-05-02T15:03:00Z
+last_updated: 2026-05-03T18:20:00Z
 project: python-whatsapp-bot
 project_key: NOKEY
 tracking_system: file-system
@@ -88,9 +88,9 @@ development_status:
 
   # Epic 8 goal: close carry-forward reliability debt, then deliver first P1 slices with low-risk scope.
   # Epic 8 user value: preserve MVP stability while showing roadmap momentum through actionable P1 groundwork.
-  epic-8: in-progress
+  epic-8: done
   8-1-close-pre-existing-epic-3-test-failure: done
-  8-2-multi-channel-delivery-interface-preparation: in-progress
-  8-3-conversation-analytics-event-foundation: ready-for-dev
-  8-4-optional-sqlite-persistence-rollout-slice: ready-for-dev
-  epic-8-retrospective: optional
+  8-2-multi-channel-delivery-interface-preparation: done
+  8-3-conversation-analytics-event-foundation: done
+  8-4-optional-sqlite-persistence-rollout-slice: done
+  epic-8-retrospective: done

@@ -1,6 +1,17 @@
 flask
 python-dotenv
 openai
+google-generativeai
 aiohttp
 requests
 tomli
+pyyaml
+gunicorn
+waitress
+sqlalchemy
+flask-sqlalchemy
+flask-migrate
+psycopg2-binary
+bcrypt
+Flask-Session
+# paddle billing uses urllib (stdlib) — no extra package required

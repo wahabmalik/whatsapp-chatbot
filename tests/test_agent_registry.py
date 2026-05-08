@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app.services import agent_registry
 
@@ -139,6 +140,38 @@ title = "WhatsApp Support Ops Specialist"
             agent_registry.get_selected_agent_code(),
             "whatsapp-support-ops",
         )
+
+    def test_set_selected_agent_code_is_atomic_and_json_valid(self):
+        self.selection_file.parent.mkdir(parents=True, exist_ok=True)
+
+        agent_registry.set_selected_agent_code("bmad-agent-dev")
+
+        saved = json.loads(self.selection_file.read_text(encoding="utf-8"))
+        self.assertEqual(saved["selected_agent_code"], "bmad-agent-dev")
+
+        leftovers = list(self.selection_file.parent.glob("agent_selection_*.tmp"))
+        self.assertEqual(leftovers, [])
+
+    def test_get_selected_agent_does_not_persist_fallback_on_transient_read_error(self):
+        self._write_customize(
+            "agent-whatsapp-support-ops",
+            """
+[agent]
+code = "whatsapp-support-ops"
+name = "Nia"
+title = "WhatsApp Support Ops Specialist"
+""".strip(),
+        )
+
+        with patch(
+            "app.services.agent_registry._read_selected_agent_code",
+            return_value=(None, "read_error"),
+        ), patch("app.services.agent_registry.set_selected_agent_code") as mock_set:
+            selected_agent = agent_registry.get_selected_agent()
+
+        self.assertIsNotNone(selected_agent)
+        self.assertEqual(selected_agent["code"], "whatsapp-support-ops")
+        mock_set.assert_not_called()
 
 
 if __name__ == "__main__":
