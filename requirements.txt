@@ -11,6 +11,7 @@ waitress
 sqlalchemy
 flask-sqlalchemy
 flask-migrate
+alembic
 psycopg2-binary
 bcrypt
 Flask-Session

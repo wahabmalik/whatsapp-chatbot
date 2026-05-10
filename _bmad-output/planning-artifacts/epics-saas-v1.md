@@ -7,7 +7,7 @@ stepsCompleted:
 inputDocuments:
   - "_bmad-output/planning-artifacts/prd-whatsapp-ai-bot-saas-v1.md"
   - "_bmad-output/planning-artifacts/architecture-whatsapp-ai-bot-saas-v1.md"
-  - "_bmad-output/planning-artifacts/ux-design.md"
+  - "_bmad-output/planning-artifacts/ux-design-saas-v1.md"
   - "docs/operations_runbook.md"
   - "docs/release_smoke_checklist.md"
   - "docs/setup_guide.md"
@@ -38,6 +38,8 @@ Delivery phasing follows the PRD's recommended Incremental Delivery Plan:
 | 2 — Activation | Stripe checkout, QR onboarding, connection lifecycle | Epics 2 + 3 |
 | 3 — Operations | Dashboard, usage enforcement, upgrade UX | Epic 4 |
 | 4 — Internal control | Admin panel, audit trail, launch hardening | Epics 5 + 6 |
+
+Traceability rule for implementation stories: any story with user-visible UI behavior must include both (a) architecture/API component references and (b) explicit UX screen/page references.
 
 ---
 
@@ -129,23 +131,21 @@ override) are append-only logged with actor, action, target, timestamp, and requ
 - **Multi-tenant Option A**: Single relational database; all business entities carry `tenant_id`;
   repository APIs require `tenant_id`; unscoped access is disallowed by contract.
 
-- **Core SaaS entities**: `tenants`, `users`, `tenant_memberships`, `tenant_settings`,
-  `tenant_whatsapp_sessions`, `subscriptions`, `billing_events`, `entitlements`,
-  `usage_counters`, `usage_idempotency`, `audit_logs`.
+- **Canonical SaaS tables (implementation)**: `tenants`, `users`, `subscriptions`,
+  `usage_events`, `usage_counters`, `connection_states`, `bot_configs`, `audit_log`.
 
 - **Evolution session-per-tenant isolation**: Each tenant has a distinct
-  `instance_name` in `tenant_whatsapp_sessions`; inbound webhook routing resolves tenant
+  `evolution_instance` in `connection_states`; inbound webhook routing resolves tenant
   from instance identity before message handling; outbound always resolves
   `tenant_id → instance_name` — never uses a global shared instance.
 
-- **Stripe webhook-safe entitlements**: Raw events stored append-only in `billing_events`
-  (idempotent on Stripe event ID); `entitlements` is the derived snapshot used for runtime
-  enforcement; state machine: `trialing|active` → entitled; `past_due|unpaid|incomplete` →
-  grace/blocked; `canceled` → disabled at termination boundary.
+- **Stripe webhook-safe entitlement state**: Raw Stripe webhook events are persisted append-only in
+  `audit_log` (`actor_type='stripe_webhook'`, idempotent on Stripe event ID); runtime entitlement
+  state is derived from `subscriptions.status` and `usage_counters.is_blocked`.
 
 - **Usage metering sequence**: Pre-send guard checks entitlement + quota; if blocked, skip AI
-  reply; if sent, execute atomic transaction (insert idempotency key, increment
-  `usage_counters.used_count`); duplicate key = no-increment.
+  reply; if sent, execute atomic transaction (insert `usage_events.idempotency_key`, increment
+  `usage_counters.conversations_used`); duplicate key = no-increment.
 
 - **Auth**: Email/password with strong hashing; secure server-side session cookie;
   CSRF protection on all state-changing routes; short-lived signed single-use
@@ -242,7 +242,7 @@ These rules are **absolute** — no softening permitted in implementation. Each 
 | Table | Purpose | Key Stories |
 |---|---|---|
 | `tenants` | One row per customer workspace; `is_active` admin kill switch | 1.1, 1.3, 5.3 |
-| `users` | Email/password auth; linked to tenant; `password_hash` bcrypt | 1.1, 1.2 |
+| `users` | Email/password auth; linked to tenant; `password_hash` bcrypt | 1.1, 1.2a, 1.2b |
 | `subscriptions` | Mirrors Stripe state; `status`, `plan_key`, `conversation_limit`, billing period | 2.1, 2.2, 2.3 |
 | `usage_events` | Append-only ledger per completed exchange; `idempotency_key` unique | 4.3 |
 | `usage_counters` | Fast read path; `conversations_used`, `is_blocked`, `period_start` | 4.3, 4.4, 4.5 |
@@ -250,7 +250,7 @@ These rules are **absolute** — no softening permitted in implementation. Each 
 | `bot_configs` | Per-tenant persona: `business_name`, `ai_persona_prompt` | 4.2 |
 | `audit_log` | Append-only admin + system event log; `actor_type`, `action`, `payload` | 5.3, 6.1 |
 
-> **Note on naming drift:** The PRD requirements inventory uses conceptual names (`tenant_settings`, `tenant_whatsapp_sessions`, `billing_events`, `usage_idempotency`). The canonical SQL schema names above (from arch §4) supersede those names. Stories that mention the conceptual names should use the canonical names during implementation.
+> **Implementation rule:** Story acceptance criteria and technical references must use only the canonical table names above.
 
 ---
 
@@ -366,7 +366,7 @@ missing or unreachable database fails fast with a clear error log
 ### Story 1.2a: Email/Password Signup, Login, and Logout
 
 As a new customer,  
-I want to create an account, log in, and manage my session,  
+I want to create an account with my business details, log in securely, and manage my session,  
 so that I can access my WhatsApp bot workspace without technical assistance.
 
 **v1-scope:** Must-Have  
@@ -374,29 +374,81 @@ so that I can access my WhatsApp bot workspace without technical assistance.
 
 **Acceptance Criteria:**
 
-**Given** a visitor on the signup page  
-**When** they submit a valid email and password meeting strength requirements  
-**Then** a new `user` record and linked `tenant` record are created atomically; the user is logged in and redirected to the post-signup flow (plan selection)
+**Signup Flow:**
 
-**And** passwords are stored using a strong hash+salt algorithm (bcrypt or equivalent); plaintext passwords never appear in logs or database
+**Given** a visitor on `/auth/signup`  
+**When** they fill the form with:
+- Email (valid format, not already registered)
+- Password (min 12 chars, 1 uppercase, 1 number, 1 symbol)
+- Business Name (1-100 chars)
+- Business Segment (optional: Repair, Retail, Services, Other)
 
-**And** login with correct credentials creates a secure server-side session cookie containing `user_id` and `tenant_id`
+**And** they click [Create Account]  
+**Then:**
+- A new `users` record is created with hashed password (bcrypt)
+- A new `tenants` record is created and linked to the user
+- `users.email` is unique; duplicate email shows error "This email is already registered"
+- `users.role` is set to 'customer' (admin users added manually via configuration)
+- User session is created with `user_id`, `tenant_id`, and `role='customer'`
+- User is redirected to `/billing/plans`
+
+**And** form validation occurs on both client and server:
+- Email format: shows inline "Enter a valid email address"
+- Password strength: shows inline "Min 12 chars, 1 uppercase, 1 number, 1 symbol" with strength indicator
+- Required fields: shows inline "This field is required"
+
+**Login Flow:**
+
+**Given** a visitor on `/auth/login`  
+**When** they enter valid email and password and click [Sign In]  
+**Then:**
+- Server validates credentials against `users` table
+- Session is created with `user_id`, `tenant_id`, and `role` (determined from user config)
+- If `role = 'customer'`, user redirected to `/dashboard`
+- If `role = 'admin'`, user redirected to `/admin/customers`
+
+**And** invalid credentials show error: "Invalid email or password" (generic, no enumeration)
+
+**And** account disabled (admin disabled via `tenants.is_active = FALSE`) shows: "Account disabled. Contact support."
+
+**Logout:**
 
 **Given** a logged-in user  
-**When** they log out  
-**Then** the server-side session is invalidated; subsequent requests without re-authentication are rejected and redirected to login
+**When** they click [Logout]  
+**Then:**
+- Server-side session is invalidated (deleted from session store)
+- Session cookie is cleared
+- User is redirected to `/auth/login`
+- Subsequent requests without session cookie receive 401 Unauthorized
 
-**And** CSRF protection is active on all auth POST routes; failed CSRF validation returns a 400 and does not process the form action
+**Security:**
 
-**risk-notes:** Architecture risk R4 mitigation — tenant_id must be in session on every authenticated request; any page that accesses data without a tenant_id in session must return 403.
+**Given** any state-changing auth request (signup POST, login POST, logout POST)  
+**When** request is processed  
+**Then** CSRF token must be present and valid  
+**And** failed CSRF validation returns 400 Bad Request and does not process the action
+
+**And** passwords are stored using bcrypt with salt; plaintext passwords never appear in logs or database
+
+**And** password reset tokens are:
+- Single-use (invalidated after first use)
+- Signed and time-limited (expire in 24 hours)
+- Securely generated (cryptographically random)
+
+**risk-notes:** Architecture risk R4 mitigation — tenant_id must be in session on every authenticated request; any page that accesses data without a tenant_id in session must return 403. Multi-role support requires role field in session; role determines redirect destination.
 
 **Technical References:**
 - **API Contracts (arch §9 Screen 1):**
-  - `POST /auth/signup` → `{ email, password }` → `{ redirect: "/billing/plans" }` | Errors: EMAIL_TAKEN (409), VALIDATION_ERROR (422)
-  - `POST /auth/login` → `{ email, password }` → `{ redirect: "/dashboard" }` | Errors: INVALID_CREDENTIALS (401), ACCOUNT_DISABLED (403)
-- **Tables (arch §4):** `users` (`password_hash` bcrypt), `tenants`
-- **App structure (arch §10):** `app/modules/auth/routes.py`, `app/modules/auth/service.py`
-- **Success Metric:** SM-1 — user must reach plan selection page immediately after signup
+  - `POST /auth/signup` → `{ email, password, business_name, business_segment }` → `{ redirect: "/billing/plans" }` | Errors: EMAIL_TAKEN (409), VALIDATION_ERROR (422)
+  - `POST /auth/login` → `{ email, password }` → `{ redirect: "/dashboard" or "/admin/customers" }` | Errors: INVALID_CREDENTIALS (401), ACCOUNT_DISABLED (403)
+  - `POST /auth/logout` → no body → `{ ok: true }`
+  - `POST /auth/forgot-password` → `{ email }` → `{ ok: true, message: "Reset email sent" }`
+  - `POST /auth/reset-password` → `{ token, password }` → `{ redirect: "/auth/login" }` | Errors: INVALID_TOKEN (400), TOKEN_EXPIRED (400)
+- **Tables (arch §4):** `users` (`password_hash` bcrypt, `role`), `tenants`, `audit_log` (for password reset attempts)
+- **App structure (arch §10):** `app/modules/auth/routes.py`, `app/modules/auth/service.py`, `app/decorators/require_role.py`
+- **UX Design:** See [ux-design-saas-v1.md § 2 (Signup) and § 3 (Login)](ux-design-saas-v1.md)
+- **Success Metric:** SM-1 — user must reach plan selection page immediately after signup; SM-4 (≥20% signup → paid conversion)
+
 
 ---
 
@@ -427,6 +479,7 @@ so that I can regain access to my account without technical assistance.
   - `POST /auth/reset-password` → `{ token, password }` | Errors: INVALID_TOKEN (400), TOKEN_EXPIRED (400)
 - **Tables (arch §4):** `users` (`reset_token`, `reset_token_expires`)
 - **App structure (arch §10):** `app/modules/auth/routes.py`, `app/modules/auth/service.py`
+- **UX Design:** See [ux-design-saas-v1.md Appendix A (`/auth/forgot-password`)](ux-design-saas-v1.md)
 
 ---
 
@@ -469,7 +522,7 @@ redeploy or manual admin step.
 ### Story 2.1: Plan Selection UI and Stripe Checkout Flow
 
 As a newly registered customer,  
-I want to select a plan and complete payment via Stripe Checkout,  
+I want to select a plan, review features, and complete payment via Stripe Checkout,  
 so that my subscription is activated and my bot can proceed to onboarding.
 
 **v1-scope:** Must-Have  
@@ -477,34 +530,77 @@ so that my subscription is activated and my bot can proceed to onboarding.
 
 **Acceptance Criteria:**
 
+**Plan Selection Page (GET /billing/plans):**
+
 **Given** a logged-in user who has not yet selected a plan  
-**When** they view the plan selection page  
-**Then** the three v1 plans are presented with price and conversation limit clearly stated:
-Starter ($29/mo, 2 000 conversations), Pro ($49/mo, 5 000), Business ($99/mo, 15 000)
+**When** they view `/billing/plans`  
+**Then** they see:
+- Page title: "Choose Your Plan"
+- 3 plan cards in a grid layout (side-by-side on desktop, stacked on mobile):
+  - **Starter:** $29/mo, 2,000 conversations/month, 1 bot, email support
+  - **Pro (recommended):** $49/mo, 5,000 conversations/month, 3 bots, chat support, analytics
+  - **Business:** $99/mo, 15,000 conversations/month, 10 bots, phone support, advanced API
+- Feature comparison visible on each card (checkmarks for included features)
+- Auto-renewal checkbox: checked by default, with text "Cancel anytime from dashboard"
+- [Proceed to Stripe] button on selected plan
+- [Back to Signup] link
+- Terms & Privacy links visible before payment
 
-**When** the user selects a plan and clicks Subscribe  
-**Then** they are redirected to Stripe Checkout with the correct price ID and a success/cancel callback URL that includes a session identifier
+**And** each plan card is styled with teal accent (#0f766e) on the selected plan
 
-**When** Stripe Checkout completes successfully  
-**Then** the user is redirected back to the app; a `subscription` record is created in `pending_webhook` state; the app does not activate entitlements until the webhook is confirmed (see Story 2.2)
+**And** page is accessible on mobile (375px viewport) with no horizontal scroll
 
-**And** no bot activation is possible while subscription state is not `active`
+**Stripe Checkout Flow:**
+
+**Given** user selects a plan and clicks [Proceed to Stripe]  
+**When** POST /billing/checkout is called with { plan_key: "pro" }  
+**Then:**
+- Server validates plan_key is valid (starter|pro|business)
+- Server checks user doesn't already have active subscription (returns 409 if they do)
+- Server creates a Stripe Checkout session with correct plan's price ID
+- Server returns { ok: true, data: { checkout_url: "https://checkout.stripe.com/..." } }
+- Browser redirects to checkout_url (Stripe-hosted page)
+
+**On Stripe Checkout Page:**
+- User enters payment details (card, email, etc.)
+- Stripe validates payment
+
+**On Payment Success:**
+- Stripe redirects to /billing/checkout-success?session_id=SESSION_ID
+- App displays confirmation: "✓ Payment received. Setting up your account..."
+- App shows spinner while waiting for Stripe webhook
+- After webhook is processed (see Story 2.2), app auto-redirects to /onboarding
+
+**On Payment Failure:**
+- Stripe redirects to /billing/checkout-failure?reason=REASON
+- App displays error: "Payment declined. Please try a different card or contact support."
+- [Retry] button: redirects to /billing/plans to select plan again
+
+**Billing Portal:**
 
 **Given** a customer with an active subscription  
-**When** they click 'Manage billing'  
-**Then** they are redirected to the Stripe Customer Portal via `GET /billing/portal`
+**When** they click [Manage Billing] on dashboard  
+**Then** POST /billing/portal is called  
+**And** they are redirected to Stripe Customer Portal via { ok: true, data: { portal_url: "https://billing.stripe.com/..." } }
 
-**risk-notes:** Architecture risk R3 — entitlements must not be derived from the redirect callback alone; only the Stripe webhook event establishes truth (Story 2.2). The redirect callback shows a "processing" state, not "active", until the webhook lands.
+**No Activation Before Webhook:**
+- `subscriptions` record is created in `pending_webhook` status after Stripe redirect
+- No entitlements are active until webhook confirms payment
+- If user tries to proceed to onboarding before webhook lands, they see "Setting up..." spinner
+
+**risk-notes:** Architecture risk R3 — entitlements must not be derived from redirect callback alone; only the Stripe webhook event (Story 2.2) establishes truth. The checkout-success page shows a "processing" state, not "active", until webhook lands.
 
 **Technical References:**
 - **API Contracts (arch §9 Screen 2):**
-  - `GET /billing/plans` → returns `{ plans: [{ key, name, price_usd, conversations }], current_plan }`
+  - `GET /billing/plans` → `{ plans: [{ key, name, price_usd, conversations, features }], current_plan }`
   - `POST /billing/checkout` → `{ plan_key }` → `{ checkout_url }` | Errors: INVALID_PLAN (422), ALREADY_SUBSCRIBED (409)
-  - `GET /billing/portal` → redirects authenticated customer to Stripe Customer Portal
-- **Tables (arch §4):** `subscriptions` — created in `pending_webhook` status after Stripe redirect; `tenants`
+  - `GET /billing/portal` → `{ portal_url }`
+- **Tables (arch §4):** `subscriptions` (created in `pending_webhook` status)
 - **App structure (arch §10):** `app/modules/billing/routes.py`, `app/modules/billing/service.py`
-- **UX Design:** UX-DR9 — three plan cards with price and conversation limit clearly visible before Stripe redirect
-- **Success Metric:** SM-1 (plan selection is step 2 of signup-to-live path), SM-4 (paid conversion)
+- **Stripe integration:** Use Stripe Python SDK to create checkout sessions, verify signatures
+- **UX Design:** See [ux-design-saas-v1.md § 4 (Billing Page)](ux-design-saas-v1.md#4-stage-3-billing-plan-selection--stripe-checkout)
+- **Success Metric:** SM-1 (plan selection is step 2 of signup-to-live ≤ 10 min), SM-4 (≥20% signup → paid conversion)
+
 
 ---
 
@@ -580,39 +676,113 @@ status throughout the flow, and have the bot automatically transition to live on
 
 ---
 
-### Story 3.1: Evolution API QR Fetch, Display, and Status Polling
+### Story 3.1: Onboarding Wizard (4-Step Flow) — QR, Bot Name, AI Persona, Completion
 
-As a new customer,  
-I want to see a QR code and scan it with WhatsApp to link my phone number,  
-so that I can complete onboarding without needing technical support.
+As a new customer with an active subscription,  
+I want to complete a guided 4-step onboarding wizard in ≤ 5 minutes,  
+so that my bot is live and ready to reply to my first customer message.
 
 **v1-scope:** Must-Have  
 **depends-on:** Stories 2.2, 2.3 (subscription must be active before bot activation is allowed)
 
 **Acceptance Criteria:**
 
-**Given** a customer with an active subscription is on the onboarding page  
+**Step 1: QR Code Scan**
+
+**Given** a customer with an active subscription navigates to `/onboarding`  
 **When** the page loads  
-**Then** a QR code is fetched from the Evolution API using the tenant's dedicated `instance_name` (resolved from `tenant_whatsapp_sessions`) and rendered immediately
+**Then** they see:
+- Step indicator: [1✓ QR Link] [2 Name Bot] [3 AI Persona] [4 Done!]
+- QR code fetched from Evolution API using tenant's dedicated `instance_name`
+- Instructions: "Open WhatsApp on your phone, scan this QR code, tap the link to connect"
+- Real-time status indicator showing: "⊙ Connecting..." or "✓ Connected +447700900000" or "✗ Not connected yet"
+- [Rescan] button to fetch a fresh QR (if current expires)
+- [Continue →] button (disabled until status = connected)
 
-**And** if the tenant does not yet have a `tenant_whatsapp_sessions` record, one is created with a new unique `instance_name` at this point
+**And** if tenant doesn't yet have a `connection_states` record, one is created with new unique `evolution_instance`
 
-**And** the page shows real-time connection status: `disconnected` → `connecting` → `connected` using polling or websocket; status is derived from the Evolution API session state for the tenant's specific instance only — never a shared global instance
+**And** QR code auto-refreshes before Evolution TTL expires (e.g., every 60 seconds if TTL = 120s)
 
-**And** the QR code refreshes automatically before it expires (Evolution API QR TTL is respected)
+**And** status updates in real-time via SSE stream `/onboarding/status-stream`:
+- Server sends `{ status: "connecting" }` while waiting
+- Server sends `{ status: "connected", phone: "+447700900000" }` when QR is scanned
+- Server sends `{ status: "error", retry_after: 5 }` if Evolution is unreachable
 
-**And** if the Evolution API call fails, a user-facing retry affordance is shown rather than a blank screen or unhandled error
+**And** [Continue →] becomes enabled and clickable once status = "connected"
 
-**risk-notes:** Architecture risk R1 (Evolution API instability). Retry policy on QR fetch should apply exponential backoff; if Evolution is unavailable for > configured threshold, show a clear "reconnect later" CTA rather than looping.
+**And** if Evolution API fails (≥ 3 retries, > 30 sec total), show: "QR connection unavailable. Please try again later." with [Retry] button
+
+**Step 2: Name Your Bot**
+
+**Given** QR connection is complete and [Continue →] is clicked  
+**When** user advances to Step 2  
+**Then** they see:
+- Step indicator updated: [1✓ QR Link] [2⊙ Name Bot] [3 Name Bot] [4 Done!]
+- Form field: "Business Name" pre-filled from signup
+- Character count: "X/100"
+- Live preview: "What customers see in WhatsApp: [Business Name]"
+- [← Back] button (returns to Step 1)
+- [Continue →] button (enabled after any business name entry)
+
+**And** business name is saved to `bot_configs.business_name` when [Continue →] is clicked
+
+**Step 3: Configure AI Persona (Optional but Recommended)**
+
+**Given** Step 2 is complete  
+**When** user advances to Step 3  
+**Then** they see:
+- Step indicator updated: [1✓ QR Link] [2✓ Name Bot] [3⊙ AI Persona] [4 Done!]
+- Textarea: "Persona Prompt" with example text and 2000 char limit
+- Character count: "X/2000"
+- [Generate Examples] button loads 2-3 example replies based on current prompt (after 1-2 sec of no typing)
+- [← Back] button (returns to Step 2)
+- [Skip] button (optional; uses default AI behavior) or [Continue →] (saves persona)
+
+**And** persona prompt is saved to `bot_configs.ai_persona_prompt` when [Continue →] is clicked
+
+**Step 4: Completion**
+
+**Given** all 3 previous steps are complete  
+**When** user clicks [Continue →] from Step 3  
+**Then** they see:
+- Step indicator: [1✓ QR Link] [2✓ Name Bot] [3✓ AI Persona] [4✓ Done!]
+- Celebration: "🎉 You're All Set!"
+- Summary: "✓ WhatsApp connected: +447700900000"
+  "✓ Business name: [Name]"
+  "✓ AI persona configured"
+- Next steps: "Your bot is now live. Send a test message from another number to see the bot reply!"
+- [Go to Dashboard] button
+
+**And** clicking [Go to Dashboard] redirects to `/dashboard`
+
+**Wizard-Level Requirements:**
+
+- All 4 steps display sequentially; no step skipping
+- [Back] button available on steps 2-4 (returns to previous step without losing data)
+- Estimated completion time: ≤ 5 minutes
+- Page fully functional on mobile (375px, 768px) with responsive layout
+- Page title updates for each step (accessibility: "Onboarding Step 1 of 4")
+- All errors display inline with icons; no silent failures
+
+**Data Persistence:**
+
+**And** if a customer closes the browser mid-onboarding:
+- QR/connection state is preserved (doesn't expire prematurely)
+- Business name and persona are saved on each step advance
+- Returning to `/onboarding` resumes at the step they left off (or shows completed summary if all 4 steps done)
+
+**risk-notes:** Architecture risk R1 (Evolution API instability). If QR fetch fails > 3 times, show clear "unavailable" message rather than infinite loop. Connection status must be real-time (SSE) for good UX.
 
 **Technical References:**
 - **API Contracts (arch §9 Screen 3):**
   - `GET /onboarding/qr-code` → `{ qr_image: "data:image/png;base64,...", expires_in_seconds: 60 }` | Errors: EVOLUTION_UNAVAILABLE (503), NO_ACTIVE_SUBSCRIPTION (402)
-  - `GET /onboarding/status-stream` (SSE) → `Content-Type: text/event-stream`; events: `{ status: "connecting" }`, `{ status: "connected", phone: "..." }`, `{ status: "error", retry_after: 5 }`
-- **Tables (arch §4):** `connection_states` (`status`, `evolution_instance`, `phone_number`) — provisioned here if row doesn't exist
+  - `GET /onboarding/status-stream` (SSE) → streams `{ status, phone?, retry_after? }`
+  - `POST /onboarding/bot-config` → `{ business_name?, ai_persona_prompt? }` → `{ ok: true }` (saves steps 2-3)
+- **Tables (arch §4):** `connection_states`, `bot_configs` (business_name, ai_persona_prompt)
 - **App structure (arch §10):** `app/modules/onboarding/routes.py`, `app/modules/onboarding/service.py`
-- **UX Design:** UX-DR8 — real-time disconnected → connecting → connected state indicator; retry affordance on Evolution failure
-- **Success Metrics:** SM-1 (QR onboarding is step 3 of signup-to-live), SM-2 (onboarding completion ≥ 70%)
+- **UX Design:** See [ux-design-saas-v1.md § 5 (Onboarding Wizard)](ux-design-saas-v1.md#5-stage-4-onboarding-wizard-4-steps)
+- **Success Metrics:** SM-1 (≤ 10 min signup-to-live includes this wizard), SM-2 (≥ 70% completion rate)
+
 
 ---
 
@@ -698,7 +868,7 @@ I want to set my business name and a custom AI persona prompt,
 so that the bot replies sound on-brand for my business from the first message.
 
 **v1-scope:** Must-Have  
-**depends-on:** Story 1.2 (tenant context), Story 3.2 (bot is live)
+**depends-on:** Stories 1.2a, 1.2b (tenant + auth context), Story 3.2 (bot is live)
 
 **Acceptance Criteria:**
 
@@ -721,6 +891,7 @@ so that the bot replies sound on-brand for my business from the first message.
 - **Tables (arch §4):** `bot_configs` (`tenant_id` PK, `business_name`, `ai_persona_prompt`, `updated_at`)
 - **App structure (arch §10):** `app/modules/bot_config/routes.py`, `app/modules/bot_config/service.py`
 - **Security:** Prompt content must be sanitised before storage and before injection into OpenAI call (OWASP injection risk)
+- **UX Design:** See [ux-design-saas-v1.md §6.1 (`/dashboard` Bot Configuration Card)](ux-design-saas-v1.md)
 
 ---
 
@@ -892,6 +1063,7 @@ so that I can investigate specific customer issues quickly and with complete con
 - **API Contract (arch §9 Screen 8):**
   - `GET /admin/api/customers/{tenant_id}` → returns full tenant context: metadata, subscription, connection, `bot_config`, `recent_audit_log` (last 3 events)
 - **Tables (arch §4):** `tenants`, `users`, `subscriptions`, `usage_counters`, `connection_states`, `bot_configs`, `audit_log`
+- **UX Design:** See [ux-design-saas-v1.md §10.1 (Admin customer detail flow)](ux-design-saas-v1.md) and [ux-design-saas-v1.md Appendix A (`/admin/customers/:tenant_id`)](ux-design-saas-v1.md)
 - **Success Metric:** SM-7 — search + filter within one action; per-tenant drill-down provides full operational picture
 
 ---
@@ -914,7 +1086,7 @@ so that I can respond to operational emergencies while maintaining a complete au
 **When** confirmed  
 **Then** the tenant is marked disabled in `tenants`; their bot stops replying immediately (enforcement guard checks `tenants.enabled`); their session is invalidated
 
-**And** an `audit_logs` record is created with: `actor = admin_user_id`, `action = "tenant.disable"`, `target = tenant_id`, `request_id`, and `timestamp`; the record is append-only and cannot be deleted via any UI action
+**And** an `audit_log` record is created with: `actor = admin_user_id`, `action = "tenant.disable"`, `target = tenant_id`, `request_id`, and `timestamp`; the record is append-only and cannot be deleted via any UI action
 
 **And** the same pattern applies to re-enable: confirmation required, audit record created, bot resumes
 
@@ -931,6 +1103,7 @@ so that I can respond to operational emergencies while maintaining a complete au
   - `audit_log` (`actor_id`, `actor_type = 'admin'`, `action = 'tenant.disable'/'tenant.enable'`, `tenant_id`, `payload`, `created_at`) — append-only, no DELETE path
 - **ENF Rules:** ENF-03 — `tenants.is_active = FALSE` stops all AI replies; this story is the only write path for that flag via admin action
 - **App structure (arch §10):** `app/modules/admin/routes.py`, `app/modules/admin/service.py`
+- **UX Design:** See [ux-design-saas-v1.md §10.1 (Admin customer detail flow)](ux-design-saas-v1.md) and [ux-design-saas-v1.md Appendix A (`/admin/customers/:tenant_id`)](ux-design-saas-v1.md)
 - **Success Metric:** SM-7; NFR9 (all admin critical actions logged with actor, action, target, timestamp, request_id)
 
 ---

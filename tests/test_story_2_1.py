@@ -129,6 +129,102 @@ def _evolution_non_text_payload():
     }
 
 
+def _instagram_text_payload(
+    sender_id="17841400008460056",
+    recipient_id="17841499999999999",
+    msg_id="ig-mid-001",
+    body="Hello from Instagram",
+    timestamp="1700000002",
+):
+    return {
+        "object": "instagram",
+        "entry": [
+            {
+                "id": recipient_id,
+                "time": int(timestamp),
+                "messaging": [
+                    {
+                        "sender": {"id": sender_id},
+                        "recipient": {"id": recipient_id},
+                        "timestamp": int(timestamp),
+                        "message": {"mid": msg_id, "text": body},
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _instagram_non_text_payload():
+    return {
+        "object": "instagram",
+        "entry": [
+            {
+                "id": "17841499999999999",
+                "messaging": [
+                    {
+                        "sender": {"id": "17841400008460056"},
+                        "recipient": {"id": "17841499999999999"},
+                        "timestamp": 1700000002,
+                        "message": {
+                            "mid": "ig-mid-image-001",
+                            "attachments": [{"type": "image"}],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _messenger_text_payload(
+    sender_id="1234567890123456",
+    recipient_id="9876543210987654",
+    msg_id="m-mid-001",
+    body="Hello from Messenger",
+    timestamp="1700000003",
+):
+    return {
+        "object": "page",
+        "entry": [
+            {
+                "id": recipient_id,
+                "time": int(timestamp),
+                "messaging": [
+                    {
+                        "sender": {"id": sender_id},
+                        "recipient": {"id": recipient_id},
+                        "timestamp": int(timestamp),
+                        "message": {"mid": msg_id, "text": body},
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _messenger_non_text_payload():
+    return {
+        "object": "page",
+        "entry": [
+            {
+                "id": "9876543210987654",
+                "messaging": [
+                    {
+                        "sender": {"id": "1234567890123456"},
+                        "recipient": {"id": "9876543210987654"},
+                        "timestamp": 1700000003,
+                        "message": {
+                            "mid": "m-mid-image-001",
+                            "attachments": [{"type": "image"}],
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Meta inbound normalization
 # ---------------------------------------------------------------------------
@@ -282,6 +378,106 @@ class MetaInboundNormalizationTests(unittest.TestCase):
         result = normalize_inbound_message(payload)
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.get("timestamp"))
+
+
+class InstagramInboundNormalizationTests(unittest.TestCase):
+    """normalize_inbound_message() for Instagram Meta payloads."""
+
+    def setUp(self):
+        self._env = patch.dict(os.environ, _BASE_ENV, clear=False)
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def test_text_message_produces_canonical_fields(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        result = normalize_inbound_message(
+            _instagram_text_payload(sender_id="17841400008460056", body="Hi from IG")
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["provider"], "meta")
+        self.assertEqual(result["channel"], "instagram")
+        self.assertEqual(result["user_id"], "17841400008460056")
+        self.assertEqual(result["message_text"], "Hi from IG")
+        self.assertEqual(result["recipient_id"], "17841400008460056")
+        self.assertEqual(result["instagram_recipient_id"], "17841400008460056")
+        self.assertEqual(result["message_id"], "ig-mid-001")
+        self.assertFalse(result["unsupported"])
+        self.assertFalse(result["status_update"])
+
+    def test_echo_payload_returns_status_update(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        payload = _instagram_text_payload()
+        payload["entry"][0]["messaging"][0]["message"]["is_echo"] = True
+
+        result = normalize_inbound_message(payload)
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result["status_update"])
+        self.assertEqual(result["channel"], "instagram")
+
+    def test_non_text_payload_returns_unsupported(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        result = normalize_inbound_message(_instagram_non_text_payload())
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result["unsupported"])
+        self.assertEqual(result["unsupported_reason"], "non_text_message")
+
+
+class MessengerInboundNormalizationTests(unittest.TestCase):
+    """normalize_inbound_message() for Facebook Messenger Meta payloads."""
+
+    def setUp(self):
+        self._env = patch.dict(os.environ, _BASE_ENV, clear=False)
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def test_text_message_produces_canonical_fields(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        result = normalize_inbound_message(
+            _messenger_text_payload(sender_id="1234567890123456", body="Hi from Messenger")
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["provider"], "meta")
+        self.assertEqual(result["channel"], "messenger")
+        self.assertEqual(result["user_id"], "1234567890123456")
+        self.assertEqual(result["message_text"], "Hi from Messenger")
+        self.assertEqual(result["recipient_id"], "1234567890123456")
+        self.assertEqual(result["messenger_recipient_id"], "1234567890123456")
+        self.assertEqual(result["message_id"], "m-mid-001")
+        self.assertFalse(result["unsupported"])
+        self.assertFalse(result["status_update"])
+
+    def test_echo_payload_returns_status_update(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        payload = _messenger_text_payload()
+        payload["entry"][0]["messaging"][0]["message"]["is_echo"] = True
+
+        result = normalize_inbound_message(payload)
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result["status_update"])
+        self.assertEqual(result["channel"], "messenger")
+
+    def test_non_text_payload_returns_unsupported(self):
+        from app.utils.whatsapp_utils import normalize_inbound_message
+
+        result = normalize_inbound_message(_messenger_non_text_payload())
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result["unsupported"])
+        self.assertEqual(result["unsupported_reason"], "non_text_message")
 
 
 # ---------------------------------------------------------------------------

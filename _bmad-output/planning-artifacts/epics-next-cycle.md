@@ -202,16 +202,19 @@ approved_by: Wahab (Project Lead)
 
 ## Epic 12 — SaaS v1 Customer Value Pull (Conditional Sprint 3)
 
-**Goal:** Deliver the highest-impact deferred P1 customer features: in-app notifications, conversation history visibility, and a self-serve reconnection assistant.
+**Goal:** Deliver the highest-impact deferred P1 customer features plus the promoted India D2C commercialization slice: in-app notifications, conversation history visibility, self-serve reconnection, India D2C starter templates, messaging cost guardrails, and compliance/sendability controls.
 
 **Pull Condition:** Epic 12 stories are only pulled into Sprint 3 after Epic 9 P0 gate and Epic 10/11 P0 gate are both complete AND full suite remains green. If either gate is incomplete at Sprint 2 close, Epic 12 is deferred to the following cycle.
 
-**User Value:** SMB operators get actionable billing/usage alerts, visibility into conversation history without raw DB access, and a guided troubleshooting path when their WhatsApp connection drops.
+**User Value:** SMB operators get actionable billing/usage alerts, visibility into conversation history without raw DB access, a guided troubleshooting path when their WhatsApp connection drops, and a safer India D2C messaging workflow with faster onboarding, clearer cost expectations, and explicit sendability controls.
 
 **Exit Criteria (conditional):**
 - Notification center delivers in-app billing and usage alerts.
 - Conversation history viewer provides read-only access with search.
 - Reconnection assistant guides operators through common failure resolutions without engineering involvement.
+- India D2C starter pack creates tenant-scoped default templates for the four fixed ecommerce workflows.
+- Messaging cost guardrails provide projected spend and threshold confirmation before guarded sends.
+- Compliance/sendability surface exposes consent, template state, and blocked-send reasons.
 
 **Risks:** Sprint 3 pull is conditional — reliability regression in Epics 9-11 defers this entire epic without penalty.
 
@@ -280,13 +283,76 @@ approved_by: Wahab (Project Lead)
 
 ---
 
+### Story 12.4 — India D2C Starter Template Pack
+
+**Type:** feature / growth
+**Priority:** P1
+**Sprint:** 3 (conditional)
+
+**Problem:** The current plan does not include ICP-specific onboarding assets for the chosen go-to-market slice (India D2C ecommerce SMBs), increasing time-to-value and setup drop-off risk.
+
+**Acceptance Criteria:**
+- AC 12.4.1: Onboarding includes optional one-click starter templates for abandoned cart reminder, order status update, COD confirmation, and support triage.
+- AC 12.4.2: Starter templates are tenant-scoped defaults and can be edited before activation.
+- AC 12.4.3: Template category labeling is visible for each starter template (marketing, utility, authentication where applicable).
+- AC 12.4.4: Enabling the starter pack does not bypass existing template approval or compliance checks.
+- AC 12.4.5: Onboarding completion telemetry includes whether starter pack was enabled.
+
+**Out of Scope:** AI-generated template authoring; multilingual template generation; catalog sync.
+
+**Test Strategy:** Integration test for one-click pack enable flow; contract test for tenant isolation and category label persistence.
+
+---
+
+### Story 12.5 — Messaging Cost Guardrails v1
+
+**Type:** feature / saas
+**Priority:** P1
+**Sprint:** 3 (conditional)
+
+**Problem:** Operators can trigger campaigns and outbound sends without clear pre-send spend visibility, creating avoidable cost spikes in category-priced messaging environments.
+
+**Acceptance Criteria:**
+- AC 12.5.1: Campaign/send flow displays projected spend estimate before confirmation based on template category and recipient count.
+- AC 12.5.2: Message events persist template category tags for downstream cost reporting.
+- AC 12.5.3: Configurable warning threshold blocks one-click send and requires explicit operator confirmation when projected spend exceeds threshold.
+- AC 12.5.4: Estimation failures fail closed (send is blocked with actionable error), not fail open.
+- AC 12.5.5: Spend estimate and final send decision are audit logged with correlation_id.
+
+**Out of Scope:** External billing reconciliation; dynamic FX conversion; automated budget optimization.
+
+**Test Strategy:** Unit tests for estimator logic and threshold branching; integration test for blocked-send behavior on threshold exceedance.
+
+---
+
+### Story 12.6 — Compliance and Sendability Control Surface
+
+**Type:** feature / reliability
+**Priority:** P1
+**Sprint:** 3 (conditional)
+
+**Problem:** Consent and sendability state is not surfaced as an explicit operator workflow, increasing risk of policy violations, message rejection, and degraded delivery quality.
+
+**Acceptance Criteria:**
+- AC 12.6.1: Operator dashboard exposes consent status per contact and a timestamped consent source field.
+- AC 12.6.2: Template status panel shows current review state (approved/pending/rejected/paused) for tenant templates.
+- AC 12.6.3: Quality alert indicator surfaces degraded template/account quality signals and recommends corrective actions.
+- AC 12.6.4: Outbound send path enforces consent checks before dispatch and logs blocked attempts.
+- AC 12.6.5: No policy-related logs include sensitive credential fields.
+
+**Out of Scope:** Auto-remediation of policy issues; legal consent-text generation; cross-channel compliance orchestration.
+
+**Test Strategy:** Contract test for consent gate enforcement; integration test for template-state visibility and blocked send path.
+
+---
+
 ## Delivery Sequencing Summary
 
 | Sprint | Stories | Gate |
 |--------|---------|------|
 | Sprint 1 | 9.1, 9.2, 9.3 | Gate B: CI governance + parity suite + adapter staging pass |
 | Sprint 2 | 10.1, 10.2, 11.1, 11.2 | Gate C: analytics freshness + SQLite soak + rollback drill |
-| Sprint 3 (conditional) | 12.1, 12.2, 12.3 | Gate D: no open High risks + runbook updated + smoke checklist passes |
+| Sprint 3 (conditional) | 12.1, 12.2, 12.3, 12.4, 12.5, 12.6 | Gate D: no open High risks + runbook updated + smoke checklist passes |
 
 **Pull rule for Sprint 3:** All Sprint 1 and Sprint 2 P0 gate criteria must be green AND full suite must remain clean. If blocked, Epic 12 moves to the next cycle without penalty to Epic 9-11 completion.
 

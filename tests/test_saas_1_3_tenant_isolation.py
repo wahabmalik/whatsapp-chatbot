@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 
@@ -35,20 +36,12 @@ def saas_app(tmp_path):
         "SESSION_FILE_DIR": str(session_dir),
     }
 
-    original = {key: os.environ.get(key) for key in env}
-    os.environ.update(env)
-    try:
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None):
         from app import create_app
 
         app = create_app()
         app.config.update(TESTING=True)
         yield app
-    finally:
-        for key, value in original.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
 
 
 @pytest.fixture()

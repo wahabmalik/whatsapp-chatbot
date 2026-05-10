@@ -57,6 +57,55 @@ class ConfigValidationUnknownProviderTests(unittest.TestCase):
             )
 
 
+class ConfigValidationPlaceholderValueTests(unittest.TestCase):
+    """Reject template placeholders for sensitive secrets and endpoints."""
+
+    def test_validate_config_rejects_placeholder_secret_key_value(self):
+        from app.config import load_configurations, validate_config
+
+        env = {
+            "WHATSAPP_PROVIDER": "evolution",
+            "OPENAI_API_KEY": "sk-live-realistic",
+            "EVOLUTION_API_URL": "http://localhost:3333",
+            "EVOLUTION_API_KEY": "evo_real_key",
+            "EVOLUTION_INSTANCE_NAME": "bot-instance",
+            "FLASK_SECRET_KEY": "<generate one>",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            app = Flask(__name__)
+            load_configurations(app)
+
+            errors = validate_config(app)
+
+        self.assertTrue(
+            any("SECRET_KEY appears to be a placeholder" in e for e in errors),
+            f"Expected placeholder SECRET_KEY validation error, got: {errors}",
+        )
+
+    def test_validate_config_rejects_placeholder_paddle_price_id(self):
+        from app.config import load_configurations, validate_config
+
+        env = {
+            "WHATSAPP_PROVIDER": "evolution",
+            "OPENAI_API_KEY": "sk-live-realistic",
+            "EVOLUTION_API_URL": "http://localhost:3333",
+            "EVOLUTION_API_KEY": "evo_real_key",
+            "EVOLUTION_INSTANCE_NAME": "bot-instance",
+            "FLASK_SECRET_KEY": "this_is_a_real_secret_key_value",
+            "PADDLE_STARTER_PRICE_ID": "pri_...",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            app = Flask(__name__)
+            load_configurations(app)
+
+            errors = validate_config(app)
+
+        self.assertTrue(
+            any("PADDLE_STARTER_PRICE_ID appears to be a placeholder" in e for e in errors),
+            f"Expected placeholder PADDLE_STARTER_PRICE_ID validation error, got: {errors}",
+        )
+
+
 class OutboundDeliveryTimeoutConfigTests(unittest.TestCase):
     """AC3: Outbound timeout is configurable via validated setting."""
 

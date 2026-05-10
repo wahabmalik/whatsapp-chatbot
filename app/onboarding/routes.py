@@ -94,6 +94,8 @@ def onboarding_qr_code():
             "qr_image": qr.qr_image,
             "expires_in_seconds": qr.expires_in_seconds,
             "instance_name": qr.instance_name,
+            "already_connected": qr.already_connected,
+            "phone": qr.phone,
         },
         "error": None,
     })

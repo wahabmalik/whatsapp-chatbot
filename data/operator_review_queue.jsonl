@@ -196,3 +196,5 @@
 {"timestamp":"2026-05-07T19:38:15+00:00","correlation_id":"req-deferred-001","reason":"outbound_fallback_failure","masked_user_handle":"155...4567","message_id":"wamid-def-001"}
 {"timestamp":"2026-05-08T00:57:04+00:00","correlation_id":"req-deferred-001","reason":"outbound_fallback_failure","masked_user_handle":"155...4567","message_id":"wamid-def-001"}
 {"timestamp":"2026-05-08T00:57:05+00:00","correlation_id":"req-deferred-001","reason":"outbound_fallback_failure","masked_user_handle":"155...4567","message_id":"wamid-def-001"}
+{"timestamp":"2026-05-08T18:21:09+00:00","correlation_id":"req-deferred-001","reason":"outbound_fallback_failure","masked_user_handle":"155...4567","message_id":"wamid-def-001"}
+{"timestamp":"2026-05-08T18:21:10+00:00","correlation_id":"req-deferred-001","reason":"outbound_fallback_failure","masked_user_handle":"155...4567","message_id":"wamid-def-001"}

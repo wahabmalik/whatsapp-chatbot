@@ -31,10 +31,31 @@ jobs:
       - name: Validate sprint-status YAML integrity
         run: python validate_sprint_status_integrity.py
 
+      - name: Validate mandatory contract-test categories
+        run: python validate_contract_test_categories.py
+
+      - name: Validate story closure evidence template compatibility
+        run: python validate_story_closure_evidence.py
+
+      - name: Validate launch-gate artifact completeness
+        run: python validate_launch_gate_artifact_completeness.py
+
       - name: Run Alembic migrations
         env:
           DATABASE_URL: sqlite:///./data/ci-saas.db
         run: python -m alembic upgrade head
+
+      - name: Run outbound adapter parity suite (Story 9.3)
+        run: python -m pytest tests/test_adapter_parity_contract.py -v --tb=short
+
+      - name: Run cross-channel reliability gate (Instagram/Messenger)
+        run: |
+          python -m pytest \
+            tests/test_story_2_1.py::InstagramInboundNormalizationTests \
+            tests/test_story_2_1.py::MessengerInboundNormalizationTests \
+            tests/test_reliability.py::InstagramWebhookE2ETests \
+            tests/test_reliability.py::MessengerWebhookE2ETests \
+            -v --tb=short
 
       - name: Run test suite
         env:

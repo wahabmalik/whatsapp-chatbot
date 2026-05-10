@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of next-cycle-9-1-governance-baseline-upgrade (2026-05-08)
+
+- **`glob("test_*.py")` not recursive** — `validate_contract_test_categories.py` only discovers test files one level deep. Any future test files placed under `tests/subpackages/` would be silently missed. Widen to `rglob` when subdirectories are introduced.
+- **`file_contains` multi-`::` key behaviour undocumented** — `"path::needle::extra"` is valid `partition` input but the trailing `::extra` becomes part of the needle. Behaviour is not a false positive, but an inline comment or validation note should be added to avoid future confusion.
+
 ## Deferred from: code review of saas-1-2b-password-reset-flow (2026-05-04)
 
 - **Port 465 / SMTP_SSL not supported** — `build_smtp_dispatch` uses STARTTLS (explicit TLS, port 587). Operators who configure `SMTP_PORT=465` need implicit-TLS via `smtplib.SMTP_SSL`. Add a `SMTP_SSL_MODE` flag or detect port 465 automatically when SMTP hardening is addressed.

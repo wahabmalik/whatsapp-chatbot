@@ -29,13 +29,18 @@ from app.services.agent_registry import (
     list_bmad_agents,
     set_selected_agent_code,
 )
+from app.services.auth_service import current_identity
 from app.config import (
     get_required_config_keys,
     is_config_value_set,
     normalize_provider,
     refresh_config_validation_errors,
 )
-from app.services.conversation_analytics import get_recent_analytics_events, summarize_recent_events
+from app.services.conversation_analytics import (
+    get_analytics_summary,
+    get_recent_analytics_events,
+    summarize_recent_events,
+)
 from app.services.conversation_context import get_conversation_context_store
 from app.services.health_check import get_bot_health, get_setup_status
 from app.services.message_log import get_message_log_buffer
@@ -82,7 +87,43 @@ def _validate_csrf_token() -> bool:
 
 @dashboard_blueprint.app_context_processor
 def _inject_csrf_token():
-    return {"csrf_token": _get_csrf_token()}
+    context: dict[str, Any] = {"csrf_token": _get_csrf_token()}
+
+    identity = current_identity(session)
+    context["auth_logged_in"] = identity is not None
+    context["auth_user_email"] = None
+    context["auth_user_role"] = session.get("auth_user_role")
+
+    try:
+        context["auth_login_url"] = url_for("auth.login")
+    except BuildError:
+        context["auth_login_url"] = None
+
+    try:
+        context["auth_logout_url"] = url_for("auth.logout")
+    except BuildError:
+        context["auth_logout_url"] = None
+
+    if identity is None:
+        return context
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return context
+
+    from app.models import User
+
+    db_session = db.session()
+    try:
+        user = db_session.query(User).filter(User.id == identity.user_id).one_or_none()
+        if user is not None:
+            context["auth_user_email"] = user.email
+            if not context["auth_user_role"]:
+                context["auth_user_role"] = "admin" if user.is_admin else "customer"
+    finally:
+        db_session.close()
+
+    return context
 
 
 ROLE_END_USER = "end-user"
@@ -367,12 +408,44 @@ def _dashboard_runtime_context() -> dict[str, Any]:
             active_agent_name = item.get("name") or item["code"]
             break
 
+    def _resolve_connect_url(config_key: str) -> tuple[str, bool]:
+        raw = str(current_app.config.get(config_key) or "").strip()
+        if raw:
+            parsed = urlsplit(raw)
+            if parsed.scheme in {"http", "https"} and parsed.netloc:
+                return raw, True
+        return url_for("dashboard.operator_access", next=url_for("dashboard.setup")), False
+
+    instagram_url, instagram_external = _resolve_connect_url("INSTAGRAM_CONNECT_URL")
+    messenger_url, messenger_external = _resolve_connect_url("MESSENGER_CONNECT_URL")
+    tiktok_url, tiktok_external = _resolve_connect_url("TIKTOK_CONNECT_URL")
+
     return {
         "metrics": metrics,
         "health": health,
         "uptime_label": _format_uptime(int(health.get("uptime_seconds", 0))),
         "recent_logs": logs,
         "active_agent_name": active_agent_name,
+        "customer_connect_actions": [
+            {
+                "label": "Instagram",
+                "url": instagram_url,
+                "external": instagram_external,
+                "configured": bool(current_app.config.get("INSTAGRAM_CONNECT_URL")),
+            },
+            {
+                "label": "Facebook Messenger",
+                "url": messenger_url,
+                "external": messenger_external,
+                "configured": bool(current_app.config.get("MESSENGER_CONNECT_URL")),
+            },
+            {
+                "label": "TikTok",
+                "url": tiktok_url,
+                "external": tiktok_external,
+                "configured": bool(current_app.config.get("TIKTOK_CONNECT_URL")),
+            },
+        ],
     }
 
 
@@ -728,6 +801,19 @@ def analytics_events_api():
     return jsonify({
         "events": events,
         "summary": summarize_recent_events(events),
+    }), 200
+
+
+@dashboard_blueprint.route("/api/analytics/summary", methods=["GET"])
+def analytics_summary_api():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    summary = get_analytics_summary(current_app)
+    return jsonify({
+        "ok": True,
+        **summary,
     }), 200
 
 

@@ -17,6 +17,7 @@ from app.models.base import utcnow
 
 AUTH_SESSION_USER_KEY = "auth_user_id"
 AUTH_SESSION_TENANT_KEY = "auth_tenant_id"
+AUTH_SESSION_ROLE_KEY = "auth_user_role"
 PASSWORD_RESET_TOKEN_TTL_MINUTES = 30
 
 

@@ -78,6 +78,33 @@ Invoke-WebRequest http://127.0.0.1:4040/api/tunnels -UseBasicParsing |
 # Note the https:// URL — you'll need it for the webhook
 ```
 
+### Recommended: Keep ngrok Alive (Watchdog)
+
+```powershell
+cd C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot
+
+# Keeps ngrok alive; if ngrok exits, it auto-restarts after a short delay.
+powershell -ExecutionPolicy Bypass -File .\start\ngrok_watchdog.ps1 `
+  -Domain "dares-undrafted-varsity.ngrok-free.dev" `
+  -Port 8000
+```
+
+### Optional: Auto-Start ngrok at Login (Scheduled Task)
+
+```powershell
+cd C:\Users\wahab\OneDrive\Documents\GitHub\python-whatsapp-bot
+
+# Registers a startup task that runs the watchdog at user login.
+powershell -ExecutionPolicy Bypass -File .\start\register_ngrok_startup_task.ps1 `
+  -TaskName "python-whatsapp-bot-ngrok" `
+  -Domain "dares-undrafted-varsity.ngrok-free.dev" `
+  -Port 8000 `
+  -RunNow
+
+# Optional verification
+Get-ScheduledTask -TaskName "python-whatsapp-bot-ngrok" | Select-Object TaskName, State
+```
+
 ### Terminal 3: Test Connectivity
 
 ```powershell

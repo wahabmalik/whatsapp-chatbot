@@ -88,6 +88,189 @@ def _stable_payload_hash(value) -> str:
     return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:20]
 
 
+def _build_canonical_inbound(
+    *,
+    provider: str,
+    user_id: str,
+    message_text: str,
+    message_id: str | None,
+    timestamp: str,
+    name: str,
+    extra_components: dict | None = None,
+    aliases: dict | None = None,
+) -> dict:
+    dedupe_key = _build_inbound_dedupe_key(
+        provider=provider,
+        message_id=message_id,
+        user_id=user_id,
+        message_text=message_text,
+        timestamp=timestamp,
+        extra_components=extra_components or {},
+    )
+
+    normalized = {
+        "provider": provider,
+        "status_update": False,
+        "unsupported": False,
+        "unsupported_reason": None,
+        "message_id": message_id,
+        "event_id": dedupe_key,
+        "dedupe_key": dedupe_key,
+        "user_id": user_id,
+        "message_text": message_text,
+        "timestamp": timestamp,
+        # Backward-compatible aliases for existing callers.
+        "wa_id": user_id,
+        "name": name,
+        "text": message_text,
+    }
+    if aliases:
+        normalized.update(aliases)
+    return normalized
+
+
+def _normalize_meta_whatsapp_inbound(value: dict) -> dict | None:
+    contacts = value.get("contacts") or []
+    messages = value.get("messages") or []
+    if not contacts or not messages:
+        return None
+
+    contact = contacts[0] or {}
+    message = messages[0] or {}
+    message_id = message.get("id")
+    message_type = str(message.get("type") or "").strip().lower()
+    if message_type and message_type != "text":
+        return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
+
+    text_body = ((message.get("text") or {}).get("body") or "").strip()
+    if not text_body:
+        return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
+
+    user_id = _normalize_wa_id(contact.get("wa_id"))
+    if not user_id:
+        return None
+
+    name = ((contact.get("profile") or {}).get("name") or "Unknown").strip() or "Unknown"
+    timestamp = _safe_timestamp(message.get("timestamp"))
+    return _build_canonical_inbound(
+        provider=PROVIDER_META,
+        user_id=user_id,
+        message_text=text_body,
+        message_id=message_id,
+        timestamp=timestamp,
+        name=name,
+        extra_components={
+            "contact": {
+                "wa_id": contact.get("wa_id"),
+                "name": name,
+            },
+            "message": message,
+        },
+    )
+
+
+def _normalize_instagram_inbound(body: dict) -> dict | None:
+    if str(body.get("object") or "").strip().lower() != "instagram":
+        return None
+
+    entry = body.get("entry")
+    if not isinstance(entry, list) or not entry or not isinstance(entry[0], dict):
+        return None
+
+    messaging = entry[0].get("messaging")
+    if not isinstance(messaging, list) or not messaging or not isinstance(messaging[0], dict):
+        return None
+
+    event = messaging[0]
+    if event.get("is_echo") or ((event.get("message") or {}).get("is_echo")):
+        return {"provider": PROVIDER_META, "channel": "instagram", "status_update": True}
+
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return None
+
+    message_id = message.get("mid") or message.get("id")
+    text_body = str(message.get("text") or "").strip()
+    if not text_body:
+        return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
+
+    sender = event.get("sender") if isinstance(event.get("sender"), dict) else {}
+    user_id = str(sender.get("id") or "").strip()
+    if not user_id:
+        return None
+
+    timestamp = _safe_timestamp(event.get("timestamp") or message.get("timestamp"))
+    return _build_canonical_inbound(
+        provider=PROVIDER_META,
+        user_id=user_id,
+        message_text=text_body,
+        message_id=message_id,
+        timestamp=timestamp,
+        name="Instagram User",
+        extra_components={
+            "sender": sender,
+            "recipient": event.get("recipient"),
+            "message": message,
+        },
+        aliases={
+            "channel": "instagram",
+            "recipient_id": user_id,
+            "instagram_recipient_id": user_id,
+        },
+    )
+
+
+def _normalize_messenger_inbound(body: dict) -> dict | None:
+    if str(body.get("object") or "").strip().lower() != "page":
+        return None
+
+    entry = body.get("entry")
+    if not isinstance(entry, list) or not entry or not isinstance(entry[0], dict):
+        return None
+
+    messaging = entry[0].get("messaging")
+    if not isinstance(messaging, list) or not messaging or not isinstance(messaging[0], dict):
+        return None
+
+    event = messaging[0]
+    if event.get("is_echo") or ((event.get("message") or {}).get("is_echo")):
+        return {"provider": PROVIDER_META, "channel": "messenger", "status_update": True}
+
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return None
+
+    message_id = message.get("mid") or message.get("id")
+    text_body = str(message.get("text") or "").strip()
+    if not text_body:
+        return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
+
+    sender = event.get("sender") if isinstance(event.get("sender"), dict) else {}
+    user_id = str(sender.get("id") or "").strip()
+    if not user_id:
+        return None
+
+    timestamp = _safe_timestamp(event.get("timestamp") or message.get("timestamp"))
+    return _build_canonical_inbound(
+        provider=PROVIDER_META,
+        user_id=user_id,
+        message_text=text_body,
+        message_id=message_id,
+        timestamp=timestamp,
+        name="Messenger User",
+        extra_components={
+            "sender": sender,
+            "recipient": event.get("recipient"),
+            "message": message,
+        },
+        aliases={
+            "channel": "messenger",
+            "recipient_id": user_id,
+            "messenger_recipient_id": user_id,
+        },
+    )
+
+
 def _unsupported_inbound(provider: str, reason: str, *, message_id: str | None = None) -> dict:
     dedupe_key = _build_inbound_dedupe_key(
         provider=provider,
@@ -119,6 +302,14 @@ def normalize_inbound_message(body: dict | None) -> dict | None:
     if not isinstance(body, dict):
         return None
 
+    instagram = _normalize_instagram_inbound(body)
+    if instagram is not None:
+        return instagram
+
+    messenger = _normalize_messenger_inbound(body)
+    if messenger is not None:
+        return messenger
+
     entry = body.get("entry")
     if isinstance(entry, list) and entry and isinstance(entry[0], dict):
         changes = entry[0].get("changes")
@@ -130,60 +321,7 @@ def normalize_inbound_message(body: dict | None) -> dict | None:
 
         if value.get("statuses"):
             return {"provider": PROVIDER_META, "status_update": True}
-
-        contacts = value.get("contacts") or []
-        messages = value.get("messages") or []
-        if not contacts or not messages:
-            return None
-
-        contact = contacts[0] or {}
-        message = messages[0] or {}
-        message_id = message.get("id")
-        message_type = str(message.get("type") or "").strip().lower()
-        if message_type and message_type != "text":
-            return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
-
-        text_body = ((message.get("text") or {}).get("body") or "").strip()
-        if not text_body:
-            return _unsupported_inbound(PROVIDER_META, "non_text_message", message_id=message_id)
-
-        user_id = _normalize_wa_id(contact.get("wa_id"))
-        if not user_id:
-            return None
-
-        name = ((contact.get("profile") or {}).get("name") or "Unknown").strip() or "Unknown"
-        timestamp = _safe_timestamp(message.get("timestamp"))
-        dedupe_key = _build_inbound_dedupe_key(
-            provider=PROVIDER_META,
-            message_id=message_id,
-            user_id=user_id,
-            message_text=text_body,
-            timestamp=timestamp,
-            extra_components={
-                "contact": {
-                    "wa_id": contact.get("wa_id"),
-                    "name": name,
-                },
-                "message": message,
-            },
-        )
-
-        return {
-            "provider": PROVIDER_META,
-            "status_update": False,
-            "unsupported": False,
-            "unsupported_reason": None,
-            "message_id": message_id,
-            "event_id": dedupe_key,
-            "dedupe_key": dedupe_key,
-            "user_id": user_id,
-            "message_text": text_body,
-            "timestamp": timestamp,
-            # Backward-compatible aliases for existing callers.
-            "wa_id": user_id,
-            "name": name,
-            "text": text_body,
-        }
+        return _normalize_meta_whatsapp_inbound(value)
 
     payload = body.get("data") if isinstance(body.get("data"), dict) else body
     key = payload.get("key") if isinstance(payload, dict) else None
@@ -881,6 +1019,9 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
         request_id=request_id,
         delivery_context={
             "wa_id": wa_id,
+            "recipient_id": str(inbound.get("recipient_id") or wa_id),
+            "instagram_recipient_id": str(inbound.get("instagram_recipient_id") or ""),
+            "messenger_recipient_id": str(inbound.get("messenger_recipient_id") or ""),
             "message_id": message_id,
             "to_num": wa_id,
             "agent": agent_name,

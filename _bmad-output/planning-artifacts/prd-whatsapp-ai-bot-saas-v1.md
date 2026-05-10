@@ -67,6 +67,16 @@ Current AI + WhatsApp automation tools often require API setup, technical config
 Conversation definition (billing unit):
 - 1 conversation = 1 customer message + 1 AI reply (one full exchange).
 
+**Trial & Promo Logic (v1):**
+- No free trial in v1. Immediate payment required at signup.
+- Promo codes: not in v1 scope; P1 consideration.
+- All paid plans are subscription-based with auto-renewal (can be cancelled anytime from dashboard).
+
+**Landing Page (v1):**
+- Public-facing landing page at `/` with hero, features, pricing, CTA.
+- Owned by Product/Marketing team if external; served from Flask app if internal.
+- Drives traffic to `/auth/signup`; conversion target: ≥ 10% CTR from landing to signup.
+
 ### Non-Goals (v1)
 - Multi-channel support beyond WhatsApp.
 - Complex workflow builder/automation rules.
@@ -80,13 +90,18 @@ Conversation definition (billing unit):
 
 #### P0-R1: Authentication and Account Basics
 - Email + password signup.
+- Signup form collects: email, password, business name, business segment (optional).
 - Login/logout and secure session management.
 - Password reset flow.
 - Account must be linked to a tenant/workspace context.
+- Multi-role support: session carries user role ('customer' or 'admin'); login redirects based on role.
 
 Acceptance criteria:
 - Users can create and authenticate accounts without technical assistance.
+- Signup form captures business name (used for bot branding on WhatsApp).
+- Business segment is optional at signup; can be updated later in dashboard settings (P1).
 - Tenant isolation enforced for all customer-facing data operations.
+- Login routes customers to /dashboard and admins to /admin/customers.
 
 #### P0-R2: Plan Selection and Stripe Billing
 - User selects plan (Starter/Pro/Business) before activation.
@@ -163,7 +178,9 @@ Acceptance criteria:
 ## MVP Scope
 
 ### In Scope (v1 MVP)
+- Public landing page (hero, features, pricing, social proof).
 - Multi-tenant auth and account management.
+- Signup form (email, password, business name, optional segment).
 - Stripe subscription onboarding with fixed plans.
 - Evolution API QR linking flow and live status.
 - Core dashboard (connection + usage + limit progress).
@@ -176,6 +193,8 @@ Acceptance criteria:
 - Complex AI orchestration, tool calling, or memory management UI.
 - Marketplace integrations and CRM sync.
 - Advanced analytics dashboards.
+- Free trials or promo codes.
+- Business segment tracking and analytics.
 
 ### Incremental Delivery Plan (Recommended)
 1. Foundation release:

@@ -3,18 +3,30 @@
 {% block content %}
 <section class="panel" style="max-width:860px;margin:auto;">
   <h2>Connect WhatsApp</h2>
-  <p style="color:var(--muted);margin:8px 0 20px;">
+  <p style="color:var(--muted);margin:8px 0 4px;">
     Scan this QR code with WhatsApp to link your business number.
+  </p>
+  <p style="color:var(--muted);font-size:0.88rem;margin:0 0 20px;">
+    Open WhatsApp &rarr; <strong>Linked Devices</strong> &rarr; <strong>Link a device</strong>, then point your camera at the QR code below.
   </p>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
     <div style="border:1px solid var(--border,#dfe3ea);border-radius:12px;padding:14px;background:#fff;">
-      <div id="qr-wrapper" style="display:flex;justify-content:center;align-items:center;min-height:300px;">
-        <p id="qr-loading" style="color:var(--muted);">Fetching QR code...</p>
+      <div id="qr-wrapper" style="display:flex;justify-content:center;align-items:center;min-height:300px;position:relative;">
+        <div id="qr-loading" style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation:spin 1s linear infinite;" aria-hidden="true">
+            <circle cx="18" cy="18" r="15" stroke="rgba(17,217,202,0.25)" stroke-width="3"/>
+            <path d="M18 3 A15 15 0 0 1 33 18" stroke="#11d9ca" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <p style="color:var(--muted);margin:0;">Fetching QR code&hellip;</p>
+        </div>
         <img id="qr-image" alt="WhatsApp QR code" style="display:none;max-width:100%;height:auto;border-radius:8px;" />
       </div>
       <p id="qr-meta" style="margin:10px 0 0;color:var(--muted);font-size:0.92rem;"></p>
-      <p id="qr-error" style="display:none;margin:12px 0 0;color:#b42318;font-weight:600;"></p>
+      <div id="qr-error-box" style="display:none;margin:12px 0 0;padding:10px 12px;border-radius:8px;background:rgba(180,35,24,0.08);border:1px solid rgba(180,35,24,0.25);">
+        <p id="qr-error" style="margin:0 0 4px;color:#b42318;font-weight:600;font-size:0.93rem;"></p>
+        <p id="qr-error-hint" style="margin:0;color:var(--muted);font-size:0.86rem;"></p>
+      </div>
       <button id="retry-btn" class="button-link" style="display:none;margin-top:12px;">Retry QR fetch</button>
     </div>
 
@@ -29,19 +41,26 @@
       </p>
       <p id="status-phone" style="margin-top:6px;color:#0f766e;font-weight:600;display:none;"></p>
       <p id="status-error" style="margin-top:6px;color:#b42318;font-weight:600;display:none;"></p>
-      <a id="continue-link" href="{{ url_for('dashboard.dashboard_home') }}" class="button-link" style="display:none;margin-top:14px;">Continue to dashboard</a>
+      <a id="continue-link" href="{{ url_for('dashboard.dashboard_home') }}" class="button-link" style="display:none;margin-top:14px;">Continue to dashboard &rarr;</a>
+
+      <div id="setup-hint" style="display:none;margin-top:16px;padding:10px 12px;border-radius:8px;background:rgba(17,217,202,0.07);border:1px solid rgba(17,217,202,0.2);font-size:0.86rem;color:var(--muted);">
+        <strong style="color:var(--ink);">Setup required</strong><br>
+        Make sure <code>EVOLUTION_API_URL</code> and <code>EVOLUTION_API_KEY</code> are set in your environment and the Evolution API server is running.
+        <a href="{{ url_for('dashboard.setup') }}" style="display:inline-block;margin-top:6px;color:#11d9ca;font-weight:600;">Open Setup &rarr;</a>
+      </div>
     </div>
   </div>
 </section>
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
   var qrImage = document.getElementById('qr-image');
-  var qrLoading = document.getElementById('qr-loading');
   var qrMeta = document.getElementById('qr-meta');
-  var qrError = document.getElementById('qr-error');
   var retryBtn = document.getElementById('retry-btn');
 
   var statusDot = document.getElementById('status-dot');
@@ -53,6 +72,12 @@
 
   var statusSource = null;
   var qrRefreshTimer = null;
+  var qrLoading = document.getElementById('qr-loading');
+  var qrErrorBox = document.getElementById('qr-error-box');
+  var qrError = document.getElementById('qr-error');
+  var qrErrorHint = document.getElementById('qr-error-hint');
+  var setupHint = document.getElementById('setup-hint');
+  var retryCountdownTimer = null;
 
   function setStatus(status, detail, phone) {
     var normalized = (status || 'disconnected').toLowerCase();
@@ -83,17 +108,19 @@
 
   function showQrError(message) {
     qrError.textContent = message || 'Could not fetch a QR code.';
-    qrError.style.display = 'block';
+    qrErrorBox.style.display = 'block';
     retryBtn.style.display = 'inline-flex';
-    if (qrLoading) {
-      qrLoading.style.display = 'none';
-    }
+    retryBtn.disabled = false;
+    retryBtn.textContent = 'Retry QR fetch';
+    if (qrLoading) { qrLoading.style.display = 'none'; }
   }
 
   function clearQrError() {
-    qrError.style.display = 'none';
+    qrErrorBox.style.display = 'none';
     qrError.textContent = '';
+    qrErrorHint.textContent = '';
     retryBtn.style.display = 'none';
+    if (retryCountdownTimer) { clearInterval(retryCountdownTimer); retryCountdownTimer = null; }
   }
 
   function scheduleQrRefresh(seconds) {
@@ -108,38 +135,89 @@
   function fetchQr() {
     clearQrError();
     statusError.style.display = 'none';
-    if (qrLoading) {
-      qrLoading.style.display = 'block';
-    }
+    if (qrLoading) { qrLoading.style.display = 'flex'; }
 
-    fetch('/onboarding/qr-code', { method: 'GET' })
+    fetch('/onboarding/qr-code', { method: 'GET', credentials: 'same-origin' })
       .then(function (res) {
+        // Detect session expiry: fetch follows redirect, so we land on the login page with 200
+        if (res.redirected && res.url.indexOf('/auth/') !== -1) {
+          window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+          throw new Error('session-redirect');
+        }
         if (!res.ok) {
-          return res.json().then(function (payload) {
-            var msg = (payload && payload.message) || 'QR fetch failed';
-            throw new Error(msg);
-          }).catch(function () {
-            throw new Error('QR fetch failed');
-          });
+          // Parse JSON first, preserve parsed message — don't swallow it in a second catch
+          return res.json().then(
+            function (payload) {
+              var code = (payload && payload.error_code) || '';
+              var msg = (payload && payload.message) || ('QR fetch failed (HTTP\u00a0' + res.status + ')');
+              var hint = '';
+              if (code === 'EVOLUTION_UNAVAILABLE' || code === 'EVOLUTION_RESPONSE_INVALID') {
+                hint = 'The Evolution API server is unreachable or misconfigured. Check EVOLUTION_API_URL and EVOLUTION_API_KEY.';
+                setupHint.style.display = 'block';
+              } else if (code === 'NO_ACTIVE_SUBSCRIPTION') {
+                hint = 'An active subscription is required before you can connect WhatsApp.';
+              } else if (code === 'SAAS_UNAVAILABLE') {
+                hint = 'The database is not ready. Please wait a moment and retry.';
+              } else if (code === 'UNAUTHORIZED') {
+                window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+                throw new Error('session-redirect');
+              }
+              var err = new Error(msg);
+              err.hint = hint;
+              throw err;
+            },
+            function () {
+              throw new Error('QR fetch failed (HTTP\u00a0' + res.status + '). The server returned an unexpected response.');
+            }
+          );
         }
         return res.json();
       })
       .then(function (payload) {
-        if (!payload || !payload.ok || !payload.data || !payload.data.qr_image) {
-          throw new Error('QR payload missing image');
+        if (!payload || !payload.ok || !payload.data) {
+          throw new Error('QR code image missing from server response. Please retry.');
         }
+
+        if (payload.data.already_connected) {
+          setupHint.style.display = 'none';
+          qrImage.style.display = 'none';
+          if (qrLoading) { qrLoading.style.display = 'none'; }
+          qrMeta.textContent = 'This WhatsApp instance is already connected. No QR scan is required.';
+          setStatus('connected', 'Already connected.', payload.data.phone || '');
+          return;
+        }
+
+        if (!payload.data.qr_image) {
+          throw new Error('QR code image missing from server response. Please retry.');
+        }
+
+        setupHint.style.display = 'none';
         qrImage.src = payload.data.qr_image;
         qrImage.style.display = 'block';
-        if (qrLoading) {
-          qrLoading.style.display = 'none';
-        }
+        if (qrLoading) { qrLoading.style.display = 'none'; }
         var expiresIn = payload.data.expires_in_seconds || 60;
-        qrMeta.textContent = 'QR refreshes automatically (~' + expiresIn + 's TTL).';
+        qrMeta.textContent = 'QR code expires in ~' + expiresIn + 's — refreshes automatically.';
         setStatus('connecting');
         scheduleQrRefresh(expiresIn);
       })
       .catch(function (err) {
+        if (err && err.message === 'session-redirect') { return; }
         showQrError((err && err.message) || 'Could not fetch a QR code.');
+        if (err && err.hint) { qrErrorHint.textContent = err.hint; }
+        // Auto-retry countdown (30s)
+        var remaining = 30;
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Auto-retry in ' + remaining + 's';
+        retryCountdownTimer = setInterval(function () {
+          remaining--;
+          if (remaining <= 0) {
+            clearInterval(retryCountdownTimer);
+            retryCountdownTimer = null;
+            fetchQr();
+          } else {
+            retryBtn.textContent = 'Auto-retry in ' + remaining + 's';
+          }
+        }, 1000);
       });
   }
 
@@ -180,6 +258,7 @@
   }
 
   retryBtn.addEventListener('click', function () {
+    if (retryCountdownTimer) { clearInterval(retryCountdownTimer); retryCountdownTimer = null; }
     fetchQr();
   });
 

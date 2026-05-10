@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -131,6 +132,13 @@ def can_activate_bot(db, tenant_id: str) -> bool:
     This is the ENF-01 guard: subscription status must be in ('active', 'trialing').
     A pending_webhook subscription does NOT activate the bot.
     """
+    # Local/dev escape hatch for end-to-end testing without billing provider setup.
+    # Keep strict entitlement behavior whenever Paddle is configured.
+    bypass_enabled = str(os.getenv("BYPASS_BILLING_FOR_TESTS", "")).strip().lower() in {"1", "true", "yes", "on"}
+    paddle_configured = bool(str(os.getenv("PADDLE_API_KEY", "")).strip())
+    if bypass_enabled and not paddle_configured:
+        return True
+
     sub = get_tenant_subscription(db, tenant_id)
     if sub is None:
         return False

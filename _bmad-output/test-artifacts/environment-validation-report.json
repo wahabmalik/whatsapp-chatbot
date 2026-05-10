@@ -1,15 +1,17 @@
 {
-  "timestamp": "2026-05-01T23:14:55.582229+00:00",
+  "timestamp": "2026-05-08T20:20:50.353192+00:00",
   "validator_version": "1.0",
   "environment": {
     "provider": "evolution",
-    "python_version": "3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]"
+    "python_version": "3.9.6 (tags/v3.9.6:db3ff76, Jun 28 2021, 15:26:21) [MSC v.1929 64 bit (AMD64)]"
   },
   "checks": {
     "passed": 0,
     "failed": 0,
-    "warnings": 0
+    "warnings": 1
   },
   "issues": [],
-  "warnings": []
+  "warnings": [
+    "\u26a0\ufe0f  Virtual environment not detected. Run 'source .venv/bin/activate' (macOS/Linux) or '.venv\\Scripts\\activate' (Windows)"
+  ]
 }

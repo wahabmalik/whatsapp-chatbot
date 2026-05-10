@@ -1,0 +1,15 @@
+{
+  "gate": "story-1x",
+  "timestamp_epoch": 1778274542,
+  "duration_seconds": 95.46,
+  "passed": true,
+  "exit_code": 0,
+  "targets": [
+    "tests/test_saas_1_1_schema_and_tenant_model.py",
+    "tests/test_saas_1_2a_auth_flow.py",
+    "tests/test_saas_1_2b_password_reset_flow.py",
+    "tests/test_saas_1_3_tenant_isolation.py"
+  ],
+  "stdout": "...................................................                      [100%]\n51 passed in 75.17s (0:01:15)\n",
+  "stderr": ""
+}

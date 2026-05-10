@@ -153,6 +153,57 @@ button,
   box-shadow: 0 8px 24px rgba(17, 217, 202, 0.22);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(17, 217, 202, 0.35);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  background: rgba(8, 18, 31, 0.7);
+}
+
+.account-email {
+  color: var(--ink);
+  font-size: 0.82rem;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-logout-form {
+  margin: 0;
+}
+
+.account-logout-button {
+  min-height: 0;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  box-shadow: none;
+}
+
+.account-login-link {
+  color: var(--ink);
+  text-decoration: none;
+  border: 1px solid rgba(17, 217, 202, 0.35);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.account-login-link:hover {
+  background: rgba(17, 217, 202, 0.08);
+}
+
 button[disabled] {
   opacity: 0.44;
   cursor: not-allowed;
@@ -747,6 +798,14 @@ select {
     display: none;
   }
 
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .account-email {
+    max-width: 150px;
+  }
+
   .check-grid,
   .detail-grid,
   .grid-metrics,
@@ -859,6 +918,21 @@ select {
 
   .topbar {
     padding: 10px 12px;
+  }
+
+  .account-chip {
+    padding-left: 8px;
+  }
+
+  .account-email {
+    max-width: 92px;
+    font-size: 0.76rem;
+  }
+
+  .account-login-link,
+  .account-logout-button {
+    padding: 8px 10px;
+    font-size: 0.75rem;
   }
 
   .hero-stats {

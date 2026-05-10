@@ -147,7 +147,10 @@ class ChannelConfigTests(unittest.TestCase):
     def test_unsupported_channel_raises_validation_error(self):
         from app.config import validate_config
         app = _make_app()
-        app.config["OUTBOUND_CHANNEL"] = "telegram"
+        # Use a channel name that will never be supported ("fax") to verify the
+        # validation guard still fires.  "telegram" was removed from this probe
+        # in Story 9.2 because Telegram is now a supported channel.
+        app.config["OUTBOUND_CHANNEL"] = "fax"
         errors = validate_config(app)
         self.assertTrue(any("OUTBOUND_CHANNEL" in e for e in errors))
 
@@ -260,24 +263,75 @@ class WebhookAbstractionBoundaryTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "sent")
 
+    def test_instagram_inbound_propagates_generic_recipient_id_to_channel(self):
+        """Instagram inbound sender ID must be forwarded as generic recipient_id for non-WhatsApp adapters."""
+        app = _make_app({"OUTBOUND_CHANNEL": "instagram"})
+        mock_channel = MagicMock()
+        mock_channel.send.return_value = self._mock_delivery_result(status="sent")
+        inbound = {
+            "provider": "meta",
+            "channel": "instagram",
+            "status_update": False,
+            "unsupported": False,
+            "message_id": "ig-mid-001",
+            "user_id": "17841400008460056",
+            "wa_id": "17841400008460056",
+            "recipient_id": "17841400008460056",
+            "instagram_recipient_id": "17841400008460056",
+            "message_text": "hello from instagram",
+            "text": "hello from instagram",
+            "name": "Instagram User",
+        }
+
+        with app.app_context():
+            with patch("app.utils.whatsapp_utils.get_outbound_channel", return_value=mock_channel):
+                with patch("app.utils.whatsapp_utils._generate_reply_result") as mock_ai:
+                    mock_ai.return_value = {
+                        "ok": True,
+                        "reply_text": "Hi",
+                        "confidence": 0.9,
+                        "status": "ok",
+                        "error_code": None,
+                        "metadata": None,
+                    }
+                    from app.utils.whatsapp_utils import process_whatsapp_message
+
+                    process_whatsapp_message({}, request_id="req-ig", inbound_message=inbound)
+
+        delivery_context = mock_channel.send.call_args.kwargs["delivery_context"]
+        self.assertEqual(delivery_context["recipient_id"], "17841400008460056")
+        self.assertEqual(delivery_context["instagram_recipient_id"], "17841400008460056")
+
 
 # ---------------------------------------------------------------------------
-# AC6 – Scope guard: no non-WhatsApp credentials or live activation paths
+# AC1 / Story 9.2 – Channel registry now includes Telegram (scope guard updated)
 # ---------------------------------------------------------------------------
 
-class ScopeGuardTests(unittest.TestCase):
-    """Verify no production non-WhatsApp channel config was introduced."""
+class ChannelRegistryTests(unittest.TestCase):
+    """Verify SUPPORTED_CHANNELS and registry state after Story 9.2."""
 
-    def test_supported_channels_only_contains_whatsapp(self):
-        """SUPPORTED_CHANNELS must remain WhatsApp-only for Story 8.2."""
-        from app.services.channel_interface import SUPPORTED_CHANNELS
-        self.assertEqual(list(SUPPORTED_CHANNELS), ["whatsapp"])
+    def test_whatsapp_in_supported_channels(self):
+        from app.services.channel_interface import CHANNEL_WHATSAPP, SUPPORTED_CHANNELS
+        self.assertIn(CHANNEL_WHATSAPP, SUPPORTED_CHANNELS)
 
-    def test_registry_only_contains_whatsapp(self):
-        """_CHANNEL_REGISTRY must not have any non-stub live channel registered."""
+    def test_telegram_in_supported_channels(self):
+        """Story 9.2: Telegram is now a supported channel."""
+        from app.services.channel_interface import CHANNEL_TELEGRAM, SUPPORTED_CHANNELS
+        self.assertIn(CHANNEL_TELEGRAM, SUPPORTED_CHANNELS)
+
+    def test_registry_contains_whatsapp(self):
         from app.services.channel_interface import _CHANNEL_REGISTRY, WhatsAppChannel
-        self.assertEqual(set(_CHANNEL_REGISTRY.keys()), {"whatsapp"})
+        self.assertIn("whatsapp", _CHANNEL_REGISTRY)
         self.assertIs(_CHANNEL_REGISTRY["whatsapp"], WhatsAppChannel)
+
+    def test_get_outbound_channel_returns_telegram_when_configured(self):
+        """Story 9.2: get_outbound_channel() returns TelegramChannel when OUTBOUND_CHANNEL=telegram."""
+        from app.services.channel_interface import get_outbound_channel
+        from app.services.telegram_channel import TelegramChannel
+        app = _make_app({"OUTBOUND_CHANNEL": "telegram"})
+        with app.app_context():
+            channel = get_outbound_channel(app)
+        self.assertIsInstance(channel, TelegramChannel)
 
 
 if __name__ == "__main__":

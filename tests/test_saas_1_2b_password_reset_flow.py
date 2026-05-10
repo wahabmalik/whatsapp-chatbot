@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 from datetime import timedelta, timezone
+from unittest.mock import patch
 
 import bcrypt
 import pytest
@@ -37,9 +38,7 @@ def auth_app(tmp_path):
         "SESSION_FILE_DIR": str(session_dir),
     }
 
-    original = {key: os.environ.get(key) for key in env}
-    os.environ.update(env)
-    try:
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None):
         from app import create_app
 
         app = create_app()
@@ -53,12 +52,6 @@ def auth_app(tmp_path):
 
         app.config["AUTH_PASSWORD_RESET_DISPATCH"] = dispatch
         yield app
-    finally:
-        for key, value in original.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
 
 
 @pytest.fixture()
@@ -266,3 +259,30 @@ def test_reset_password_rejects_expired_token(auth_app, client):
     user = _get_user(auth_app)
     assert user.reset_token is None
     assert user.reset_token_expires is None
+
+
+def test_reset_password_rejects_weak_password(auth_app, client):
+    _signup(client)
+
+    forgot = client.post(
+        "/auth/forgot-password",
+        data={"email": "owner@example.com"},
+        headers=_csrf_headers(client, "forgot-weak-pass"),
+    )
+    assert forgot.status_code == 200
+
+    token = auth_app.extensions["password_reset_outbox"][0]["token"]
+
+    reset = client.post(
+        "/auth/reset-password",
+        data={"token": token, "password": "weak"},
+        headers=_csrf_headers(client, "reset-weak-pass"),
+    )
+
+    assert reset.status_code == 422
+    payload = reset.get_json()
+    assert payload["error_code"] == "VALIDATION_ERROR"
+
+    user = _get_user(auth_app)
+    assert user.reset_token is not None
+    assert user.reset_token_expires is not None

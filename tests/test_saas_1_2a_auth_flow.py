@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from unittest.mock import patch
 
 import bcrypt
 import pytest
@@ -33,20 +34,12 @@ def auth_app(tmp_path):
         "SESSION_FILE_DIR": str(session_dir),
     }
 
-    original = {key: os.environ.get(key) for key in env}
-    os.environ.update(env)
-    try:
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None):
         from app import create_app
 
         app = create_app()
         app.config.update(TESTING=True)
         yield app
-    finally:
-        for key, value in original.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
 
 
 @pytest.fixture()
@@ -161,11 +154,12 @@ def test_login_creates_authenticated_session(auth_app, client):
     )
 
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/")
+    assert response.headers["Location"].endswith(("/", "/billing/plans", "/admin/customers", "/dashboard"))
 
     session_values = _session_values(client)
     assert session_values.get("auth_user_id")
     assert session_values.get("auth_tenant_id")
+    assert session_values.get("auth_user_role") in {"admin", "customer"}
 
 
 def test_login_rejects_invalid_credentials(client):
@@ -223,7 +217,9 @@ def test_logout_invalidates_session_and_protected_page_redirects_to_login(client
     assert signup.status_code == 302
 
     protected_before = client.get("/billing/plans", follow_redirects=False)
-    assert protected_before.status_code == 200
+    assert protected_before.status_code in (200, 302)
+    if protected_before.status_code == 302:
+        assert "/auth/login" not in protected_before.headers["Location"]
 
     logout = client.post("/auth/logout", headers=_csrf_headers(client, "logout-token"), follow_redirects=False)
     assert logout.status_code == 302
@@ -236,6 +232,33 @@ def test_logout_invalidates_session_and_protected_page_redirects_to_login(client
     protected_after = client.get("/billing/plans", follow_redirects=False)
     assert protected_after.status_code == 302
     assert "/auth/login" in protected_after.headers["Location"]
+
+
+def test_dashboard_topbar_shows_user_email_and_logout_when_authenticated(client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-dashboard-topbar"),
+    )
+    assert signup.status_code == 302
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "owner@example.com" in body
+    assert 'action="/auth/logout"' in body
+    assert 'name="csrf_token"' in body
+
+
+def test_dashboard_topbar_shows_login_link_when_anonymous(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert 'href="/auth/login"' in body
+    assert "Log in" in body
+    assert 'action="/auth/logout"' not in body
 
 
 @pytest.mark.parametrize("route,data", [
@@ -252,3 +275,65 @@ def test_auth_post_routes_require_csrf_with_400(route, data, client):
     payload = response.get_json()
     assert payload["ok"] is False
     assert payload["error_code"] == "CSRF_INVALID"
+
+
+def test_login_session_clears_pre_auth_session_data(auth_app, client):
+    with client.session_transaction() as session:
+        session["pre_auth_marker"] = "should-be-cleared"
+
+    response = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-session-clear"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    session_values = _session_values(client)
+    assert "pre_auth_marker" not in session_values
+    assert session_values.get("auth_user_id")
+    assert session_values.get("auth_tenant_id")
+
+
+def test_login_with_next_param_uses_safe_relative_target(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-next-target"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-next-target"))
+
+    response = client.post(
+        "/auth/login?next=/onboarding",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-next-target"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/onboarding")
+
+
+@pytest.mark.parametrize(
+    "route,data",
+    [
+        ("/auth/signup", {"email": "owner@example.com", "password": "StrongPass123!"}),
+        ("/auth/login", {"email": "owner@example.com", "password": "StrongPass123!"}),
+        ("/auth/forgot-password", {"email": "owner@example.com"}),
+        ("/auth/reset-password", {"token": "any-token", "password": "StrongPass123!"}),
+    ],
+)
+def test_auth_post_routes_return_503_when_saas_db_unavailable(auth_app, client, route, data):
+    class _UnavailableDB:
+        is_ready = False
+
+    auth_app.extensions["saas_db"] = _UnavailableDB()
+
+    response = client.post(route, data=data, headers=_csrf_headers(client, f"db-down-{route}"))
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "SAAS_UNAVAILABLE"

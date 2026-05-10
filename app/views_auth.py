@@ -59,6 +59,19 @@ def _login_redirect_target() -> str:
     return "/"
 
 
+def _route_exists(path: str) -> bool:
+    return any(rule.rule == path for rule in current_app.url_map.iter_rules())
+
+
+def _default_post_login_target(role: str) -> str:
+    preferred = "/admin/customers" if role == "admin" else "/dashboard"
+    if _route_exists(preferred):
+        return preferred
+    if _route_exists("/billing/plans"):
+        return "/billing/plans"
+    return "/"
+
+
 def _require_auth():
     if current_identity(session) is None:
         return redirect(url_for('auth.login'))
@@ -132,8 +145,23 @@ def login_post():
     except (InvalidCredentialsError, AccountDisabledError) as exc:
         return _error_response(exc)
 
+    # Determine user role for multi-role routing
+    from app.models import User
+    user_session = db.session()
+    try:
+        user = user_session.query(User).filter(User.id == identity.user_id).one()
+        is_admin = user.is_admin
+        role = "admin" if is_admin else "customer"
+    finally:
+        user_session.close()
+
     login_session(session, identity)
-    return redirect(_login_redirect_target())
+    session["auth_user_role"] = role
+
+    if request.args.get("next") is not None:
+        return redirect(_login_redirect_target())
+
+    return redirect(_default_post_login_target(role))
 
 
 @auth_blueprint.post("/auth/logout")
@@ -142,6 +170,7 @@ def logout():
         return jsonify({"ok": False, "error_code": "CSRF_INVALID", "message": "Invalid request token."}), 400
 
     logout_session(session)
+    session.pop("auth_user_role", None)  # Clear role from session
     return redirect(url_for("auth.login"))
 
 
@@ -222,6 +251,9 @@ def billing_plans():
     guarded = _require_auth()
     if guarded is not None:
         return guarded
+
+    if current_app.config.get("BYPASS_BILLING_FOR_TESTS", False) and not current_app.config.get("PADDLE_API_KEY"):
+        return redirect(url_for("onboarding.onboarding_page"))
 
     identity = current_identity(session)
     if identity is None:

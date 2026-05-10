@@ -12,11 +12,27 @@ AC coverage:
 import logging
 import os
 import pytest
+from unittest.mock import patch
 
 from sqlalchemy import inspect as sa_inspect, create_engine
 
 from app.saas_db import SaaSDatabase
 from app.repositories.base import TenantGuard
+
+
+_BASE_ENV = {
+    "WHATSAPP_PROVIDER": "meta",
+    "ACCESS_TOKEN": "token",
+    "YOUR_PHONE_NUMBER": "15551234567",
+    "APP_ID": "123456789",
+    "APP_SECRET": "supersecret",
+    "RECIPIENT_WAID": "15551234567",
+    "VERSION": "v18.0",
+    "PHONE_NUMBER_ID": "1234567890",
+    "VERIFY_TOKEN": "verify-token",
+    "OPENAI_API_KEY": "sk-test",
+    "FLASK_SECRET_KEY": "test-secret-key",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -41,21 +57,23 @@ def in_memory_db():
 def flask_app_with_db(tmp_path):
     """Flask test app with DATABASE_URL pointing to a temp SQLite file."""
     db_path = tmp_path / "test_saas.db"
-    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-    try:
+    env = {
+        **_BASE_ENV,
+        "DATABASE_URL": f"sqlite:///{db_path}",
+    }
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None):
         from app import create_app
         app = create_app()
         yield app
-    finally:
-        os.environ.pop("DATABASE_URL", None)
 
 
 @pytest.fixture()
 def flask_app_no_db():
     """Flask test app without DATABASE_URL (SaaS DB skipped)."""
-    os.environ.pop("DATABASE_URL", None)
-    from app import create_app
-    app = create_app()
+    with patch.dict(os.environ, _BASE_ENV, clear=True), patch("app.config.load_dotenv", return_value=None):
+        from app import create_app
+
+        app = create_app()
     return app
 
 
@@ -230,13 +248,14 @@ def test_missing_database_url_skips_init(flask_app_no_db, caplog):
 def test_create_app_fails_fast_when_db_unreachable(tmp_path):
     """AC-5: Configured but unreachable DATABASE_URL raises RuntimeError at startup."""
     bad_path = tmp_path / "missing" / "folder" / "unreachable.db"
-    os.environ["DATABASE_URL"] = f"sqlite:///{bad_path}"
-    try:
+    env = {
+        **_BASE_ENV,
+        "DATABASE_URL": f"sqlite:///{bad_path}",
+    }
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None):
         from app import create_app
         with pytest.raises(RuntimeError, match="SAAS_DB_STARTUP_FAIL"):
             create_app()
-    finally:
-        os.environ.pop("DATABASE_URL", None)
 
 
 def test_verify_connectivity_returns_false_for_bad_url(caplog):

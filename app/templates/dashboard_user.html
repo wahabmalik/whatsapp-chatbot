@@ -56,6 +56,30 @@
   </section>
 </section>
 
+<section class="panel" id="channels">
+  <header class="panel-head">
+    <h3>Connect your social channels</h3>
+    <a href="{{ url_for('dashboard.setup') }}">Manage setup</a>
+  </header>
+  <p class="subtle-help">
+    Link Instagram, Facebook Messenger, and TikTok so customers can reach you on their preferred platform.
+  </p>
+  <div class="hero-actions" style="margin:20px 0 10px;">
+    {% for item in customer_connect_actions %}
+      <a
+        class="{{ 'button-link' if item.configured else 'ghost-link' }}"
+        href="{{ item.url }}"
+        {% if item.external %}target="_blank" rel="noopener noreferrer"{% endif %}
+      >
+        Connect {{ item.label }}
+      </a>
+    {% endfor %}
+  </div>
+  <p class="tiny-note">
+    If a button opens setup, add the corresponding *_CONNECT_URL in your environment to direct customers to your live connection flow.
+  </p>
+</section>
+
 <section class="detail-grid" id="activity">
   <section class="panel">
     <header class="panel-head">

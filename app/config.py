@@ -42,6 +42,33 @@ def is_config_value_set(value: object) -> bool:
     return True
 
 
+def _looks_like_placeholder(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    trimmed = value.strip()
+    if not trimmed:
+        return False
+
+    lowered = trimmed.lower()
+    placeholder_fragments = (
+        "<your",
+        "<from ",
+        "<generate",
+        "change-me",
+        "your-",
+        "yourdomain.com",
+        "...",
+    )
+    if any(fragment in lowered for fragment in placeholder_fragments):
+        return True
+
+    # Common token templates that are intentionally incomplete.
+    if trimmed in {"sk-...", "pri_...", "http://<your-evolution-host>:3333", "https://<your-railway-domain>"}:
+        return True
+
+    return False
+
+
 def normalize_provider(value: str | None, env: dict[str, str] | None = None) -> str:
     provider = str(value or "").strip().lower()
     if provider in PROVIDER_REQUIRED_CONFIG_KEYS:
@@ -131,6 +158,35 @@ def validate_config(app) -> list[str]:
         if api_url and not re.match(r"^https?://", api_url):
             errors.append("EVOLUTION_API_URL must start with http:// or https://")
 
+    onboarding_instance_mode = str(app.config.get("ONBOARDING_INSTANCE_MODE", "auto")).strip().lower()
+    if onboarding_instance_mode not in {"auto", "shared", "tenant"}:
+        errors.append("ONBOARDING_INSTANCE_MODE must be one of: auto, shared, tenant")
+
+    placeholder_sensitive_keys = (
+        "SECRET_KEY",
+        "OPENAI_API_KEY",
+        "EVOLUTION_API_URL",
+        "EVOLUTION_API_KEY",
+        "EVOLUTION_INSTANCE_NAME",
+        "APP_BASE_URL",
+        "PADDLE_API_KEY",
+        "PADDLE_CLIENT_TOKEN",
+        "PADDLE_WEBHOOK_SECRET",
+        "PADDLE_STARTER_PRICE_ID",
+        "PADDLE_PRO_PRICE_ID",
+        "PADDLE_BUSINESS_PRICE_ID",
+        "INSTAGRAM_OUTBOUND_URL",
+        "INSTAGRAM_ACCESS_TOKEN",
+        "MESSENGER_OUTBOUND_URL",
+        "MESSENGER_PAGE_ACCESS_TOKEN",
+        "TIKTOK_OUTBOUND_URL",
+        "TIKTOK_ACCESS_TOKEN",
+    )
+    for key in placeholder_sensitive_keys:
+        value = app.config.get(key)
+        if is_config_value_set(value) and _looks_like_placeholder(value):
+            errors.append(f"Configuration value for {key} appears to be a placeholder")
+
     backend = str(app.config.get("STATE_STORE_BACKEND", "memory")).strip().lower()
     if backend not in {"memory", "sqlite"}:
         errors.append("STATE_STORE_BACKEND must be one of: memory, sqlite")
@@ -142,6 +198,17 @@ def validate_config(app) -> list[str]:
             f"OUTBOUND_CHANNEL '{outbound_channel}' is not supported. "
             f"Must be one of: {', '.join(sorted(SUPPORTED_CHANNELS))}"
         )
+
+    channel_url_keys = {
+        "instagram": "INSTAGRAM_OUTBOUND_URL",
+        "messenger": "MESSENGER_OUTBOUND_URL",
+        "tiktok": "TIKTOK_OUTBOUND_URL",
+    }
+    channel_url_key = channel_url_keys.get(outbound_channel)
+    if channel_url_key:
+        channel_url = str(app.config.get(channel_url_key, "")).strip()
+        if channel_url and not re.match(r"^https?://", channel_url):
+            errors.append(f"{channel_url_key} must start with http:// or https://")
 
     return errors
 
@@ -173,6 +240,7 @@ def load_configurations(app):
     app.config["EVOLUTION_API_URL"] = os.getenv("EVOLUTION_API_URL")
     app.config["EVOLUTION_API_KEY"] = os.getenv("EVOLUTION_API_KEY")
     app.config["EVOLUTION_INSTANCE_NAME"] = os.getenv("EVOLUTION_INSTANCE_NAME")
+    app.config["ONBOARDING_INSTANCE_MODE"] = os.getenv("ONBOARDING_INSTANCE_MODE", "auto")
     app.config["EVOLUTION_WEBHOOK_SECRET"] = os.getenv("EVOLUTION_WEBHOOK_SECRET")
     app.config["EVOLUTION_WEBHOOK_SECRET_HEADER"] = os.getenv(
         "EVOLUTION_WEBHOOK_SECRET_HEADER", "apikey"
@@ -220,6 +288,34 @@ def load_configurations(app):
         "SIGNATURE_REPLAY_WINDOW_SECONDS", default=300, minimum=1
     )
     app.config["OUTBOUND_CHANNEL"] = os.getenv("OUTBOUND_CHANNEL", "whatsapp").strip().lower()
+    # Telegram adapter credentials (Story 9.2). Required only when OUTBOUND_CHANNEL=telegram.
+    # Absent credentials are accepted here; the adapter enters disabled state at runtime.
+    app.config["TELEGRAM_BOT_TOKEN"] = os.getenv("TELEGRAM_BOT_TOKEN")
+    app.config["TELEGRAM_DEFAULT_CHAT_ID"] = os.getenv("TELEGRAM_DEFAULT_CHAT_ID")
+    app.config["TELEGRAM_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "TELEGRAM_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["INSTAGRAM_OUTBOUND_URL"] = os.getenv("INSTAGRAM_OUTBOUND_URL")
+    app.config["INSTAGRAM_ACCESS_TOKEN"] = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    app.config["INSTAGRAM_DEFAULT_RECIPIENT_ID"] = os.getenv("INSTAGRAM_DEFAULT_RECIPIENT_ID")
+    app.config["INSTAGRAM_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "INSTAGRAM_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["INSTAGRAM_CONNECT_URL"] = os.getenv("INSTAGRAM_CONNECT_URL")
+    app.config["MESSENGER_OUTBOUND_URL"] = os.getenv("MESSENGER_OUTBOUND_URL")
+    app.config["MESSENGER_PAGE_ACCESS_TOKEN"] = os.getenv("MESSENGER_PAGE_ACCESS_TOKEN")
+    app.config["MESSENGER_DEFAULT_RECIPIENT_ID"] = os.getenv("MESSENGER_DEFAULT_RECIPIENT_ID")
+    app.config["MESSENGER_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "MESSENGER_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["MESSENGER_CONNECT_URL"] = os.getenv("MESSENGER_CONNECT_URL")
+    app.config["TIKTOK_OUTBOUND_URL"] = os.getenv("TIKTOK_OUTBOUND_URL")
+    app.config["TIKTOK_ACCESS_TOKEN"] = os.getenv("TIKTOK_ACCESS_TOKEN")
+    app.config["TIKTOK_DEFAULT_RECIPIENT_ID"] = os.getenv("TIKTOK_DEFAULT_RECIPIENT_ID")
+    app.config["TIKTOK_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "TIKTOK_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["TIKTOK_CONNECT_URL"] = os.getenv("TIKTOK_CONNECT_URL")
     app.config["STATE_STORE_BACKEND"] = os.getenv("STATE_STORE_BACKEND", "memory")
     sqlite_path = os.getenv("STATE_STORE_SQLITE_PATH", "data/runtime_state.db")
     app.config["STATE_STORE_SQLITE_PATH"] = sqlite_path
@@ -234,6 +330,9 @@ def load_configurations(app):
     )
     app.config["ESCALATION_QUEUE_PATH"] = os.getenv(
         "ESCALATION_QUEUE_PATH", "data/operator_review_queue.jsonl"
+    )
+    app.config["ANALYTICS_RETENTION_DAYS"] = _as_int(
+        "ANALYTICS_RETENTION_DAYS", default=90, minimum=1
     )
     app.config["CONVERSATION_CONTEXT_TIMEOUT_SECONDS"] = _as_int(
         "CONVERSATION_CONTEXT_TIMEOUT_SECONDS", default=1800, minimum=1
@@ -264,6 +363,7 @@ def load_configurations(app):
     app.config["PADDLE_STARTER_PRICE_ID"] = os.getenv("PADDLE_STARTER_PRICE_ID")
     app.config["PADDLE_PRO_PRICE_ID"] = os.getenv("PADDLE_PRO_PRICE_ID")
     app.config["PADDLE_BUSINESS_PRICE_ID"] = os.getenv("PADDLE_BUSINESS_PRICE_ID")
+    app.config["BYPASS_BILLING_FOR_TESTS"] = _as_bool("BYPASS_BILLING_FOR_TESTS", default=False)
     Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["ESCALATION_QUEUE_PATH"]).parent.mkdir(parents=True, exist_ok=True)
     Path(session_dir).mkdir(parents=True, exist_ok=True)

@@ -1,104 +1,284 @@
+# Sprint Status - Next Cycle (Epics 9-12)
 # generated: 2026-05-08
-# last_updated: 2026-05-08T00:00:00Z
-# project: python-whatsapp-bot
+# last_updated: 2026-05-10
+# project: Malixis Reply / WhatsApp AI Bot SaaS (Next Iteration)
 # project_key: NOKEY
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
-# source_plan: _bmad-output/planning-artifacts/sprint-plan-next-iteration-2026-05-07.md
-# source_epics: _bmad-output/planning-artifacts/epics-next-cycle.md
-
+#
+# SOURCE DOCUMENTS:
+#   epics:       _bmad-output/planning-artifacts/epics-next-cycle.md
+#   sprint_plan: _bmad-output/planning-artifacts/sprint-plan-next-iteration-2026-05-07.md
+#   prd:         _bmad-output/planning-artifacts/prd-whatsapp-ai-bot-saas-v1.md
+#   arch:        _bmad-output/planning-artifacts/architecture-whatsapp-ai-bot-saas-v1.md
+#
 # STATUS DEFINITIONS:
 # ==================
 # Epic Status:
-#   - backlog: Epic not yet started
+#   - backlog:     Epic not yet started
 #   - in-progress: Epic actively being worked on
-#   - done: All stories in epic completed
+#   - done:        All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done:    Manually when all stories reach 'done' status
 #
 # Story Status:
-#   - backlog: Story only exists in epic file
-#   - ready-for-dev: Story file created in implementation artifacts
-#   - in-progress: Developer actively working on implementation
-#   - review: Ready for code review
-#   - done: Story completed
+#   - backlog:       Story only exists in epic file
+#   - ready-for-dev: Story file created in implementation-artifacts folder
+#   - in-progress:   Developer actively working on implementation
+#   - review:        Ready for code review (via code-review workflow)
+#   - done:          Story completed and tests passing
 #
 # Retrospective Status:
 #   - optional: Can be completed but not required
-#   - done: Retrospective has been completed
+#   - done:     Retrospective has been completed
 #
-# Pull Condition (Epic 12):
-#   Epic 12 stories are pulled ONLY after all Epic 9, 10, and 11 P0 gate criteria
-#   are green AND the full test suite remains clean.
-
-generated: 2026-05-08
-last_updated: 2026-05-08T00:00:00Z
-project: python-whatsapp-bot
-project_key: NOKEY
-tracking_system: file-system
-story_location: _bmad-output/implementation-artifacts
+# WORKFLOW NOTES:
+# ===============
+# - Amelia uses [DS] Dev Story skill to implement each story in sequence.
+# - All 13 stories must follow the dependency graph below.
+# - Story 9.1 is the entry point; start here.
+# - Stories 11.1 and 10.1 can be developed in parallel once 9.3 is done.
+# - Stories 12.1-12.6 are conditional (P1) and pulled only if Sprint 1 and 
+#   Sprint 2 P0 gates are complete and full suite remains green.
+#
+# DELIVERY PHASES (from Sprint Plan):
+# ====================================
+# Sprint 1 — Reliability and Expansion Foundation: Epic 9 (Governance + Adapter)
+# Sprint 2 — Analytics and Operational Hardening:  Epic 10 (Analytics) + Epic 11 (SQLite)
+# Sprint 3 — Customer Value Pull (Conditional):    Epic 12 (P1 features, gate-blocked)
+#
+# GATES AND PULL RULES:
+# =====================
+# Gate B (Sprint 1 Exit): 
+#   - CI governance + contract-test categories active
+#   - One non-WhatsApp adapter live in staging
+#   - Mixed-channel delivery >= 99.0% over 1,000+ test deliveries
+#
+# Gate C (Sprint 2 Exit):
+#   - Analytics API stable and contract-tested
+#   - Dashboard analytics v1 live
+#   - SQLite 24h soak completed with zero Sev-1/Sev-2 incidents
+#   - Rollback drill automated and <= 15 min
+#
+# Gate D / Sprint 3 Pull Rule:
+#   - Conditional: ONLY pull if Gate B (Sprint 1) AND Gate C (Sprint 2) are BOTH complete
+#   - AND full test/regression posture remains green/stable
+#   - If blocked at Sprint 2 close, Epic 12 defers to next cycle without penalty
+#
+# DEPENDENCY GRAPH:
+# =================
+#   9.1 (Governance baseline upgrade)
+#     ↓
+#   9.2 (Production adapter delivery)
+#     ↓
+#   9.3 (Adapter parity contract suite)
+#     ├─→ 10.1 (Analytics reporting API)
+#     │     ↓
+#     │   10.2 (Dashboard analytics v1)
+#     │
+#     └─→ 11.1 (SQLite 24h soak automation) [can parallelize with 10.1]
+#           ↓
+#         11.2 (Rollback drill automation)
+#             ↓
+#         12.1, 12.2, 12.3, 12.4, 12.5, 12.6 (conditional P1 features, if Gates B+C pass)
 
 development_status:
-  # ---------------------------------------------------------------------------
-  # SPRINT 1: Reliability Governance and First Production Adapter
-  # Gate B: CI governance active + adapter parity suite passing + staging pass
-  # ---------------------------------------------------------------------------
-  epic-9: backlog
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # SPRINT 1 — RELIABILITY AND EXPANSION FOUNDATION
+  # Epic 9: Reliability Governance and First Production Adapter
+  # P0 Delivery: Governance gate + single non-WhatsApp adapter + parity suite
+  # depends-on: SaaS v1 Epics 1-8 (all done)
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-next-9: in-progress
+
   # Story 9.1 — Governance Baseline Upgrade
-  # CI enforcement of contract-test categories and story closure evidence template.
-  9-1-governance-baseline-upgrade: backlog
+  #   Problem: No mandatory contract-test categories or evidence-template gates.
+  #   Solution: CI checks for mandatory contract-test coverage, story closure evidence
+  #   template, and launch-gate artifact completeness — all retroactively compatible.
+  #   Exit Criteria: Gate B prerequisite — governance active and blocking on main.
+  # depends-on: none (entry point)
+  # priority: P0
+  # sprint: 1
+  next-cycle-9-1-governance-baseline-upgrade: done
 
   # Story 9.2 — Production Adapter Delivery (Single Non-WhatsApp Channel)
-  # First production adapter wired behind existing ChannelAdapter interface.
-  9-2-production-adapter-delivery: backlog
+  #   Problem: Channel abstraction exists but no production non-WhatsApp adapter.
+  #   Solution: Wire one new adapter behind ChannelAdapter interface; no WhatsApp
+  #   routing changes; credentials validated at startup; all logs include provider
+  #   and correlation_id; same retry/fallback contracts as WhatsApp.
+  #   Exit Criteria: One adapter live in staging, wired and functional.
+  # depends-on: next-cycle-9-1
+  # priority: P0
+  # sprint: 1
+  next-cycle-9-2-production-adapter-delivery-single-channel: done
 
   # Story 9.3 — Adapter Parity Contract Suite and Mixed-Channel Staging Gate
-  # Shared outbound contract suite parameterized for WhatsApp + new adapter.
-  9-3-adapter-parity-contract-suite: backlog
+  #   Problem: New adapter can silently diverge from WhatsApp baseline behaviors.
+  #   Solution: Parameterized contract test suite (success, retry, exhaustion,
+  #   correlation, observability) runs against both adapters; staging run >= 1,000
+  #   deliveries with >= 99.0% success rate.
+  #   Exit Criteria: Gate B — Parity suite 100% pass, both adapters, staging evidence.
+  # depends-on: next-cycle-9-2
+  # priority: P0
+  # sprint: 1
+  next-cycle-9-3-adapter-parity-contract-suite-and-staging-gate: ready-for-dev
+  next-cycle-9-3-adapter-parity-contract-suite-and-staging-gate: done
 
-  epic-9-retrospective: optional
+  epic-next-9-retrospective: optional
 
-  # ---------------------------------------------------------------------------
-  # SPRINT 2: Analytics Productization and SQLite Operational Readiness
-  # Gate C: analytics freshness <=60s + retention verified + SQLite soak + rollback drill
-  # ---------------------------------------------------------------------------
-  epic-10: backlog
+  # ──────────────────────────────────────────────────────────────────────────
+  # SPRINT 2 — ANALYTICS AND OPERATIONAL HARDENING
+  # Epic 10: Analytics Productization v1
+  # P0 Delivery: Analytics API + Dashboard v1
+  # depends-on: Epic 9 (Gate B complete)
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-next-10: in-progress
+
   # Story 10.1 — Analytics Reporting API
-  # GET /api/analytics/summary — volume, escalation, outcome, latency from event foundation.
-  10-1-analytics-reporting-api: backlog
+  #   Problem: Analytics events in jsonl but no API for operators to consume aggregates.
+  #   Solution: GET /api/analytics/summary with volume/escalation/outcome trends (7-day),
+  #   latency percentiles (p50/p95/p99), stable contract, retention-cap enforcement,
+  #   operator auth required, <= 500ms response for <= 10,000 events.
+  #   Exit Criteria: Gate C prerequisite — API stable, contract-tested, freshness <= 60s.
+  # depends-on: next-cycle-9-3
+  # priority: P0
+  # sprint: 2
+  next-cycle-10-1-analytics-reporting-api: ready-for-dev
 
   # Story 10.2 — Dashboard Analytics v1
-  # Lightweight operator dashboard section — trends and escalation indicators.
-  10-2-dashboard-analytics-v1: backlog
+  #   Problem: Operators must read raw event files; no visual trends or summaries.
+  #   Solution: Analytics section in operator dashboard (volume chart, escalation rate,
+  #   outcome breakdown, latency trend); data sourced from Story 10.1 API; graceful
+  #   degradation when < 24h data; operator-only visibility.
+  #   Exit Criteria: Gate C — Dashboard live, Story 10.1 API integration verified.
+  # depends-on: next-cycle-10-1
+  # priority: P0
+  # sprint: 2
+  next-cycle-10-2-dashboard-analytics-v1: backlog
 
-  epic-10-retrospective: optional
+  epic-next-10-retrospective: optional
 
-  epic-11: backlog
+  # ──────────────────────────────────────────────────────────────────────────
+  # SPRINT 2 — ANALYTICS AND OPERATIONAL HARDENING (continued)
+  # Epic 11: SQLite Operational Readiness Gate
+  # P0 Delivery: 24h soak + rollback drill + restart continuity
+  # depends-on: Epic 9 (Gate B complete)
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-next-11: backlog
+
   # Story 11.1 — SQLite 24h Soak Automation and Evidence Artifact
-  # Automated soak harness producing sqlite-soak-evidence-<date>.md artifact.
-  11-1-sqlite-soak-automation: backlog
+  #   Problem: SQLite stability over sustained production-representative load unknown.
+  #   Solution: Automated soak harness (24h staging run) with error rate, latency
+  #   percentiles, memory trend, crash/exception events; structured evidence artifact
+  #   with pass/fail determination; pass threshold = zero Sev-1/Sev-2 incidents;
+  #   includes restart continuity check and failover-to-memory verification.
+  #   Exit Criteria: Gate C prerequisite — soak artifact with zero incidents, recovery verified.
+  # depends-on: next-cycle-9-3
+  # priority: P0
+  # sprint: 2
+  # note: can parallelize with 10.1 after 9.3 complete
+  next-cycle-11-1-sqlite-24h-soak-automation-and-evidence: backlog
 
   # Story 11.2 — Rollback Drill Automation and Acceptance Artifact
-  # Timed rollback drill producing sqlite-rollback-drill-<date>.md artifact.
-  11-2-sqlite-rollback-drill: backlog
+  #   Problem: Rollback from SQLite to memory-store has no documented drill.
+  #   Solution: Automated rollback drill script (disable flag, restart, verify memory-store,
+  #   assert no corruption); execution is timed; evidence artifact with steps, timings, sign-off;
+  #   acceptance criterion: <= 15 min completion; runbook updated with rollback procedure.
+  #   Exit Criteria: Gate C — Drill artifact with <= 15 min completion time.
+  # depends-on: next-cycle-11-1
+  # priority: P0
+  # sprint: 2
+  next-cycle-11-2-rollback-drill-automation-and-acceptance-artifact: backlog
 
-  epic-11-retrospective: optional
+  epic-next-11-retrospective: optional
 
-  # ---------------------------------------------------------------------------
-  # SPRINT 3 (CONDITIONAL): SaaS v1 Customer Value Pull
-  # Pull condition: Epic 9 Gate B + Epic 10/11 Gate C both green AND suite clean.
-  # If either gate is incomplete at Sprint 2 close, Epic 12 defers to next cycle.
-  # Gate D: no open High risks + runbook updated + smoke checklist passes
-  # ---------------------------------------------------------------------------
-  epic-12: backlog
+  # ──────────────────────────────────────────────────────────────────────────
+  # SPRINT 3 — CUSTOMER VALUE PULL (CONDITIONAL P1 SCOPE)
+  # Epic 12: SaaS v1 Customer Value Pull
+  # P1 Delivery: Notifications + History + Reconnection Assistant + India D2C starter templates
+  #   + messaging cost guardrails + compliance/sendability controls
+  # Pull Condition: ONLY if Gate B (Epic 9 complete) AND Gate C (Epic 10-11 complete)
+  #   are BOTH green AND full suite remains stable. If blocked, defer to next cycle.
+  # depends-on: Gate B (Sprint 1) + Gate C (Sprint 2) + test/regression posture green
+  # ──────────────────────────────────────────────────────────────────────────
+  epic-next-12: backlog
+
   # Story 12.1 — Notification Center (Billing and Usage Alerts)
-  # In-app trial/payment/usage alerts; tenant-isolated; Stripe webhook triggered.
-  12-1-notification-center: backlog
+  #   Problem: Operators have no in-app alerts for billing/usage; discover issues post-impact.
+  #   Solution: Notification panel in dashboard (trial expiry, payment failure, usage
+  #   thresholds); persisted per tenant, individual dismissal; triggered by Stripe
+  #   webhooks and analytics events; tenant-isolated.
+  #   Status Note: P1 feature, pulled conditionally.
+  #   proceed if Sprint 1 (Gate B) and Sprint 2 (Gate C) are complete and stable.
+  # depends-on: next-cycle-10-2, next-cycle-11-2
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-1-notification-center-billing-and-usage-alerts: backlog
 
   # Story 12.2 — Conversation History Viewer (Read-Only v1)
-  # Paginated conversation list with thread view; tenant-isolated; search by wa_id+date.
-  12-2-conversation-history-viewer: backlog
+  #   Problem: Operators cannot review past conversations without database access.
+  #   Solution: "Conversations" section in dashboard (paginated list, search by wa_id + date,
+  #   message thread view with sender/text/timestamp/status, <= 2s search for 10k conversations);
+  #   tenant-isolated, strictly read-only.
+  #   Status Note: P1 feature, pulled conditionally. Deferred if Gate C blocked.
+  # depends-on: next-cycle-10-2, next-cycle-11-2
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-2-conversation-history-viewer-read-only-v1: backlog
 
   # Story 12.3 — Reconnection Assistant (Guided Troubleshooting Path)
-  # Connection status + guided QR reconnect flow + common failure plain-language guidance.
-  12-3-reconnection-assistant: backlog
+  #   Problem: Connection drops leave operators without guided recovery path; engineering support required.
+  #   Solution: "Connection Status" section in dashboard showing state (connected/disconnected/QR/error),
+  #   last-seen timestamp, "Reconnect" button; flow: new QR → scan confirmation → state verification;
+  #   common failures surfaced with explanations; falls back to "contact support" if unrecoverable;
+  #   all attempts logged with correlation ID and outcome.
+  #   Status Note: P1 feature, pulled conditionally. Deferred if Gate C blocked.
+  # depends-on: next-cycle-10-2, next-cycle-11-2
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-3-reconnection-assistant-guided-troubleshooting: backlog
 
-  epic-12-retrospective: optional
+  # Story 12.4 — India D2C Starter Template Pack
+  #   Problem: Generic onboarding does not reflect the promoted GTM slice for India D2C
+  #   ecommerce SMBs using WhatsApp for sales/support workflows.
+  #   Solution: Optional tenant-scoped starter pack for abandoned cart, order status,
+  #   COD confirmation, and support triage templates with editable drafts, visible
+  #   category labels, telemetry, and no bypass of approval/compliance controls.
+  #   Status Note: P1 feature, pulled conditionally for the fixed India D2C slice only.
+  # depends-on: next-cycle-10-2, next-cycle-11-2
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-4-india-d2c-starter-template-pack: ready-for-dev
+
+  # Story 12.5 — Messaging Cost Guardrails v1
+  #   Problem: Operators can trigger outbound sends without clear pre-send cost visibility
+  #   in a category-priced WhatsApp environment.
+  #   Solution: India-only projected spend estimate, threshold-triggered explicit
+  #   confirmation, fail-closed estimation path, and audit/analytics tagging.
+  #   Status Note: P1 feature, pulled conditionally for the fixed India D2C slice only.
+  # depends-on: next-cycle-10-1, next-cycle-10-2, next-cycle-12-4
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-5-messaging-cost-guardrails-v1: ready-for-dev
+
+  # Story 12.6 — Compliance and Sendability Control Surface
+  #   Problem: Consent and template sendability are not surfaced as an explicit operator
+  #   workflow, increasing policy and delivery-quality risk.
+  #   Solution: Tenant-scoped consent ledger, template-state visibility,
+  #   quality/sendability cues, and pre-dispatch blocking for non-compliant sends.
+  #   Status Note: P1 feature, pulled conditionally for the fixed India D2C slice only.
+  # depends-on: next-cycle-12-4, next-cycle-10-2
+  # priority: P1
+  # sprint: 3
+  # pull-condition: "Gate B + Gate C complete AND full suite green"
+  next-cycle-12-6-compliance-and-sendability-control-surface: ready-for-dev
+
+  epic-next-12-retrospective: optional

@@ -41,6 +41,14 @@ class EvolutionResponseValidationError(EvolutionUnavailableError):
     """Raised when Evolution API response fails validation."""
 
 
+class EvolutionAlreadyConnected(OnboardingError):
+    """Raised when instance is already connected and no QR is required."""
+
+    def __init__(self, phone: str | None = None) -> None:
+        super().__init__("Evolution instance is already connected")
+        self.phone = phone
+
+
 @dataclass(frozen=True)
 class QrCodeResult:
     """QR code result for onboarding UI consumption."""
@@ -48,6 +56,8 @@ class QrCodeResult:
     qr_image: str
     expires_in_seconds: int
     instance_name: str
+    already_connected: bool = False
+    phone: str | None = None
 
 
 @dataclass(frozen=True)
@@ -90,6 +100,29 @@ def _phone_from_payload(payload: Any) -> str | None:
             found = _phone_from_payload(nested)
             if found:
                 return found
+    return None
+
+
+def _status_from_payload(payload: Any) -> str | None:
+    """Extract connection status string from Evolution payload."""
+    if isinstance(payload, dict):
+        for key in ("connectionStatus", "status", "state", "instanceState"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+
+        for nested_key in ("instance", "connection", "data", "result"):
+            nested = payload.get(nested_key)
+            found = _status_from_payload(nested)
+            if found:
+                return found
+
+    if isinstance(payload, list):
+        for item in payload:
+            found = _status_from_payload(item)
+            if found:
+                return found
+
     return None
 
 
@@ -198,6 +231,39 @@ def _instance_name_for_tenant(tenant_id: str) -> str:
     return f"tenant-{compact[:24]}"
 
 
+def _configured_instance_name(app) -> str | None:
+    """Return configured shared Evolution instance name when provided."""
+    value = str(app.config.get("EVOLUTION_INSTANCE_NAME", "")).strip()
+    return value or None
+
+
+def _instance_mode(app) -> str:
+    """Resolve onboarding instance strategy: auto, shared, or tenant."""
+    raw = str(app.config.get("ONBOARDING_INSTANCE_MODE", "auto")).strip().lower()
+    if raw in {"auto", "shared", "tenant"}:
+        return raw
+    return "auto"
+
+
+def _resolve_instance_name(app, fallback_tenant_instance: str) -> tuple[str, bool]:
+    """Pick instance name and whether shared-instance behavior should be enabled."""
+    configured = _configured_instance_name(app)
+    mode = _instance_mode(app)
+
+    if mode == "shared":
+        if configured:
+            return configured, True
+        return fallback_tenant_instance, False
+
+    if mode == "tenant":
+        return fallback_tenant_instance, False
+
+    # auto: prefer configured shared instance when present, else tenant instance.
+    if configured:
+        return configured, True
+    return fallback_tenant_instance, False
+
+
 def _ensure_connection_state(db, tenant_id: str) -> ConnectionState:
     """Ensure ConnectionState row exists and is properly initialized."""
     sess = db.session()
@@ -233,7 +299,7 @@ def _ensure_connection_state(db, tenant_id: str) -> ConnectionState:
         sess.close()
 
 
-def _create_instance_if_missing(app, instance_name: str) -> None:
+def _create_instance_if_missing(app, instance_name: str, *, allow_forbidden_passthrough: bool = False) -> None:
     """Create instance on Evolution API if it doesn't exist (409 = already exists)."""
     base = _api_base(app)
     key = _api_key(app)
@@ -255,6 +321,14 @@ def _create_instance_if_missing(app, instance_name: str) -> None:
         raise EvolutionUnavailableError(f"Evolution instance create network error") from exc
 
     if response.status_code in {200, 201, 202, 409}:
+        return
+    if response.status_code == 403 and allow_forbidden_passthrough:
+        # Some deployments lock API keys to pre-provisioned instances and forbid create.
+        # In that mode, continue and let connect/status endpoints decide availability.
+        logger.info(
+            "Evolution instance create forbidden; continuing with pre-provisioned instance",
+            extra={"instance_name": instance_name},
+        )
         return
     msg = f"Evolution instance create failed: {response.status_code}"
     logger.error(msg, extra={"response_text": response.text[:200]})
@@ -288,6 +362,9 @@ def _fetch_qr_from_evolution(app, instance_name: str) -> tuple[str, int]:
     payload = _validate_response_json(response, "QR connect")
     qr = _extract_qr_image(payload)
     if not qr:
+        status = _normalize_status(_status_from_payload(payload))
+        if status == "connected":
+            raise EvolutionAlreadyConnected(phone=_phone_from_payload(payload))
         msg = "Evolution QR payload missing qr image"
         logger.error(msg, extra={"payload_keys": list(payload.keys()) if isinstance(payload, dict) else "not-dict"})
         raise EvolutionResponseValidationError(msg)
@@ -313,7 +390,8 @@ def get_or_create_qr_code(db, app, tenant_id: str) -> QrCodeResult:
         raise NoActiveSubscriptionError("No active subscription")
 
     connection = _ensure_connection_state(db, tenant_id)
-    instance_name = connection.evolution_instance or _instance_name_for_tenant(tenant_id)
+    fallback_tenant_instance = connection.evolution_instance or _instance_name_for_tenant(tenant_id)
+    instance_name, shared_mode = _resolve_instance_name(app, fallback_tenant_instance)
 
     retries = max(1, int(app.config.get("ONBOARDING_QR_MAX_RETRIES", 3)))
     backoff = float(app.config.get("ONBOARDING_QR_BACKOFF_SECONDS", 0.25))
@@ -321,14 +399,29 @@ def get_or_create_qr_code(db, app, tenant_id: str) -> QrCodeResult:
     last_error: Exception | None = None
     for attempt in range(retries):
         try:
-            _create_instance_if_missing(app, instance_name)
-            qr_image, expires_in_seconds = _fetch_qr_from_evolution(app, instance_name)
+            _create_instance_if_missing(
+                app,
+                instance_name,
+                allow_forbidden_passthrough=shared_mode,
+            )
+            try:
+                qr_image, expires_in_seconds = _fetch_qr_from_evolution(app, instance_name)
+                already_connected = False
+                connected_phone = None
+            except EvolutionAlreadyConnected as exc:
+                qr_image, expires_in_seconds = "", 0
+                already_connected = True
+                connected_phone = exc.phone
 
             sess = db.session()
             try:
                 row = sess.query(ConnectionState).filter(ConnectionState.tenant_id == tenant_id).one()
-                row.status = "connecting"
+                row.status = "connected" if already_connected else "connecting"
                 row.evolution_instance = instance_name
+                if connected_phone:
+                    row.phone_number = connected_phone
+                if already_connected and row.connected_at is None:
+                    row.connected_at = _utcnow()
                 sess.commit()
             except Exception:
                 sess.rollback()
@@ -341,6 +434,8 @@ def get_or_create_qr_code(db, app, tenant_id: str) -> QrCodeResult:
                 qr_image=qr_image,
                 expires_in_seconds=expires_in_seconds,
                 instance_name=instance_name,
+                already_connected=already_connected,
+                phone=connected_phone,
             )
         except Exception as exc:  # noqa: BLE001
             last_error = exc
@@ -380,9 +475,7 @@ def _fetch_state_via_connection_endpoint(app, instance_name: str) -> ConnectionS
         return None
 
     payload = _validate_response_json(response, "connectionState")
-    status = _normalize_status(
-        payload.get("instance") if isinstance(payload, dict) and isinstance(payload.get("instance"), str) else payload.get("state") if isinstance(payload, dict) else None
-    )
+    status = _normalize_status(_status_from_payload(payload))
     phone = _phone_from_payload(payload)
     return ConnectionSnapshot(status=status, phone=phone)
 
@@ -431,7 +524,8 @@ def sync_connection_status(db, app, tenant_id: str) -> ConnectionSnapshot:
     Story 3.2 will use this to handle webhook-driven transitions.
     """
     connection = _ensure_connection_state(db, tenant_id)
-    instance_name = connection.evolution_instance or _instance_name_for_tenant(tenant_id)
+    fallback_tenant_instance = connection.evolution_instance or _instance_name_for_tenant(tenant_id)
+    instance_name, _ = _resolve_instance_name(app, fallback_tenant_instance)
 
     snapshot = _fetch_state_via_connection_endpoint(app, instance_name)
     if snapshot is None:

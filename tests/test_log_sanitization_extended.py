@@ -119,6 +119,15 @@ class OpenAIKeyPatternTests(unittest.TestCase):
         self.assertNotIn("abc123tokenvalue", result)
         self.assertIn("Bearer [REDACTED]", result)
 
+    def test_telegram_bot_url_path_is_redacted(self):
+        raw = (
+            "POST https://api.telegram.org/"
+            "bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11/sendMessage failed"
+        )
+        result = _sanitize(raw)
+        self.assertNotIn("ABC-DEF1234ghIkl-zyx57W2v1u123ew11", result)
+        self.assertIn("/bot[REDACTED]/sendMessage", result)
+
 
 # ---------------------------------------------------------------------------
 # Nested container sanitization

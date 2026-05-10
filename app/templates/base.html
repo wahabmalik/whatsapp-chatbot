@@ -33,6 +33,7 @@
         <a href="{{ url_for('dashboard.dashboard_home') }}#activity">Activity</a>
         <a href="{{ url_for('dashboard.dashboard_home') }}#results">Results</a>
         <a href="{{ url_for('dashboard.dashboard_home') }}#help">Help</a>
+        <a href="{{ url_for('onboarding.onboarding_page') }}" class="{% if page_key == 'onboarding' %}active{% endif %}" {% if page_key == 'onboarding' %}aria-current="page"{% endif %}>Connect WhatsApp</a>
         <a href="{{ url_for('dashboard.operator_access', next=url_for('dashboard.operator_dashboard')) }}">Operator</a>
         {% else %}
         <a href="{{ url_for('dashboard.operator_dashboard') }}" class="{% if page_key == 'dashboard' %}active{% endif %}" {% if page_key == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
@@ -44,9 +45,23 @@
         {% endif %}
       </nav>
 
-      <a href="{{ url_for('dashboard.setup') if current_nav_mode == 'operator' else url_for('dashboard.dashboard_home') }}#help" class="cta-link">
-        {{ 'Open Setup' if current_nav_mode == 'operator' else 'Get Help' }}
-      </a>
+      <div class="topbar-actions">
+        <a href="{{ url_for('dashboard.setup') if current_nav_mode == 'operator' else url_for('dashboard.dashboard_home') }}#help" class="cta-link">
+          {{ 'Open Setup' if current_nav_mode == 'operator' else 'Get Help' }}
+        </a>
+
+        {% if auth_logged_in and auth_logout_url %}
+        <div class="account-chip" aria-label="Signed in account">
+          <span class="account-email">{{ auth_user_email or 'Signed in user' }}</span>
+          <form method="post" action="{{ auth_logout_url }}" class="account-logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="account-logout-button">Log out</button>
+          </form>
+        </div>
+        {% elif auth_login_url %}
+        <a href="{{ auth_login_url }}" class="account-login-link">Log in</a>
+        {% endif %}
+      </div>
     </header>
 
     <main class="main-pane">
@@ -58,6 +73,7 @@
       <a href="{{ url_for('dashboard.dashboard_home') }}#overview" class="{% if page_key == 'end-user' %}active{% endif %}" {% if page_key == 'end-user' %}aria-current="page"{% endif %}>Overview</a>
       <a href="{{ url_for('dashboard.dashboard_home') }}#activity">Activity</a>
       <a href="{{ url_for('dashboard.dashboard_home') }}#results">Results</a>
+      <a href="{{ url_for('onboarding.onboarding_page') }}" class="{% if page_key == 'onboarding' %}active{% endif %}" {% if page_key == 'onboarding' %}aria-current="page"{% endif %}>Connect</a>
       <a href="{{ url_for('dashboard.dashboard_home') }}#help">Help</a>
     </nav>
     {% else %}

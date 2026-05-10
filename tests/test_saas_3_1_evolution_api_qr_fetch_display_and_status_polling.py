@@ -126,14 +126,15 @@ class TestStory31QrFetch:
         assert resp.status_code == 302
         assert "/auth/login" in resp.headers["Location"]
 
-    def test_qr_code_rejects_non_entitled_tenant(self, client):
+    def test_qr_code_rejects_non_entitled_tenant(self, client, monkeypatch):
         _signup_and_login(client, email="no-sub@example.com")
+        monkeypatch.setattr("app.onboarding.service._is_entitled", lambda _db, _tenant_id: False)
         resp = client.get("/onboarding/qr-code")
         assert resp.status_code == 402
         payload = resp.get_json()
         assert payload["error_code"] == "NO_ACTIVE_SUBSCRIPTION"
 
-    def test_qr_code_fetch_uses_tenant_instance_and_returns_data_uri(self, onboarding_app, client, monkeypatch):
+    def test_qr_code_fetch_returns_data_uri(self, onboarding_app, client, monkeypatch):
         _signup_and_login(client, email="active@example.com")
         tenant_id = _get_session_tenant(client)
         _set_subscription_status(onboarding_app, tenant_id, status="active")
@@ -157,7 +158,7 @@ class TestStory31QrFetch:
         assert payload["ok"] is True
         assert payload["data"]["qr_image"].startswith("data:image/png;base64,")
         assert payload["data"]["expires_in_seconds"] == 60
-        assert payload["data"]["instance_name"].startswith("tenant-")
+        assert payload["data"]["instance_name"] == "global-fallback-instance"
 
     def test_qr_fetch_provisions_connection_state_when_missing(self, onboarding_app, client, monkeypatch):
         from app.models import ConnectionState
@@ -207,6 +208,109 @@ class TestStory31QrFetch:
         assert resp.status_code == 503
         payload = resp.get_json()
         assert payload["error_code"] == "EVOLUTION_UNAVAILABLE"
+
+    def test_shared_mode_create_403_passthrough_returns_qr(self, onboarding_app, client, monkeypatch):
+        onboarding_app.config["ONBOARDING_INSTANCE_MODE"] = "shared"
+
+        _signup_and_login(client, email="shared-403@example.com")
+        tenant_id = _get_session_tenant(client)
+        _set_subscription_status(onboarding_app, tenant_id, status="active")
+
+        post_mock = MagicMock(status_code=403, content=b'{"message":"forbidden"}')
+        post_mock.json.return_value = {"message": "forbidden"}
+
+        get_mock = MagicMock(status_code=200, content=b'{"base64":"ZmFrZXFy","expires_in_seconds":90}')
+        get_mock.json.return_value = {"base64": "ZmFrZXFy", "expires_in_seconds": 90}
+
+        monkeypatch.setattr("app.onboarding.service.requests.post", lambda *a, **k: post_mock)
+        monkeypatch.setattr("app.onboarding.service.requests.get", lambda *a, **k: get_mock)
+
+        resp = client.get("/onboarding/qr-code")
+        assert resp.status_code == 200
+
+        payload = resp.get_json()
+        assert payload["ok"] is True
+        assert payload["data"]["instance_name"] == "global-fallback-instance"
+        assert payload["data"]["already_connected"] is False
+        assert payload["data"]["qr_image"].startswith("data:image/png;base64,")
+        assert payload["data"]["expires_in_seconds"] == 90
+
+    def test_shared_mode_returns_already_connected_without_qr(self, onboarding_app, client, monkeypatch):
+        from app.models import ConnectionState
+
+        onboarding_app.config["ONBOARDING_INSTANCE_MODE"] = "shared"
+
+        _signup_and_login(client, email="shared-open@example.com")
+        tenant_id = _get_session_tenant(client)
+        _set_subscription_status(onboarding_app, tenant_id, status="active")
+
+        post_mock = MagicMock(status_code=403, content=b'{"message":"forbidden"}')
+        post_mock.json.return_value = {"message": "forbidden"}
+
+        get_mock = MagicMock(status_code=200, content=b'{"instance":{"state":"open"},"phone":"923001112223"}')
+        get_mock.json.return_value = {"instance": {"state": "open"}, "phone": "923001112223"}
+
+        monkeypatch.setattr("app.onboarding.service.requests.post", lambda *a, **k: post_mock)
+        monkeypatch.setattr("app.onboarding.service.requests.get", lambda *a, **k: get_mock)
+
+        resp = client.get("/onboarding/qr-code")
+        assert resp.status_code == 200
+
+        payload = resp.get_json()
+        assert payload["ok"] is True
+        assert payload["data"]["instance_name"] == "global-fallback-instance"
+        assert payload["data"]["already_connected"] is True
+        assert payload["data"]["phone"] == "923001112223"
+        assert payload["data"]["qr_image"] == ""
+        assert payload["data"]["expires_in_seconds"] == 0
+
+        db = onboarding_app.extensions["saas_db"]
+        sess = db.session()
+        try:
+            row = sess.query(ConnectionState).filter(ConnectionState.tenant_id == tenant_id).one()
+            assert row.status == "connected"
+            assert row.evolution_instance == "global-fallback-instance"
+            assert row.phone_number == "923001112223"
+            assert row.connected_at is not None
+        finally:
+            sess.close()
+
+    def test_tenant_mode_forces_tenant_instance_name(self, onboarding_app, client, monkeypatch):
+        onboarding_app.config["ONBOARDING_INSTANCE_MODE"] = "tenant"
+
+        _signup_and_login(client, email="tenant-mode@example.com")
+        tenant_id = _get_session_tenant(client)
+        _set_subscription_status(onboarding_app, tenant_id, status="active")
+
+        calls: list[tuple[str, str]] = []
+
+        def _post(url, *args, **kwargs):
+            calls.append(("post", url))
+            response = MagicMock(status_code=201, content=b"{}")
+            response.json.return_value = {}
+            return response
+
+        def _get(url, *args, **kwargs):
+            calls.append(("get", url))
+            response = MagicMock(status_code=200, content=b'{"base64":"ZmFrZXFy","expires_in_seconds":30}')
+            response.json.return_value = {"base64": "ZmFrZXFy", "expires_in_seconds": 30}
+            return response
+
+        monkeypatch.setattr("app.onboarding.service.requests.post", _post)
+        monkeypatch.setattr("app.onboarding.service.requests.get", _get)
+
+        resp = client.get("/onboarding/qr-code")
+        assert resp.status_code == 200
+        payload = resp.get_json()
+        assert payload["ok"] is True
+
+        instance_name = payload["data"]["instance_name"]
+        assert instance_name.startswith("tenant-")
+        assert instance_name != "global-fallback-instance"
+
+        connect_call_urls = [url for method, url in calls if method == "get"]
+        assert len(connect_call_urls) == 1
+        assert connect_call_urls[0].endswith(f"/instance/connect/{instance_name}")
 
 
 class TestStory31StatusStream:

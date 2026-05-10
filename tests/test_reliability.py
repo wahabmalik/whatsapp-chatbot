@@ -433,6 +433,240 @@ class UnsupportedInboundWebhookHandlingTests(unittest.TestCase):
         mock_process.assert_not_called()
 
 
+class InstagramWebhookE2ETests(unittest.TestCase):
+    def setUp(self):
+        self._env_patch = patch.dict(
+            os.environ,
+            {
+                **REQUIRED_ENV,
+                "OUTBOUND_CHANNEL": "instagram",
+                "INSTAGRAM_OUTBOUND_URL": "https://example.com/instagram/messages",
+                "INSTAGRAM_DEFAULT_RECIPIENT_ID": "17841400008460056",
+            },
+            clear=False,
+        )
+        self._env_patch.start()
+
+        from app import views
+
+        self.views = views
+        views.clear_message_idempotency_cache()
+
+    def tearDown(self):
+        self._env_patch.stop()
+
+    def _payload(self) -> dict:
+        return {
+            "object": "instagram",
+            "entry": [
+                {
+                    "id": "17841499999999999",
+                    "messaging": [
+                        {
+                            "sender": {"id": "17841400008460056"},
+                            "recipient": {"id": "17841499999999999"},
+                            "timestamp": 1700000002,
+                            "message": {
+                                "mid": "ig-mid-e2e-001",
+                                "text": "hello from instagram e2e",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+
+    def test_handle_message_processes_instagram_payload_end_to_end(self):
+        from app import create_app
+
+        app = create_app()
+        captured: dict[str, object] = {}
+
+        class _FakeChannel:
+            def send(self, data, *, request_id, delivery_context=None):
+                captured["data"] = data
+                captured["request_id"] = request_id
+                captured["delivery_context"] = delivery_context
+                return {
+                    "ok": True,
+                    "status": "sent",
+                    "error": None,
+                    "fallback_sent": False,
+                    "operator_review_flagged": False,
+                    "operator_review_reason": None,
+                    "attempts": 1,
+                }
+
+        with app.app_context():
+            with patch("app.utils.whatsapp_utils.get_outbound_channel", return_value=_FakeChannel()):
+                with patch(
+                    "app.utils.whatsapp_utils._generate_reply_result",
+                    return_value={
+                        "ok": True,
+                        "reply_text": "instagram reply",
+                        "confidence": 0.9,
+                        "status": "ok",
+                        "error_code": None,
+                        "metadata": None,
+                    },
+                ):
+                    with app.test_request_context(json=self._payload()):
+                        response = self.views.handle_message()
+
+        self.assertEqual(response[1], 200)
+        payload = response[0].get_json()
+        self.assertEqual(payload["status"], "ok")
+        self.assertIn("correlation_id", payload)
+        self.assertEqual(captured["delivery_context"]["recipient_id"], "17841400008460056")
+        self.assertEqual(captured["delivery_context"]["instagram_recipient_id"], "17841400008460056")
+        self.assertEqual(captured["delivery_context"]["wa_id"], "17841400008460056")
+
+    def test_handle_message_skips_duplicate_instagram_message(self):
+        app = Flask(__name__)
+        app.config["IDEMPOTENCY_WINDOW_SECONDS"] = 300
+
+        with patch(
+            "app.views.process_whatsapp_message",
+            return_value={
+                "from": "17841400008460056",
+                "message_id": "ig-mid-e2e-001",
+                "agent": "Ops",
+                "input_text": "hello from instagram e2e",
+                "reply_text": "instagram reply",
+                "status": "sent",
+                "error": None,
+                "operator_review_flagged": False,
+                "operator_review_reason": None,
+            },
+        ) as mock_process:
+            with app.test_request_context(json=self._payload()):
+                first = self.views.handle_message()
+            with app.test_request_context(json=self._payload()):
+                second = self.views.handle_message()
+
+        self.assertEqual(first[1], 200)
+        self.assertEqual(second[1], 200)
+        self.assertEqual(mock_process.call_count, 1)
+        self.assertTrue(second[0].get_json()["duplicate"])
+
+
+class MessengerWebhookE2ETests(unittest.TestCase):
+    def setUp(self):
+        self._env_patch = patch.dict(
+            os.environ,
+            {
+                **REQUIRED_ENV,
+                "OUTBOUND_CHANNEL": "messenger",
+                "MESSENGER_OUTBOUND_URL": "https://example.com/messenger/messages",
+                "MESSENGER_DEFAULT_RECIPIENT_ID": "1234567890123456",
+            },
+            clear=False,
+        )
+        self._env_patch.start()
+
+        from app import views
+
+        self.views = views
+        views.clear_message_idempotency_cache()
+
+    def tearDown(self):
+        self._env_patch.stop()
+
+    def _payload(self) -> dict:
+        return {
+            "object": "page",
+            "entry": [
+                {
+                    "id": "9876543210987654",
+                    "messaging": [
+                        {
+                            "sender": {"id": "1234567890123456"},
+                            "recipient": {"id": "9876543210987654"},
+                            "timestamp": 1700000003,
+                            "message": {
+                                "mid": "m-mid-e2e-001",
+                                "text": "hello from messenger e2e",
+                            },
+                        }
+                    ],
+                }
+            ],
+        }
+
+    def test_handle_message_processes_messenger_payload_end_to_end(self):
+        from app import create_app
+
+        app = create_app()
+        captured: dict[str, object] = {}
+
+        class _FakeChannel:
+            def send(self, data, *, request_id, delivery_context=None):
+                captured["data"] = data
+                captured["request_id"] = request_id
+                captured["delivery_context"] = delivery_context
+                return {
+                    "ok": True,
+                    "status": "sent",
+                    "error": None,
+                    "fallback_sent": False,
+                    "operator_review_flagged": False,
+                    "operator_review_reason": None,
+                    "attempts": 1,
+                }
+
+        with app.app_context():
+            with patch("app.utils.whatsapp_utils.get_outbound_channel", return_value=_FakeChannel()):
+                with patch(
+                    "app.utils.whatsapp_utils._generate_reply_result",
+                    return_value={
+                        "ok": True,
+                        "reply_text": "messenger reply",
+                        "confidence": 0.9,
+                        "status": "ok",
+                        "error_code": None,
+                        "metadata": None,
+                    },
+                ):
+                    with app.test_request_context(json=self._payload()):
+                        response = self.views.handle_message()
+
+        self.assertEqual(response[1], 200)
+        payload = response[0].get_json()
+        self.assertEqual(payload["status"], "ok")
+        self.assertIn("correlation_id", payload)
+        self.assertEqual(captured["delivery_context"]["recipient_id"], "1234567890123456")
+        self.assertEqual(captured["delivery_context"]["messenger_recipient_id"], "1234567890123456")
+        self.assertEqual(captured["delivery_context"]["wa_id"], "1234567890123456")
+
+    def test_handle_message_skips_duplicate_messenger_message(self):
+        app = Flask(__name__)
+        app.config["IDEMPOTENCY_WINDOW_SECONDS"] = 300
+
+        with patch(
+            "app.views.process_whatsapp_message",
+            return_value={
+                "from": "1234567890123456",
+                "message_id": "m-mid-e2e-001",
+                "agent": "Ops",
+                "input_text": "hello from messenger e2e",
+                "reply_text": "messenger reply",
+                "status": "sent",
+                "error": None,
+                "operator_review_flagged": False,
+                "operator_review_reason": None,
+            },
+        ) as mock_process:
+            with app.test_request_context(json=self._payload()):
+                first = self.views.handle_message()
+            with app.test_request_context(json=self._payload()):
+                second = self.views.handle_message()
+
+        self.assertEqual(first[1], 200)
+        self.assertEqual(second[1], 200)
+        self.assertEqual(mock_process.call_count, 1)
+        self.assertTrue(second[0].get_json()["duplicate"])
+
+
 class MetricsEndpointTests(unittest.TestCase):
     def test_metrics_endpoint_returns_snapshot(self):
         from app.views import webhook_blueprint
@@ -454,6 +688,7 @@ class MetricsEndpointTests(unittest.TestCase):
 class DashboardRouteGuardTests(unittest.TestCase):
     def setUp(self):
         from app.views_dashboard import dashboard_blueprint
+        from app.onboarding import onboarding_blueprint
 
         self.app = Flask(__name__, template_folder="../app/templates", static_folder="../app/static")
         self.app.config.update(
@@ -469,6 +704,7 @@ class DashboardRouteGuardTests(unittest.TestCase):
             }
         )
         self.app.register_blueprint(dashboard_blueprint)
+        self.app.register_blueprint(onboarding_blueprint)
         self.client = self.app.test_client()
 
     def _assert_redirect_next(self, location: str, expected_next: str) -> None:
@@ -558,6 +794,38 @@ class DashboardRouteGuardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'value="whatsapp-support-ops" checked', response.data)
         self.assertIn(b'id="save-agent" type="submit" disabled', response.data)
+
+    def test_customer_dashboard_renders_social_connect_buttons(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("Connect Instagram", html)
+        self.assertIn("Connect Facebook Messenger", html)
+        self.assertIn("Connect TikTok", html)
+
+    def test_customer_dashboard_uses_configured_connect_urls(self):
+        self.app.config["INSTAGRAM_CONNECT_URL"] = "https://example.com/instagram/connect"
+        self.app.config["MESSENGER_CONNECT_URL"] = "https://example.com/messenger/connect"
+        self.app.config["TIKTOK_CONNECT_URL"] = "https://example.com/tiktok/connect"
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("https://example.com/instagram/connect", html)
+        self.assertIn("https://example.com/messenger/connect", html)
+        self.assertIn("https://example.com/tiktok/connect", html)
+
+    def test_customer_dashboard_rejects_unsafe_connect_urls(self):
+        self.app.config["INSTAGRAM_CONNECT_URL"] = "javascript:alert(1)"
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertNotIn("javascript:alert(1)", html)
+        self.assertIn("/operator/access", html)
 
     def test_operator_post_guard_returns_json_redirect(self):
         response = self.client.post("/setup/verify")

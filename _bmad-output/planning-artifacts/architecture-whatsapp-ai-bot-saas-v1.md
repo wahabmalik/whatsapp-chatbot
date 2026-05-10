@@ -177,14 +177,16 @@ The existing Python/Flask bot handles AI response generation and Evolution API i
 | **Rationale** | SSE is simpler to implement in Flask than WebSockets, sufficient for one-directional status push, no extra infrastructure. |
 | **Tradeoff** | One persistent HTTP connection per open dashboard tab. Acceptable at v1 scale. |
 
-### ADR-006: Flask-Login + Server-Side Sessions
+### ADR-006: Flask-Login + Server-Side Sessions with Multi-Role Support
 
 | | |
 |---|---|
 | **Status** | Accepted |
-| **Decision** | Flask-Login with server-side session storage (PostgreSQL-backed via flask-session). |
-| **Rationale** | Existing Flask codebase. Avoids JWT complexity and token revocation edge cases. |
+| **Decision** | Flask-Login with server-side session storage (PostgreSQL-backed via flask-session). Session carries user_id, tenant_id, and role ('customer' or 'admin'). |
+| **Rationale** | Existing Flask codebase. Avoids JWT complexity. Multi-role support allows single app to serve both customer and admin dashboards. |
 | **Tradeoff** | Session store becomes a dependency. Mitigated by PostgreSQL reuse (no new infra). |
+| **Role Routing** | On login, role determined by checking if user is in admin_users list. Customer → /dashboard. Admin → /admin/customers. |
+| **Implementation** | Decorators: `@require_role('customer')` on customer routes, `@require_role('admin')` on admin routes. |
 
 ### ADR-007: Enforcement Check is Pre-Generation, Not Post
 
@@ -194,6 +196,17 @@ The existing Python/Flask bot handles AI response generation and Evolution API i
 | **Decision** | Quota check runs before calling OpenAI. If blocked, skip generation and return blocked-path response. |
 | **Rationale** | Prevents incurring AI cost for over-limit tenants. Enforcement is deterministic and auditable (R5). |
 | **Tradeoff** | Race condition window at exact limit boundary. Mitigated by atomic counter compare-and-decrement. |
+
+### ADR-008: Stripe Checkout Redirect (v1) with Embedded Path (P1)
+
+| | |
+|---|---|
+| **Status** | Accepted for v1 (redirect); P1 review for embedded |
+| **v1 Decision** | POST /billing/checkout with plan_key returns checkout_url to Stripe hosted page. Browser redirects user. |
+| **v1 Rationale** | Stripe-hosted checkout is PCI-compliant out-of-box. No payment data touches Flask app. Simpler initial implementation. |
+| **P1 Path** | Embed Stripe Payment Element in-page using Stripe JS for reduced friction. |
+| **Webhook Handler** | POST /webhooks/stripe verifies signature, processes invoice.payment_succeeded, creates/updates subscription and entitlements. Idempotent on event ID. |
+| **Reconciliation** | Daily cron validates local subscription state matches Stripe. Any drift triggers audit alert. |
 
 ---
 

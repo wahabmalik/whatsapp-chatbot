@@ -24,6 +24,7 @@ from app.services.observability import (
 )
 from app.services.metrics import get_metrics_collector
 from app.saas_db import SaaSDatabase
+from app.cli_db import db_cli
 
 
 def create_app():
@@ -52,8 +53,9 @@ def create_app():
         )
 
     # Verify the WhatsApp channel lazy import resolves at startup, not at first request.
-    from app.services.channel_interface import _probe_whatsapp_send_fn
+    from app.services.channel_interface import _probe_selected_outbound_channel, _probe_whatsapp_send_fn
     _probe_whatsapp_send_fn()
+    _probe_selected_outbound_channel(app)
 
     # SaaS v1 database — initialise only when DATABASE_URL is configured.
     saas_db = SaaSDatabase()
@@ -99,6 +101,7 @@ def create_app():
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(dashboard_blueprint)
     app.register_blueprint(onboarding_blueprint)
+    app.cli.add_command(db_cli)
 
     @app.before_request
     def _bind_correlation_id():

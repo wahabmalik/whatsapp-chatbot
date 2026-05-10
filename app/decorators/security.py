@@ -208,3 +208,29 @@ def signature_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def require_role(*allowed_roles):
+    """
+    Decorator to enforce role-based access control.
+    
+    Usage::
+        @require_role('customer')
+        def dashboard():
+            ...
+            
+        @require_role('admin')
+        def admin_panel():
+            ...
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            from flask import session, redirect, url_for
+            
+            user_role = session.get("auth_user_role")
+            if user_role not in allowed_roles:
+                return redirect(url_for("auth.login")), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

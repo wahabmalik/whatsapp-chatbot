@@ -94,3 +94,33 @@ Mitigation: CI gate requiring structured closure evidence block for every done s
 - Existing backlog from completed epics is effectively closed.
 - Outstanding roadmap work exists, but it is post-v1/next-cycle scope rather than unfinished v1 commitments.
 - Recommended next iteration: start at Epic 9 with the above story sequence and gate discipline.
+
+## MR Promotion (2026-05-09)
+
+Source artifact:
+- _bmad-output/planning-artifacts/research/market-india-d2c-ecommerce-smb-whatsapp-research-2026-05-09.md
+
+Planning constraint adopted:
+- ICP: India D2C ecommerce SMB operators using WhatsApp for sales/support workflows.
+- Geography: India only.
+
+Promoted planning implications (next 1-2 sprints):
+
+1. Add India D2C onboarding defaults as first-class scope in the conditional customer-value pull.
+- Proposed scope insertion under Sprint 3: "D2C starter templates" bundle (abandoned cart, order status, COD confirmation, support triage).
+- Story candidate: 12.4 - India D2C Starter Template Pack.
+
+2. Move message-cost governance from future optimization to near-term delivery.
+- Proposed scope insertion under Sprint 3: projected spend signal and template-category tagging before campaign/send actions.
+- Story candidate: 12.5 - Messaging Cost Guardrails v1.
+
+3. Elevate compliance/sendability observability from implicit to explicit UX.
+- Proposed scope insertion under Sprint 3: consent capture ledger, template status visibility, and quality-alert-driven throttling cues.
+- Story candidate: 12.6 - Compliance and Sendability Control Surface.
+
+Execution rule:
+- Keep existing Sprint 3 pull condition unchanged; if Sprint 1-2 P0 gates are not complete, these promoted stories defer with Epic 12.
+
+Evidence quality note:
+- Confidence is high on competitive packaging and pricing structure.
+- Confidence is medium on exact India WhatsApp user-size estimates due to secondary-source dependence.
