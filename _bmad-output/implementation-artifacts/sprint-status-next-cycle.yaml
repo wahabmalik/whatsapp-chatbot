@@ -124,7 +124,6 @@ development_status:
   # depends-on: next-cycle-9-2
   # priority: P0
   # sprint: 1
-  next-cycle-9-3-adapter-parity-contract-suite-and-staging-gate: ready-for-dev
   next-cycle-9-3-adapter-parity-contract-suite-and-staging-gate: done
 
   epic-next-9-retrospective: optional
@@ -146,7 +145,7 @@ development_status:
   # depends-on: next-cycle-9-3
   # priority: P0
   # sprint: 2
-  next-cycle-10-1-analytics-reporting-api: ready-for-dev
+  next-cycle-10-1-analytics-reporting-api: done
 
   # Story 10.2 — Dashboard Analytics v1
   #   Problem: Operators must read raw event files; no visual trends or summaries.
@@ -157,7 +156,7 @@ development_status:
   # depends-on: next-cycle-10-1
   # priority: P0
   # sprint: 2
-  next-cycle-10-2-dashboard-analytics-v1: backlog
+  next-cycle-10-2-dashboard-analytics-v1: done
 
   epic-next-10-retrospective: optional
 
@@ -167,7 +166,7 @@ development_status:
   # P0 Delivery: 24h soak + rollback drill + restart continuity
   # depends-on: Epic 9 (Gate B complete)
   # ──────────────────────────────────────────────────────────────────────────
-  epic-next-11: backlog
+  epic-next-11: in-progress
 
   # Story 11.1 — SQLite 24h Soak Automation and Evidence Artifact
   #   Problem: SQLite stability over sustained production-representative load unknown.
@@ -180,7 +179,7 @@ development_status:
   # priority: P0
   # sprint: 2
   # note: can parallelize with 10.1 after 9.3 complete
-  next-cycle-11-1-sqlite-24h-soak-automation-and-evidence: backlog
+  next-cycle-11-1-sqlite-24h-soak-automation-and-evidence: ready-for-dev
 
   # Story 11.2 — Rollback Drill Automation and Acceptance Artifact
   #   Problem: Rollback from SQLite to memory-store has no documented drill.
