@@ -79,6 +79,7 @@ so that I can access my WhatsApp bot workspace without technical assistance.
 - Added focused failing auth contract tests before runtime edits.
 - Implemented server-side session-backed auth routes and protected billing placeholder.
 - Validated auth and adjacent SaaS schema coverage with targeted pytest runs.
+- Applied sign-in loop regression hardening on 2026-05-18 for authenticated auth-page redirects and loop-safe `next` fallback behavior.
 
 ### Completion Notes
 
@@ -87,6 +88,7 @@ so that I can access my WhatsApp bot workspace without technical assistance.
 - Implemented protected `/billing/plans` placeholder route to satisfy the post-signup and post-logout redirect contract.
 - Chose minimal additive HTML responses for auth GET pages instead of introducing new templates in this story slice.
 - Focused tests pass for the story contract and the adjacent SaaS schema bootstrap slice.
+- Added regression protections so authenticated users are redirected away from `/auth/login` and `/auth/signup`, and loop-prone `next` values now fall back to the default post-login route.
 
 ## File List
 
@@ -103,8 +105,8 @@ so that I can access my WhatsApp bot workspace without technical assistance.
 
 - [x] [Review][Patch] CSRF token not passed to template context — `signup_form()` and `login()` discard `_get_csrf_token()` return value; browser form submissions always receive a 400 CSRF error; AC 5 violated [app/views_auth.py:58,73]
 - [x] [Review][Patch] `login_session` does not clear session before writing auth keys — session fixation attack possible [app/services/auth_service.py:login_session]
-- [x] [Review][Defer] `authenticate_account` `.one()` raises `NoResultFound` on orphaned tenant — pre-existing schema assumption, no in-band path to trigger [app/services/auth_service.py:authenticate_account] — deferred, pre-existing
-- [x] [Review][Defer] `SESSION_COOKIE_SECURE` defaults to `False` — production hardening gap; configurable via `SESSION_COOKIE_SECURE` env var [app/config.py] — deferred, pre-existing
+- [x] [Review][Patch] `authenticate_account` now handles orphaned tenant rows via `.one_or_none()` and returns `INVALID_CREDENTIALS` contract instead of surfacing ORM exceptions [app/services/auth_service.py:authenticate_account]
+- [x] [Review][Patch] `SESSION_COOKIE_SECURE` default now derives from `APP_BASE_URL` scheme (`https://` => `True`) with explicit env override support [app/config.py]
 
 ### Change Log
 
@@ -112,3 +114,5 @@ so that I can access my WhatsApp bot workspace without technical assistance.
 - 2026-05-04: Story moved to in-progress, auth contract tests added, and auth/session implementation completed.
 - 2026-05-04: Story validated with targeted pytest coverage and moved to review.
 - 2026-05-04: Code review completed — 2 patches applied (CSRF template var, session fixation fix); 2 items deferred. All patches verified with passing tests. Story marked done.
+- 2026-05-18: Regression fix applied for sign-in redirect loops; added auth-route loop guards and authenticated auth-page redirect tests.
+- 2026-05-18: Closed deferred auth risks by patching orphan-tenant login handling and secure-cookie defaults; added dedicated regression tests.

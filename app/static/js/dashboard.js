@@ -21,6 +21,27 @@
     }, 3000);
   }
 
+  function withBusy(button, callback) {
+    if (!button) {
+      return callback();
+    }
+    if (button.disabled) {
+      return Promise.resolve();
+    }
+    var originalLabel = button.textContent;
+    var loadingLabel = button.getAttribute("data-loading-label") || "Working...";
+    button.disabled = true;
+    button.classList.add("is-loading");
+    button.textContent = loadingLabel;
+    return Promise.resolve()
+      .then(callback)
+      .finally(function () {
+        button.disabled = false;
+        button.classList.remove("is-loading");
+        button.textContent = originalLabel;
+      });
+  }
+
   var copyButtons = document.querySelectorAll("[data-copy-target]");
   copyButtons.forEach(function (button) {
     button.addEventListener("click", function () {
@@ -277,36 +298,38 @@
         errorMessage.classList.add("hide");
       }
 
-      fetch(endpoint, { method: "POST", headers: { "X-CSRFToken": getCsrfToken() } })
-        .then(function (response) {
-          return response.json().then(function (payload) {
-            return { ok: response.ok, payload: payload };
-          });
-        })
-        .then(function (result) {
-          var message = result.payload.message || (result.ok ? "Verification succeeded" : "Verification failed");
-          if (result.ok) {
-            if (okMessage) {
-              okMessage.textContent = message;
-              okMessage.classList.remove("hide");
+      withBusy(setupVerifyButton, function () {
+        return fetch(endpoint, { method: "POST", headers: { "X-CSRFToken": getCsrfToken() } })
+          .then(function (response) {
+            return response.json().then(function (payload) {
+              return { ok: response.ok, payload: payload };
+            });
+          })
+          .then(function (result) {
+            var message = result.payload.message || (result.ok ? "Verification succeeded" : "Verification failed");
+            if (result.ok) {
+              if (okMessage) {
+                okMessage.textContent = message;
+                okMessage.classList.remove("hide");
+              }
+              showToast(message, false);
+            } else {
+              if (errorMessage) {
+                errorMessage.textContent = message;
+                errorMessage.classList.remove("hide");
+              }
+              showToast(message, true);
             }
-            showToast(message, false);
-          } else {
+          })
+          .catch(function () {
+            var fallback = "Could not run verification check";
             if (errorMessage) {
-              errorMessage.textContent = message;
+              errorMessage.textContent = fallback;
               errorMessage.classList.remove("hide");
             }
-            showToast(message, true);
-          }
-        })
-        .catch(function () {
-          var fallback = "Could not run verification check";
-          if (errorMessage) {
-            errorMessage.textContent = fallback;
-            errorMessage.classList.remove("hide");
-          }
-          showToast(fallback, true);
-        });
+            showToast(fallback, true);
+          });
+      });
     });
   }
 
@@ -381,52 +404,45 @@
         }
 
         var saveButton = openAiKeyForm.querySelector("button[type='submit']");
-        if (saveButton) {
-          saveButton.disabled = true;
-        }
-
-        fetch(endpoint, {
-          method: "POST",
-          headers: { "X-CSRFToken": getCsrfToken() },
-          body: new FormData(openAiKeyForm),
-        })
-          .then(function (response) {
-            return response.json().then(function (payload) {
-              return { ok: response.ok, payload: payload };
-            });
+        withBusy(saveButton, function () {
+          return fetch(endpoint, {
+            method: "POST",
+            headers: { "X-CSRFToken": getCsrfToken() },
+            body: new FormData(openAiKeyForm),
           })
-          .then(function (result) {
-            var message = result.payload.message || (result.ok ? "Saved" : "Save failed");
-            if (result.ok) {
-              if (okMessage) {
-                okMessage.textContent = message;
-                okMessage.classList.remove("hide");
+            .then(function (response) {
+              return response.json().then(function (payload) {
+                return { ok: response.ok, payload: payload };
+              });
+            })
+            .then(function (result) {
+              var message = result.payload.message || (result.ok ? "Saved" : "Save failed");
+              if (result.ok) {
+                if (okMessage) {
+                  okMessage.textContent = message;
+                  okMessage.classList.remove("hide");
+                }
+                showToast(message, false);
+                window.setTimeout(function () {
+                  window.location.reload();
+                }, 300);
+              } else {
+                if (errorMessage) {
+                  errorMessage.textContent = message;
+                  errorMessage.classList.remove("hide");
+                }
+                showToast(message, true);
               }
-              showToast(message, false);
-              window.setTimeout(function () {
-                window.location.reload();
-              }, 300);
-            } else {
+            })
+            .catch(function () {
+              var fallback = "Could not save OpenAI API key";
               if (errorMessage) {
-                errorMessage.textContent = message;
+                errorMessage.textContent = fallback;
                 errorMessage.classList.remove("hide");
               }
-              showToast(message, true);
-            }
-          })
-          .catch(function () {
-            var fallback = "Could not save OpenAI API key";
-            if (errorMessage) {
-              errorMessage.textContent = fallback;
-              errorMessage.classList.remove("hide");
-            }
-            showToast(fallback, true);
-          })
-          .finally(function () {
-            if (saveButton) {
-              saveButton.disabled = false;
-            }
-          });
+              showToast(fallback, true);
+            });
+        });
       });
     }
 
@@ -478,7 +494,193 @@
       });
   }
 
+  function renderAnalyticsBarRows(container, rows, valueSelector, valueFormatter) {
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = "";
+    if (!rows || !rows.length) {
+      var empty = document.createElement("p");
+      empty.className = "subtle-help";
+      empty.textContent = "No data yet.";
+      container.appendChild(empty);
+      return;
+    }
+
+    var maxValue = 0;
+    rows.forEach(function (row) {
+      maxValue = Math.max(maxValue, Number(valueSelector(row) || 0));
+    });
+    if (maxValue <= 0) {
+      maxValue = 1;
+    }
+
+    rows.forEach(function (row) {
+      var value = Number(valueSelector(row) || 0);
+      var percent = Math.max(0, Math.min(100, (value / maxValue) * 100));
+      var barRow = document.createElement("div");
+      barRow.className = "bar-row";
+
+      var label = document.createElement("span");
+      label.textContent = String(row.date || "-").slice(5);
+      barRow.appendChild(label);
+
+      var track = document.createElement("span");
+      track.className = "bar-track";
+      var fill = document.createElement("i");
+      fill.style.width = percent.toFixed(2) + "%";
+      track.appendChild(fill);
+      barRow.appendChild(track);
+
+      var valueNode = document.createElement("span");
+      valueNode.textContent = valueFormatter(value, row);
+      barRow.appendChild(valueNode);
+
+      container.appendChild(barRow);
+    });
+  }
+
+  function renderDeliveryBreakdown(container, breakdown) {
+    if (!container) {
+      return;
+    }
+
+    var success = Number((breakdown || {}).success || 0);
+    var retry = Number((breakdown || {}).retry || 0);
+    var failure = Number((breakdown || {}).failure || 0);
+    var total = success + retry + failure;
+
+    container.innerHTML = "";
+    [
+      { label: "Success", value: success },
+      { label: "Retry", value: retry },
+      { label: "Failure", value: failure },
+    ].forEach(function (row) {
+      var percent = total > 0 ? (row.value / total) * 100 : 0;
+      var barRow = document.createElement("div");
+      barRow.className = "bar-row";
+
+      var label = document.createElement("span");
+      label.textContent = row.label;
+      barRow.appendChild(label);
+
+      var track = document.createElement("span");
+      track.className = "bar-track";
+      var fill = document.createElement("i");
+      fill.style.width = percent.toFixed(2) + "%";
+      track.appendChild(fill);
+      barRow.appendChild(track);
+
+      var valueNode = document.createElement("span");
+      valueNode.textContent = row.value + " (" + percent.toFixed(1) + "%)";
+      barRow.appendChild(valueNode);
+
+      container.appendChild(barRow);
+    });
+  }
+
+  function refreshAnalyticsSummary() {
+    var analyticsNode = document.querySelector("[data-analytics-section]");
+    if (!analyticsNode) {
+      return;
+    }
+
+    var endpoint = analyticsNode.getAttribute("data-analytics-summary-url") || "/api/analytics/summary";
+    var statusNode = document.querySelector("[data-analytics-status]");
+    var insufficientNode = document.querySelector("[data-analytics-insufficient]");
+    var escalationRateNode = document.querySelector("[data-analytics-escalation-rate]");
+    var deliveryTotalNode = document.querySelector("[data-analytics-delivery-total]");
+    var latencyP95Node = document.querySelector("[data-analytics-latency-p95]");
+    var coverageHoursNode = document.querySelector("[data-analytics-coverage-hours]");
+    var volumeNode = document.querySelector("[data-analytics-volume-trend]");
+    var deliveryNode = document.querySelector("[data-analytics-delivery-breakdown]");
+    var latencyTrendNode = document.querySelector("[data-analytics-latency-trend]");
+
+    fetch(endpoint)
+      .then(function (response) {
+        return response.json().then(function (payload) {
+          return { ok: response.ok, payload: payload };
+        });
+      })
+      .then(function (result) {
+        if (!result.ok || !result.payload || !result.payload.ok) {
+          throw new Error("analytics_fetch_failed");
+        }
+
+        var payload = result.payload;
+        var volumeTrend = payload.volume_trend || [];
+        var escalationTrend = payload.escalation_trend || [];
+        var deliveryBreakdown = payload.delivery_breakdown || {};
+        var latencySummary = payload.latency_summary || {};
+        var latencyTrend = payload.latency_trend || [];
+        var coverageHours = Number(payload.coverage_hours || 0);
+        var insufficientData = Boolean(payload.insufficient_data);
+
+        var totalVolume = 0;
+        volumeTrend.forEach(function (item) {
+          totalVolume += Number(item.count || 0);
+        });
+        var totalEscalations = 0;
+        escalationTrend.forEach(function (item) {
+          totalEscalations += Number(item.count || 0);
+        });
+        var escalationRate = totalVolume > 0 ? (totalEscalations / totalVolume) * 100 : 0;
+
+        var deliveryTotal = Number(deliveryBreakdown.success || 0)
+          + Number(deliveryBreakdown.retry || 0)
+          + Number(deliveryBreakdown.failure || 0);
+
+        if (statusNode) {
+          statusNode.textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC";
+        }
+        if (insufficientNode) {
+          if (insufficientData) {
+            insufficientNode.classList.remove("hide");
+          } else {
+            insufficientNode.classList.add("hide");
+          }
+        }
+        if (escalationRateNode) {
+          escalationRateNode.textContent = escalationRate.toFixed(1) + "%";
+        }
+        if (deliveryTotalNode) {
+          deliveryTotalNode.textContent = String(deliveryTotal);
+        }
+        if (latencyP95Node) {
+          latencyP95Node.textContent = String(Number(latencySummary.p95_ms || 0).toFixed(0)) + "ms";
+        }
+        if (coverageHoursNode) {
+          coverageHoursNode.textContent = coverageHours.toFixed(1);
+        }
+
+        renderAnalyticsBarRows(volumeNode, volumeTrend, function (row) {
+          return row.count;
+        }, function (value) {
+          return String(Math.round(value));
+        });
+
+        renderDeliveryBreakdown(deliveryNode, deliveryBreakdown);
+
+        renderAnalyticsBarRows(latencyTrendNode, latencyTrend, function (row) {
+          return row.p95_ms;
+        }, function (value) {
+          return String(Math.round(value)) + "ms";
+        });
+      })
+      .catch(function () {
+        if (statusNode) {
+          statusNode.textContent = "Could not load analytics.";
+        }
+        if (insufficientNode) {
+          insufficientNode.classList.remove("hide");
+          insufficientNode.textContent = "Insufficient data: analytics are not available yet.";
+        }
+      });
+  }
+
   if (window.dashboardBoot && window.dashboardBoot.autoRefresh) {
+    refreshAnalyticsSummary();
     window.setInterval(function () {
       fetch("/api/health")
         .then(function (response) { return response.json(); })
@@ -505,6 +707,7 @@
             node.textContent = typeof value === "number" ? value.toFixed(2) + "s" : "No data yet";
           });
         });
+      refreshAnalyticsSummary();
     }, 30000);
   }
 

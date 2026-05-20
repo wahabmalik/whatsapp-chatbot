@@ -12,6 +12,7 @@ from threading import Lock
 from typing import Any
 
 from app.services.observability import sanitize_text
+from app.services.crm_export import export_analytics_event_to_crm
 
 
 ANALYTICS_EVENT_VERSION = "1.0"
@@ -114,6 +115,13 @@ def _percentile(values: list[int], percentile: float) -> int:
         return 0
 
     ordered = sorted(values)
+    return _percentile_from_sorted(ordered, percentile)
+
+
+def _percentile_from_sorted(ordered: list[int], percentile: float) -> int:
+    if not ordered:
+        return 0
+
     if len(ordered) == 1:
         return int(ordered[0])
 
@@ -211,11 +219,57 @@ def _build_latency_summary(events: list[dict[str, Any]]) -> dict[str, int]:
         delta_ms = int(max(0.0, (latest - earliest).total_seconds() * 1000.0))
         latencies.append(delta_ms)
 
+    ordered = sorted(latencies)
     return {
-        "p50_ms": _percentile(latencies, 0.50),
-        "p95_ms": _percentile(latencies, 0.95),
-        "p99_ms": _percentile(latencies, 0.99),
+        "p50_ms": _percentile_from_sorted(ordered, 0.50),
+        "p95_ms": _percentile_from_sorted(ordered, 0.95),
+        "p99_ms": _percentile_from_sorted(ordered, 0.99),
     }
+
+
+def _build_latency_trend(events: list[dict[str, Any]], *, window_days: int) -> list[dict[str, Any]]:
+    per_day_latencies: dict[str, list[int]] = {}
+
+    for event in events:
+        day_key = _event_date_key(event)
+        if day_key is None:
+            continue
+        latency = _coerce_detail_latency_ms(event)
+        if latency is None:
+            continue
+        per_day_latencies.setdefault(day_key, []).append(latency)
+
+    today = datetime.now(timezone.utc).date()
+    series: list[dict[str, Any]] = []
+    for offset in range(window_days):
+        day = today - timedelta(days=offset)
+        day_key = day.isoformat()
+        values = per_day_latencies.get(day_key, [])
+        ordered = sorted(values)
+        series.append(
+            {
+                "date": day_key,
+                "count": len(values),
+                "p50_ms": _percentile_from_sorted(ordered, 0.50),
+                "p95_ms": _percentile_from_sorted(ordered, 0.95),
+                "p99_ms": _percentile_from_sorted(ordered, 0.99),
+            }
+        )
+    return series
+
+
+def _coverage_hours(events: list[dict[str, Any]]) -> float:
+    timestamps = [
+        timestamp
+        for timestamp in (_analytics_event_timestamp(event) for event in events)
+        if timestamp is not None
+    ]
+    if len(timestamps) < 2:
+        return 0.0
+    earliest = min(timestamps)
+    latest = max(timestamps)
+    elapsed = (latest - earliest).total_seconds() / 3600.0
+    return max(0.0, elapsed)
 
 
 def get_retained_analytics_events(app, *, retention_days: int | None = None) -> list[dict[str, Any]]:
@@ -365,6 +419,7 @@ def emit_analytics_event(
     *,
     stage: str,
     correlation_id: str,
+    tenant_id: str | None = None,
     user_id: str | None,
     conversation_id: str | None,
     outcome_status: str,
@@ -381,6 +436,7 @@ def emit_analytics_event(
         "stage": normalized_stage,
         "timestamp": str(timestamp or _utc_timestamp()),
         "correlation_id": sanitize_text(str(correlation_id or "")),
+        "tenant_id": sanitize_text(str(tenant_id or "")),
         "conversation_key": _stable_key("conv", conversation_id or user_id),
         "user_key": _stable_key("usr", user_id),
         "outcome_status": sanitize_text(str(outcome_status or "unknown")),
@@ -388,6 +444,7 @@ def emit_analytics_event(
     }
     get_analytics_event_buffer(app).add_event(event)
     _persist_event(app, event)
+    export_analytics_event_to_crm(app, event)
     return event
 
 
@@ -414,13 +471,17 @@ def get_analytics_summary(app, *, window_days: int = 7) -> dict[str, Any]:
     safe_window_days = max(1, int(window_days))
     retention_days = int(app.config.get("ANALYTICS_RETENTION_DAYS", 90))
     retained_events = get_retained_analytics_events(app, retention_days=retention_days)
+    coverage_hours = _coverage_hours(retained_events)
 
     return {
         "window_days": safe_window_days,
         "retention_days": max(0, retention_days),
         "generated_at": _utc_timestamp(),
+        "coverage_hours": round(coverage_hours, 2),
+        "insufficient_data": coverage_hours < 24.0,
         "volume_trend": _build_trend_series(retained_events, stage="inbound_receive", window_days=safe_window_days),
         "escalation_trend": _build_trend_series(retained_events, stage="escalation_flag", window_days=safe_window_days),
         "delivery_breakdown": _build_delivery_breakdown(retained_events),
         "latency_summary": _build_latency_summary(retained_events),
+        "latency_trend": _build_latency_trend(retained_events, window_days=safe_window_days),
     }

@@ -125,6 +125,8 @@ Use the correct endpoint family for the task.
 | Operator dashboard metrics API | GET `/api/metrics` | JSON; dashboard UI polling (no session required) |
 | Operator dashboard logs API | GET `/api/logs` | JSON; logs screen polling (no session required) |
 | Operator thread inspector API | GET `/api/thread-inspector` | JSON; requires operator session and `user_id` query parameter |
+| Notification center list API | GET `/api/notifications` | JSON; requires operator + authenticated tenant session |
+| Notification center dismiss API | POST `/api/notifications/<notification_id>/dismiss` | JSON; requires operator + authenticated tenant session + CSRF |
 | Operator metrics HTML | GET `/operator/metrics` | HTML page; requires operator session (`/operator/access`) |
 
 Suggested cadence:
@@ -261,6 +263,28 @@ If `STATE_STORE_BACKEND=sqlite` and the database file cannot be opened:
 3. Note: in-memory state is not seeded from the SQLite file after switching back. Any duplicate
    suppression window resets. This is expected and safe; duplicate messages during the brief
    window after rollback are idempotently handled.
+
+### SQLite Rollback Procedure (Story 11.2)
+
+Use this timed drill to produce Gate C rollback evidence and verify the fallback path can be
+executed in <= 15 minutes.
+
+1. Confirm current mode is SQLite (`STATE_STORE_BACKEND=sqlite`) and service is healthy.
+2. Run the drill command from repo root:
+
+```powershell
+.venv\Scripts\python.exe sqlite_rollback_drill.py --simulate-restart --target-os windows --window-seconds 300
+```
+
+3. Review generated artifacts:
+   - `_bmad-output/test-artifacts/sqlite-rollback-drill-report.json`
+   - `_bmad-output/test-artifacts/sqlite-rollback-drill-<date>.md`
+   - `_bmad-output/test-artifacts/sqlite-rollback-drill-latest.md`
+4. Confirm acceptance gates in evidence output:
+   - all drill steps are PASS
+   - backend after rollback is memory
+   - completed within 15 minutes
+5. Complete the sign-off section in the markdown artifact and attach it to the release gate package.
 
 ### Resource teardown
 

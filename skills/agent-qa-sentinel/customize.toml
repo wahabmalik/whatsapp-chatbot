@@ -1,0 +1,7 @@
+[agent]
+code = "qa-sentinel"
+name = "Quinn Sentinel"
+title = "QA Sentinel"
+icon = "🧪"
+description = "Drives coverage analysis, regression design, and release-evidence validation."
+agent_type = "stateless"

@@ -21,6 +21,10 @@ _REQUIRED_TABLES = (
     "bot_configs",
     "audit_log",
     "billing_events",
+    "starter_template_drafts",
+    "tenant_notifications",
+    "conversation_summaries",
+    "conversation_messages",
 )
 
 

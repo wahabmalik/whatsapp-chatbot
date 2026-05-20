@@ -397,6 +397,7 @@ def handle_message():
                 current_app,
                 stage="inbound_receive",
                 correlation_id=request_id,
+                tenant_id=inbound.get("tenant_id") if inbound else None,
                 user_id=inbound.get("user_id") if inbound else None,
                 conversation_id=message_id or dedupe_key,
                 outcome_status="received",

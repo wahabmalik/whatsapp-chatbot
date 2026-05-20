@@ -6,7 +6,8 @@ import re
 import secrets
 import threading
 import time
-from datetime import datetime, timezone
+from uuid import UUID
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -41,11 +42,19 @@ from app.services.conversation_analytics import (
     get_recent_analytics_events,
     summarize_recent_events,
 )
+from app.services.starter_pack import (
+    CATEGORY_EXPLAINER_URL,
+    STARTER_PACK_COHORT_SLICE,
+    STARTER_PACK_KEY,
+    STARTER_PACK_LABEL,
+    is_starter_pack_enabled_for_tenant,
+    list_tenant_starter_drafts,
+)
 from app.services.conversation_context import get_conversation_context_store
 from app.services.health_check import get_bot_health, get_setup_status
 from app.services.message_log import get_message_log_buffer
 from app.services.metrics import get_metrics_collector
-from app.services.observability import sanitize_text
+from app.services.observability import sanitize_text, get_correlation_id
 from app.services.config_audit import (
     record_config_change,
     backup_config_file,
@@ -53,9 +62,29 @@ from app.services.config_audit import (
     list_available_backups,
     restore_config_from_backup,
 )
-
+from app.services.compliance import (
+    check_dispatch_eligibility,
+    evaluate_sendability_alert,
+    get_consent_ledger,
+    get_template_sendability_states,
+    upsert_consent_record,
+)
+from app.services.notification_center import (
+    dismiss_tenant_notification,
+    list_tenant_notifications,
+    sync_usage_threshold_notifications,
+)
+from app.services.reconnection_assistant import (
+    abandon_reconnection_flow,
+    build_reconnection_flow,
+    escalate_reconnection_issue,
+    retry_reconnection_step,
+    sync_reconnection_notifications,
+)
+from app.models import ConversationMessage, ConversationSummary
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
+dashboard_api = Blueprint("dashboard_api", __name__)
 
 _CSRF_SESSION_KEY = "_csrf_token"
 _SETUP_VERIFIED_SESSION_KEY = "setup_verified"
@@ -198,6 +227,39 @@ def _require_operator_access():
     if _current_dashboard_role() != ROLE_OPERATOR:
         return _operator_guard_response()
     return None
+
+
+def _require_operator_api_access():
+    if _current_dashboard_role() != ROLE_OPERATOR:
+        return jsonify({"ok": False, "message": "Operator access required."}), 403
+    return None
+
+
+def _require_operator_identity_api() -> tuple[Any | None, Any | None]:
+    identity = current_identity(session)
+    if identity is None:
+        return None, (jsonify({"ok": False, "message": "Authentication required."}), 401)
+    if _current_dashboard_role() != ROLE_OPERATOR:
+        return None, (jsonify({"ok": False, "message": "Operator access required."}), 403)
+    return identity, None
+
+
+def _parse_datetime_filter(raw_value: str, *, end_bound: bool = False) -> datetime:
+    value = str(raw_value or "").strip()
+    if not value:
+        raise ValueError("empty")
+
+    if len(value) == 10:
+        base = datetime.fromisoformat(value)
+        base = base.replace(tzinfo=timezone.utc)
+        if end_bound:
+            return base + timedelta(days=1)
+        return base
+
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _setup_items() -> list[dict[str, Any]]:
@@ -449,6 +511,34 @@ def _dashboard_runtime_context() -> dict[str, Any]:
     }
 
 
+def _starter_pack_operator_context() -> dict[str, Any]:
+    identity = current_identity(session)
+    if identity is None:
+        return {
+            "starter_pack_visible": False,
+            "starter_pack_key": STARTER_PACK_KEY,
+            "starter_pack_label": STARTER_PACK_LABEL,
+            "starter_pack_cohort": STARTER_PACK_COHORT_SLICE,
+            "starter_pack_category_explainer_url": CATEGORY_EXPLAINER_URL,
+            "starter_pack_drafts": [],
+        }
+
+    visible = is_starter_pack_enabled_for_tenant(current_app, identity.tenant_id)
+    db = current_app.extensions.get("saas_db")
+    drafts: list[dict[str, Any]] = []
+    if visible and db is not None and getattr(db, "is_ready", False):
+        drafts = list_tenant_starter_drafts(db, identity.tenant_id)
+
+    return {
+        "starter_pack_visible": visible,
+        "starter_pack_key": STARTER_PACK_KEY,
+        "starter_pack_label": STARTER_PACK_LABEL,
+        "starter_pack_cohort": STARTER_PACK_COHORT_SLICE,
+        "starter_pack_category_explainer_url": CATEGORY_EXPLAINER_URL,
+        "starter_pack_drafts": drafts,
+    }
+
+
 @dashboard_blueprint.route("/operator/access", methods=["GET"])
 def operator_access():
     _set_dashboard_role(ROLE_OPERATOR)
@@ -486,6 +576,29 @@ def operator_dashboard():
         return redirect(url_for("dashboard.setup"))
 
     context = _dashboard_runtime_context()
+    starter_pack_context = _starter_pack_operator_context()
+    identity = current_identity(session)
+
+    notifications: list[dict[str, Any]] = []
+    db = current_app.extensions.get("saas_db")
+    if identity is not None and db is not None and getattr(db, "is_ready", False):
+        try:
+            sync_usage_threshold_notifications(current_app, db, identity.tenant_id)
+        except Exception as exc:  # noqa: BLE001
+            current_app.logger.warning(
+                "NOTIFICATIONS_USAGE_SYNC_FAILED tenant_id=%s error=%s",
+                identity.tenant_id,
+                exc,
+            )
+        try:
+            sync_reconnection_notifications(current_app, db, identity.tenant_id)
+        except Exception as exc:  # noqa: BLE001
+            current_app.logger.warning(
+                "NOTIFICATIONS_RECONNECTION_SYNC_FAILED tenant_id=%s error=%s",
+                identity.tenant_id,
+                exc,
+            )
+        notifications = list_tenant_notifications(db, identity.tenant_id)
 
     return render_template(
         "dashboard.html",
@@ -493,6 +606,8 @@ def operator_dashboard():
         nav_mode="operator",
         setup_complete=True,
         escalation=_build_operator_escalation_context(),
+        notifications=notifications,
+        **starter_pack_context,
         **context,
     )
 
@@ -817,6 +932,206 @@ def analytics_summary_api():
     }), 200
 
 
+@dashboard_blueprint.route("/api/notifications", methods=["GET"])
+def notifications_api():
+    identity, guarded = _require_operator_identity_api()
+    if guarded is not None:
+        return guarded
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    try:
+        sync_usage_threshold_notifications(current_app, db, identity.tenant_id)
+    except Exception as exc:  # noqa: BLE001
+        current_app.logger.warning(
+            "NOTIFICATIONS_USAGE_SYNC_FAILED tenant_id=%s error=%s",
+            identity.tenant_id,
+            exc,
+        )
+    try:
+        sync_reconnection_notifications(current_app, db, identity.tenant_id)
+    except Exception as exc:  # noqa: BLE001
+        current_app.logger.warning(
+            "NOTIFICATIONS_RECONNECTION_SYNC_FAILED tenant_id=%s error=%s",
+            identity.tenant_id,
+            exc,
+        )
+    try:
+        notifications = list_tenant_notifications(db, identity.tenant_id)
+    except Exception as exc:  # noqa: BLE001
+        current_app.logger.error(
+            "NOTIFICATIONS_LIST_FAILED tenant_id=%s error=%s",
+            identity.tenant_id,
+            exc,
+        )
+        return jsonify({"ok": False, "message": "Unable to fetch notifications."}), 500
+
+    return jsonify({"ok": True, "notifications": notifications, "total": len(notifications)}), 200
+
+
+@dashboard_blueprint.route("/api/reconnection-assistant/flow", methods=["GET"])
+def reconnection_assistant_flow_api():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authentication required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    expected_channel = (request.args.get("channel") or "").strip().lower() or None
+    try:
+        payload = build_reconnection_flow(
+            current_app,
+            db,
+            identity.tenant_id,
+            actor_id=identity.user_id,
+            expected_channel=expected_channel,
+        )
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    return jsonify(payload), 200
+
+
+@dashboard_blueprint.route("/api/reconnection-assistant/steps/<step_key>/retry", methods=["POST"])
+def reconnection_assistant_retry_api(step_key: str):
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authentication required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    expected_channel = request.form.get("channel")
+    if not expected_channel and request.is_json:
+        body = request.get_json(silent=True) or {}
+        expected_channel = body.get("channel")
+
+    try:
+        payload = retry_reconnection_step(
+            current_app,
+            db,
+            identity.tenant_id,
+            step_key=step_key,
+            actor_id=identity.user_id,
+            expected_channel=expected_channel,
+        )
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    return jsonify(payload), 200
+
+
+@dashboard_blueprint.route("/api/reconnection-assistant/escalate", methods=["POST"])
+def reconnection_assistant_escalate_api():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authentication required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    reason = request.form.get("reason")
+    if not reason and request.is_json:
+        payload = request.get_json(silent=True) or {}
+        reason = payload.get("reason")
+    payload = escalate_reconnection_issue(
+        current_app,
+        db,
+        identity.tenant_id,
+        actor_id=identity.user_id,
+        reason=reason,
+    )
+    status_code = 200 if payload.get("ok") else 503
+    return jsonify(payload), status_code
+
+
+@dashboard_blueprint.route("/api/reconnection-assistant/abandon", methods=["POST"])
+def reconnection_assistant_abandon_api():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authentication required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    payload = abandon_reconnection_flow(
+        db,
+        identity.tenant_id,
+        actor_id=identity.user_id,
+    )
+    return jsonify(payload), 200
+
+
+@dashboard_blueprint.route("/api/notifications/<notification_id>/dismiss", methods=["POST"])
+def dismiss_notification_api(notification_id: str):
+    identity, guarded = _require_operator_identity_api()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    try:
+        UUID(notification_id)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "message": "Invalid notification identifier."}), 400
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    try:
+        dismissed = dismiss_tenant_notification(
+            db,
+            tenant_id=identity.tenant_id,
+            notification_id=notification_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        current_app.logger.error(
+            "NOTIFICATIONS_DISMISS_FAILED tenant_id=%s notification_id=%s error=%s",
+            identity.tenant_id,
+            notification_id,
+            exc,
+        )
+        return jsonify({"ok": False, "message": "Unable to dismiss notification."}), 500
+
+    if not dismissed:
+        return jsonify({"ok": False, "message": "Notification not found."}), 404
+
+    return jsonify({"ok": True, "dismissed": notification_id}), 200
+
+
 # Configuration audit and recovery endpoints
 @dashboard_blueprint.route("/api/config/audit-log", methods=["GET"])
 def config_audit_log_api():
@@ -901,3 +1216,382 @@ def config_restore_api():
         return jsonify({"ok": False, "message": f"Backup file not found: {backup_filename}"}), 404
     except (ValueError, OSError) as exc:
         return jsonify({"ok": False, "message": f"Restore failed: {str(exc)}"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Compliance and Sendability Control Surface  (Story 12.6)
+# ---------------------------------------------------------------------------
+
+@dashboard_blueprint.route("/api/compliance/consent-ledger", methods=["GET"])
+def compliance_consent_ledger_api():
+    """Tenant-scoped consent ledger for outbound messaging contacts (AC 12.6.1).
+
+    Query params:
+        search  — substring filter on contact_id
+        limit   — page size (default 50, max 200)
+        offset  — pagination offset (default 0)
+
+    Returns 403 if accessed without operator role.
+    Returns 503 if the SaaS database is not ready.
+    """
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    search = request.args.get("search", "").strip() or None
+    limit_raw = request.args.get("limit", "50")
+    offset_raw = request.args.get("offset", "0")
+    try:
+        limit = max(1, min(200, int(limit_raw)))
+        offset = max(0, int(offset_raw))
+    except ValueError:
+        limit, offset = 50, 0
+
+    result = get_consent_ledger(db, identity.tenant_id, search=search, limit=limit, offset=offset)
+    return jsonify({"ok": True, **result}), 200
+
+
+@dashboard_blueprint.route("/api/compliance/consent-ledger", methods=["POST"])
+def compliance_upsert_consent_api():
+    """Create or update a consent record for a contact (AC 12.6.1, AC 12.6.5).
+
+    Form fields:
+        contact_id  — required
+        status      — required: granted | required | revoked
+        source      — optional label (e.g. "operator_manual")
+    """
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    contact_id = str(request.form.get("contact_id", "")).strip()
+    status = str(request.form.get("status", "")).strip()
+    source = str(request.form.get("source", "")).strip() or "operator_manual"
+
+    if not contact_id:
+        return jsonify({"ok": False, "message": "contact_id is required."}), 400
+    if not status:
+        return jsonify({"ok": False, "message": "status is required (granted | required | revoked)."}), 400
+
+    correlation_id = get_correlation_id() or "n/a"
+    try:
+        entry = upsert_consent_record(
+            db,
+            tenant_id=identity.tenant_id,
+            contact_id=contact_id,
+            status=status,
+            source=source,
+            actor_id=identity.user_id,
+            correlation_id=correlation_id,
+        )
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    return jsonify({"ok": True, "entry": entry, "correlation_id": correlation_id}), 200
+
+
+@dashboard_blueprint.route("/api/compliance/template-sendability", methods=["GET"])
+def compliance_template_sendability_api():
+    """Template sendability states with stale/unknown detection and alert indicator.
+
+    Returns all tenant template drafts with:
+      - display_state: approved | pending | rejected | paused | stale | unknown
+      - is_stale: True when pending_approval state is older than threshold
+      - is_sendable: True only for approved templates
+      - alert: {level, guidance, details} across all templates
+
+    Stale/unknown states are surfaced explicitly; the system never reports a
+    template as sendable when its provider state is unavailable (AC 12.6.6).
+
+    Returns 403 if accessed without operator role.
+    Returns 503 if the SaaS database is not ready.
+    """
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    stale_threshold = current_app.config.get("COMPLIANCE_STALE_THRESHOLD_SECONDS")
+    if stale_threshold is not None:
+        try:
+            stale_threshold = int(stale_threshold)
+        except (TypeError, ValueError):
+            stale_threshold = None
+
+    template_states = get_template_sendability_states(
+        db, identity.tenant_id, stale_threshold_seconds=stale_threshold
+    )
+    alert = evaluate_sendability_alert(template_states)
+
+    return jsonify({
+        "ok": True,
+        "templates": template_states,
+        "alert": alert,
+        "total": len(template_states),
+    }), 200
+
+
+@dashboard_blueprint.route("/api/compliance/dispatch-eligibility", methods=["POST"])
+def compliance_dispatch_eligibility_api():
+    """Pre-dispatch eligibility check for a template send (AC 12.6.4).
+
+    Blocks dispatch when:
+    - consent_status is not "granted"
+    - provider_state is stale or unknown (safe default: block)
+    - display_state is not in the sendable set
+
+    Form fields:
+        contact_consent_status — consent status for the target contact
+        provider_state         — template provider_state value
+        workflow_slug          — template identifier (for audit evidence)
+
+    Returns:
+        eligible (bool), reason_code, reason_message, correlation_id.
+    """
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    if not _validate_csrf_token():
+        return jsonify({"ok": False, "message": "Invalid request token."}), 403
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    consent_status = str(request.form.get("contact_consent_status", "")).strip() or None
+    provider_state = str(request.form.get("provider_state", "")).strip() or None
+    workflow_slug = str(request.form.get("workflow_slug", "")).strip()
+    correlation_id = get_correlation_id() or "n/a"
+
+    eligibility = check_dispatch_eligibility(
+        consent_status=consent_status,
+        provider_state=provider_state,
+        correlation_id=correlation_id,
+    )
+
+    if not eligibility["eligible"]:
+        db = current_app.extensions.get("saas_db")
+        if db is not None and getattr(db, "is_ready", False) and workflow_slug:
+            from app.services.compliance import record_blocked_dispatch
+            sess = db.session()
+            try:
+                record_blocked_dispatch(
+                    sess,
+                    tenant_id=identity.tenant_id,
+                    workflow_slug=workflow_slug,
+                    reason_code=eligibility["reason_code"],
+                    actor_id=identity.user_id,
+                    correlation_id=correlation_id,
+                    display_state=eligibility["display_state"],
+                    is_stale=eligibility["is_stale"],
+                )
+                sess.commit()
+            except Exception:
+                sess.rollback()
+            finally:
+                sess.close()
+
+        return jsonify({
+            "ok": False,
+            "eligible": False,
+            "reason_code": eligibility["reason_code"],
+            "reason_message": eligibility["reason_message"],
+            "display_state": eligibility["display_state"],
+            "is_stale": eligibility["is_stale"],
+            "correlation_id": correlation_id,
+        }), 409
+
+    return jsonify({
+        "ok": True,
+        "eligible": True,
+        "reason_code": None,
+        "reason_message": None,
+        "display_state": eligibility["display_state"],
+        "is_stale": eligibility["is_stale"],
+        "correlation_id": correlation_id,
+    }), 200
+
+
+@dashboard_api.route("/api/conversations", methods=["GET"])
+def list_conversations():
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    try:
+        page = int(request.args.get("page", "1"))
+        per_page = int(request.args.get("per_page", "20"))
+    except ValueError:
+        return jsonify({"ok": False, "message": "page and per_page must be integers."}), 400
+
+    if page < 1:
+        return jsonify({"ok": False, "message": "page must be >= 1."}), 400
+    if per_page < 1 or per_page > 100:
+        return jsonify({"ok": False, "message": "per_page must be between 1 and 100."}), 400
+
+    wa_id_filter = str(request.args.get("wa_id", "")).strip()
+    start_raw = str(request.args.get("start_date", "")).strip()
+    end_raw = str(request.args.get("end_date", "")).strip()
+
+    start_date = None
+    end_date = None
+    try:
+        if start_raw:
+            start_date = _parse_datetime_filter(start_raw, end_bound=False)
+        if end_raw:
+            end_date = _parse_datetime_filter(end_raw, end_bound=True)
+    except ValueError:
+        return jsonify({"ok": False, "message": "start_date and end_date must be ISO 8601 values."}), 400
+
+    if start_date and end_date and start_date >= end_date:
+        return jsonify({"ok": False, "message": "start_date must be before end_date."}), 400
+
+    db_session = db.session()
+    try:
+        query = db_session.query(ConversationSummary).filter(
+            ConversationSummary.tenant_id == identity.tenant_id
+        )
+        if wa_id_filter:
+            query = query.filter(ConversationSummary.wa_id == wa_id_filter)
+        if start_date is not None:
+            query = query.filter(ConversationSummary.latest_timestamp >= start_date)
+        if end_date is not None:
+            query = query.filter(ConversationSummary.latest_timestamp < end_date)
+
+        query = query.order_by(
+            ConversationSummary.latest_timestamp.desc(),
+            ConversationSummary.created_at.desc(),
+        )
+        total = query.count()
+        conversations = query.offset((page - 1) * per_page).limit(per_page).all()
+
+        items = [
+            {
+                "id": row.id,
+                "conversation_key": row.conversation_key,
+                "wa_id": row.wa_id,
+                "message_count": int(row.message_count or 0),
+                "escalation_flag": bool(row.escalation_flag),
+                "latest_timestamp": _utc_iso(row.latest_timestamp),
+                "created_at": _utc_iso(row.created_at),
+            }
+            for row in conversations
+        ]
+
+        return jsonify(
+            {
+                "ok": True,
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "items": items,
+                "conversations": items,
+            }
+        ), 200
+    finally:
+        db_session.close()
+
+
+@dashboard_api.route("/api/conversations/<conversation_id>", methods=["GET"])
+def get_conversation_detail(conversation_id):
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    identity = current_identity(session)
+    if identity is None:
+        return jsonify({"ok": False, "message": "Authenticated operator session required."}), 401
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return jsonify({"ok": False, "message": "SaaS database is not configured."}), 503
+
+    db_session = db.session()
+    try:
+        conversation = (
+            db_session.query(ConversationSummary)
+            .filter(
+                ConversationSummary.id == conversation_id,
+                ConversationSummary.tenant_id == identity.tenant_id,
+            )
+            .one_or_none()
+        )
+        if conversation is None:
+            return jsonify({"ok": False, "message": "Conversation not found."}), 404
+
+        messages = (
+            db_session.query(ConversationMessage)
+            .filter(
+                ConversationMessage.tenant_id == identity.tenant_id,
+                ConversationMessage.conversation_summary_id == conversation.id,
+            )
+            .order_by(ConversationMessage.timestamp.asc(), ConversationMessage.id.asc())
+            .all()
+        )
+
+        payload = {
+            "id": conversation.id,
+            "conversation_key": conversation.conversation_key,
+            "wa_id": conversation.wa_id,
+            "message_count": int(conversation.message_count or 0),
+            "escalation_flag": bool(conversation.escalation_flag),
+            "latest_timestamp": _utc_iso(conversation.latest_timestamp),
+            "messages": [
+                {
+                    "id": row.id,
+                    "sender": row.sender,
+                    "text_body": row.text_body,
+                    "timestamp": _utc_iso(row.timestamp),
+                    "delivery_status": row.delivery_status,
+                    "correlation_id": row.correlation_id,
+                }
+                for row in messages
+            ],
+        }
+
+        return jsonify({"ok": True, "conversation": payload, **payload}), 200
+    finally:
+        db_session.close()
+
+
+def _utc_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()

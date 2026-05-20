@@ -8,6 +8,7 @@ from typing import Any
 
 from app.models import AuditLog, BillingEvent, Subscription
 from app.models.base import utcnow
+from app.services.notification_center import create_stripe_billing_notifications
 from app.services.quota_service import apply_plan_change, ensure_usage_counter
 
 logger = logging.getLogger(__name__)
@@ -366,6 +367,11 @@ def ingest_webhook_event(db, event: Any, raw_payload: bytes) -> dict[str, Any]:
             sess,
             event_type=event_type,
             data_object=data_object,
+            stripe_event_id=stripe_event_id,
+        )
+        create_stripe_billing_notifications(
+            sess,
+            event=event,
             stripe_event_id=stripe_event_id,
         )
         sess.commit()

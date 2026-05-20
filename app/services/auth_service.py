@@ -159,7 +159,9 @@ def authenticate_account(db, email: str, password: str) -> AuthIdentity:
         if user is None or not verify_password(password or "", user.password_hash):
             raise InvalidCredentialsError()
 
-        tenant = session.query(Tenant).filter(Tenant.id == user.tenant_id).one()
+        tenant = session.query(Tenant).filter(Tenant.id == user.tenant_id).one_or_none()
+        if tenant is None:
+            raise InvalidCredentialsError()
         if not tenant.is_active:
             raise AccountDisabledError(tenant.disabled_reason or None)
 

@@ -1,59 +1,76 @@
 {% extends "base.html" %}
 {% block title %}WhatsApp Onboarding - MALIXIS{% endblock %}
 {% block content %}
-<section class="panel" style="max-width:860px;margin:auto;">
+<section class="panel panel-enter onboarding-shell">
   <h2>Connect WhatsApp</h2>
-  <p style="color:var(--muted);margin:8px 0 4px;">
+  <p class="onboarding-text">
     Scan this QR code with WhatsApp to link your business number.
   </p>
-  <p style="color:var(--muted);font-size:0.88rem;margin:0 0 20px;">
+  <p class="onboarding-subtext">
     Open WhatsApp &rarr; <strong>Linked Devices</strong> &rarr; <strong>Link a device</strong>, then point your camera at the QR code below.
   </p>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
-    <div style="border:1px solid var(--border,#dfe3ea);border-radius:12px;padding:14px;background:#fff;">
-      <div id="qr-wrapper" style="display:flex;justify-content:center;align-items:center;min-height:300px;position:relative;">
-        <div id="qr-loading" style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation:spin 1s linear infinite;" aria-hidden="true">
+  <div class="onboarding-grid">
+    <div class="onboarding-card">
+      <div id="qr-wrapper" class="qr-wrapper">
+        <div id="qr-loading" class="qr-loading">
+          <svg class="qr-spinner" width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <circle cx="18" cy="18" r="15" stroke="rgba(17,217,202,0.25)" stroke-width="3"/>
             <path d="M18 3 A15 15 0 0 1 33 18" stroke="#11d9ca" stroke-width="3" stroke-linecap="round"/>
           </svg>
-          <p style="color:var(--muted);margin:0;">Fetching QR code&hellip;</p>
+          <p>Fetching QR code&hellip;</p>
         </div>
-        <img id="qr-image" alt="WhatsApp QR code" style="display:none;max-width:100%;height:auto;border-radius:8px;" />
+        <img id="qr-image" class="qr-image" alt="WhatsApp QR code" />
       </div>
-      <p id="qr-meta" style="margin:10px 0 0;color:var(--muted);font-size:0.92rem;"></p>
-      <div id="qr-error-box" style="display:none;margin:12px 0 0;padding:10px 12px;border-radius:8px;background:rgba(180,35,24,0.08);border:1px solid rgba(180,35,24,0.25);">
-        <p id="qr-error" style="margin:0 0 4px;color:#b42318;font-weight:600;font-size:0.93rem;"></p>
-        <p id="qr-error-hint" style="margin:0;color:var(--muted);font-size:0.86rem;"></p>
+      <p id="qr-meta" class="qr-meta"></p>
+      <div id="qr-error-box" class="error-card">
+        <p id="qr-error" class="warning-text"></p>
+        <p id="qr-error-hint" class="subtle-help"></p>
       </div>
-      <button id="retry-btn" class="button-link" style="display:none;margin-top:12px;">Retry QR fetch</button>
+      <button id="retry-btn" class="button-link" data-loading-label="Retrying..." style="display:none;margin-top:12px;">Retry QR fetch</button>
     </div>
 
-    <div style="border:1px solid var(--border,#dfe3ea);border-radius:12px;padding:14px;background:#fff;">
-      <h3 style="margin-top:0;">Connection status</h3>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span id="status-dot" aria-hidden="true" style="width:11px;height:11px;border-radius:50%;background:#ea580c;"></span>
+    <div class="onboarding-card">
+      <h3>Connection status</h3>
+      <div class="onboarding-status">
+        <span id="status-dot" class="status-dot" aria-hidden="true"></span>
         <strong id="status-label">disconnected</strong>
       </div>
-      <p id="status-detail" style="margin-top:10px;color:var(--muted);font-size:0.92rem;">
+      <p id="status-detail" class="status-detail">
         Waiting for scan.
       </p>
-      <p id="status-phone" style="margin-top:6px;color:#0f766e;font-weight:600;display:none;"></p>
-      <p id="status-error" style="margin-top:6px;color:#b42318;font-weight:600;display:none;"></p>
-      <a id="continue-link" href="{{ url_for('dashboard.dashboard_home') }}" class="button-link" style="display:none;margin-top:14px;">Continue to dashboard &rarr;</a>
+      <p id="status-phone" class="status-phone"></p>
+      <p id="status-error" class="status-error"></p>
+      <a id="continue-link" href="{{ url_for('dashboard.dashboard_home') }}" class="button-link onboarding-continue">Continue to dashboard &rarr;</a>
 
-      <div id="setup-hint" style="display:none;margin-top:16px;padding:10px 12px;border-radius:8px;background:rgba(17,217,202,0.07);border:1px solid rgba(17,217,202,0.2);font-size:0.86rem;color:var(--muted);">
-        <strong style="color:var(--ink);">Setup required</strong><br>
+      <div id="setup-hint" class="setup-hint">
+        <strong>Setup required</strong><br>
         Make sure <code>EVOLUTION_API_URL</code> and <code>EVOLUTION_API_KEY</code> are set in your environment and the Evolution API server is running.
-        <a href="{{ url_for('dashboard.setup') }}" style="display:inline-block;margin-top:6px;color:#11d9ca;font-weight:600;">Open Setup &rarr;</a>
+        <a href="{{ url_for('dashboard.setup') }}">Open Setup &rarr;</a>
       </div>
     </div>
   </div>
 </section>
-<style>
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+
+{% if starter_pack_visible %}
+<section class="panel panel-enter starter-panel">
+  <h3>{{ starter_pack_label }}</h3>
+  <p class="starter-intro">
+    Create four editable starter drafts for India D2C workflows. Drafts stay blocked for send until normal consent, approval, and sendability checks pass.
+  </p>
+  <p class="starter-note">
+    Template categories affect downstream cost and provider approval flow.
+    <a href="{{ starter_pack_category_explainer_url }}" target="_blank" rel="noopener">Learn category impact</a>
+  </p>
+  <div class="action-row">
+    <button id="starter-pack-enable-btn" class="button-link" type="button" data-loading-label="Enabling starter pack...">Enable India D2C starter pack</button>
+    <button id="starter-pack-replace-btn" class="button-link button-secondary" type="button" data-loading-label="Replacing drafts..." style="display:none;">Replace existing drafts</button>
+    <span id="starter-pack-status" class="starter-status"></span>
+  </div>
+  <div id="starter-pack-failures" class="error-card"></div>
+  <ul id="starter-pack-drafts" class="starter-drafts"></ul>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -78,6 +95,27 @@
   var qrErrorHint = document.getElementById('qr-error-hint');
   var setupHint = document.getElementById('setup-hint');
   var retryCountdownTimer = null;
+
+  function withBusy(button, callback) {
+    if (!button) {
+      return callback();
+    }
+    if (button.disabled) {
+      return Promise.resolve();
+    }
+    var originalLabel = button.textContent;
+    var loadingLabel = button.getAttribute('data-loading-label') || 'Working...';
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.textContent = loadingLabel;
+    return Promise.resolve()
+      .then(callback)
+      .finally(function () {
+        button.disabled = false;
+        button.classList.remove('is-loading');
+        button.textContent = originalLabel;
+      });
+  }
 
   function setStatus(status, detail, phone) {
     var normalized = (status || 'disconnected').toLowerCase();
@@ -258,12 +296,136 @@
   }
 
   retryBtn.addEventListener('click', function () {
-    if (retryCountdownTimer) { clearInterval(retryCountdownTimer); retryCountdownTimer = null; }
-    fetchQr();
+    withBusy(retryBtn, function () {
+      if (retryCountdownTimer) { clearInterval(retryCountdownTimer); retryCountdownTimer = null; }
+      return fetchQr();
+    });
   });
 
   fetchQr();
   startStatusStream();
+})();
+
+(function () {
+  var visible = {{ 'true' if starter_pack_visible else 'false' }};
+  if (!visible) {
+    return;
+  }
+
+  var csrfToken = "{{ csrf_token }}";
+  var listEl = document.getElementById('starter-pack-drafts');
+  var statusEl = document.getElementById('starter-pack-status');
+  var failuresEl = document.getElementById('starter-pack-failures');
+  var enableBtn = document.getElementById('starter-pack-enable-btn');
+  var replaceBtn = document.getElementById('starter-pack-replace-btn');
+
+  function renderDrafts(drafts) {
+    listEl.innerHTML = '';
+    if (!drafts || drafts.length === 0) {
+      listEl.innerHTML = '<li class="starter-drafts-empty">No drafts yet. Enable the pack to create starter drafts.</li>';
+      return;
+    }
+
+    drafts.forEach(function (row) {
+      var item = document.createElement('li');
+      item.innerHTML =
+        '<strong>' + row.title + '</strong>' +
+        '<div class="starter-draft-meta">' +
+          'Workflow: <code>' + row.workflow_slug + '</code> · ' +
+          'Category: <strong>' + row.category_label + '</strong> · ' +
+          'Status: ' + row.draft_status +
+        '</div>' +
+        '<p class="starter-draft-body">' + row.body + '</p>';
+      listEl.appendChild(item);
+    });
+  }
+
+  function renderFailures(failures, correlationId) {
+    if (!failures || failures.length === 0) {
+      failuresEl.style.display = 'none';
+      failuresEl.innerHTML = '';
+      return;
+    }
+
+    var rows = failures.map(function (entry) {
+      return '<li><strong>' + entry.workflow_slug + '</strong>: ' + entry.message + '</li>';
+    }).join('');
+    failuresEl.style.display = 'block';
+    failuresEl.innerHTML =
+      '<p class="warning-text">Some drafts failed to create.</p>' +
+      '<ul>' + rows + '</ul>' +
+      '<p class="subtle-help">Correlation ID: ' + (correlationId || 'n/a') + '</p>';
+  }
+
+  function refreshStatus() {
+    fetch('/onboarding/starter-pack/status', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(function (payload) {
+        if (!payload.ok) {
+          statusEl.textContent = payload.message || 'Could not load starter-pack status.';
+          return;
+        }
+        renderDrafts(payload.starter_pack_drafts || []);
+        statusEl.textContent = 'Cohort: ' + (payload.starter_pack_cohort || 'n/a');
+        replaceBtn.style.display = (payload.starter_pack_drafts || []).length ? 'inline-flex' : 'none';
+      })
+      .catch(function () {
+        statusEl.textContent = 'Could not load starter-pack status.';
+      });
+  }
+
+  function enablePack(replaceExisting) {
+    statusEl.textContent = 'Creating starter drafts...';
+    var body = new URLSearchParams();
+    body.set('replace_existing', replaceExisting ? 'true' : 'false');
+    body.set('csrf_token', csrfToken);
+
+    return fetch('/onboarding/starter-pack/enable', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: body.toString()
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (payload) {
+        if (!payload.ok && payload.summary && payload.summary.failed) {
+          statusEl.textContent = 'Starter pack created with partial failures.';
+          renderFailures(payload.failures || [], payload.correlation_id);
+          refreshStatus();
+          return;
+        }
+        if (!payload.ok) {
+          statusEl.textContent = payload.message || 'Starter pack enable failed.';
+          return;
+        }
+        renderFailures([], null);
+        statusEl.textContent = 'Starter pack synced: created ' + payload.summary.created + ', reused ' + payload.summary.reused + ', replaced ' + payload.summary.replaced + '.';
+        refreshStatus();
+      })
+      .catch(function () {
+        statusEl.textContent = 'Starter pack enable failed.';
+      });
+  }
+
+  enableBtn.addEventListener('click', function () {
+    withBusy(enableBtn, function () {
+      return enablePack(false);
+    });
+  });
+
+  replaceBtn.addEventListener('click', function () {
+    if (!window.confirm('Replace existing starter drafts with default content?')) {
+      return;
+    }
+    withBusy(replaceBtn, function () {
+      return enablePack(true);
+    });
+  });
+
+  refreshStatus();
 })();
 </script>
 {% endblock %}

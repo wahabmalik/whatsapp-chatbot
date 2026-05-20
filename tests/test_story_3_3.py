@@ -11,6 +11,7 @@ import os
 import time
 import unittest
 from unittest.mock import patch
+from typing import Optional
 
 
 _BASE_ENV = {
@@ -518,7 +519,7 @@ class OperatorDashboardInterventionSignalTests(unittest.TestCase):
         with self.client.session_transaction() as sess:
             sess["dashboard_role"] = "operator"
 
-    def _add_entry(self, *, flagged: bool, reason: str | None):
+    def _add_entry(self, *, flagged: bool, reason: Optional[str]):
         with self.app.app_context():
             from app.services.message_log import get_message_log_buffer
             get_message_log_buffer(self.app).add_message(

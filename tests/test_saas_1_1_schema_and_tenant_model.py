@@ -78,7 +78,7 @@ def flask_app_no_db():
 
 
 # ---------------------------------------------------------------------------
-# AC-1: All 11 required tables exist after create_tables()
+# AC-1: Required tables exist after create_tables()
 # ---------------------------------------------------------------------------
 
 REQUIRED_TABLES = {
@@ -91,18 +91,22 @@ REQUIRED_TABLES = {
     "bot_configs",
     "audit_log",
     "billing_events",
+    "starter_template_drafts",
+    "tenant_notifications",
+    "conversation_summaries",
+    "conversation_messages",
 }
 
 
 def test_all_required_tables_exist(in_memory_db):
-    """AC-1: create_tables() produces all 11 required SaaS tables."""
+    """AC-1: create_tables() produces all required SaaS tables."""
     existing = in_memory_db.get_existing_table_names()
     missing = REQUIRED_TABLES - existing
     assert not missing, f"Missing tables after create_tables(): {sorted(missing)}"
 
 
 def test_no_extra_required_tables_missing(in_memory_db):
-    """AC-1: required_tables property matches the expected 11-table set."""
+    """AC-1: required_tables property matches the expected table set."""
     assert REQUIRED_TABLES == set(in_memory_db.required_tables)
 
 
@@ -119,6 +123,10 @@ TENANT_SCOPED_TABLES = {
     "connection_states",
     "bot_configs",
     "audit_log",
+    "starter_template_drafts",
+    "tenant_notifications",
+    "conversation_summaries",
+    "conversation_messages",
 }
 
 

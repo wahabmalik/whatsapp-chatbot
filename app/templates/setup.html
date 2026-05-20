@@ -40,7 +40,7 @@
       autocomplete="off"
       required
     >
-    <button type="submit">Save key</button>
+    <button type="submit" class="button-link button-secondary" data-loading-label="Saving key...">Save key</button>
     <p class="subtle-help">This updates OPENAI_API_KEY in your local .env file.</p>
     <p class="ok-text hide" data-openai-save-success role="status" aria-live="polite"></p>
     <p class="warning-text hide" data-openai-save-error role="alert"></p>
@@ -49,7 +49,7 @@
   <div class="copy-row">
     <label for="webhook-url">Webhook URL</label>
     <input id="webhook-url" type="text" readonly value="{{ webhook_url }}">
-    <button type="button" data-copy-target="webhook-url">Copy</button>
+    <button type="button" class="button-link button-secondary" data-copy-target="webhook-url">Copy</button>
   </div>
 
   <div class="verify-block">
@@ -58,6 +58,7 @@
       class="button-link"
       data-setup-verify
       data-verify-url="{{ url_for('dashboard.setup_verify') }}"
+      data-loading-label="Verifying..."
       {% if not setup_complete %}disabled aria-disabled="true"{% endif %}
       aria-describedby="verify-help"
     >

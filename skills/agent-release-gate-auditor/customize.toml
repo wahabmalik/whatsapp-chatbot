@@ -1,0 +1,7 @@
+[agent]
+code = "release-gate-auditor"
+name = "Rhea"
+title = "Release Gate Auditor"
+icon = "✅"
+description = "Evaluates release gate artifacts and recommends ship/no-ship with remediation plans."
+agent_type = "stateless"

@@ -25,6 +25,7 @@ from typing import Any
 
 from app.models import AuditLog, BillingEvent, Subscription
 from app.models.base import utcnow
+from app.services.notification_center import create_stripe_billing_notifications
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +152,14 @@ def ingest_webhook_event(
     except WebhookError:
         sess.rollback()
         raise
-    except Exception:
+    except Exception as exc:
         sess.rollback()
+        logger.error(
+            "WEBHOOK_PROCESSING_FAILED event_id=%s type=%s error=%s",
+            event_id,
+            event_type,
+            exc,
+        )
         raise
     finally:
         sess.close()
@@ -268,6 +275,24 @@ def _handle_subscription_updated(sess, event: Any, obj: dict) -> str | None:
         return None
     new_status = _STRIPE_STATUS_MAP.get(stripe_status, stripe_status)
     _update_sub_status(sess, sub, new_status, event["id"], event["type"])
+
+    notification_event = _event_with_tenant_metadata(
+        event,
+        tenant_id=sub.tenant_id,
+        fallback_subscription_id=sub.stripe_subscription_id,
+    )
+    created = create_stripe_billing_notifications(
+        sess,
+        event=notification_event,
+        stripe_event_id=event["id"],
+    )
+    if created > 0:
+        logger.info(
+            "WEBHOOK_BILLING_NOTIFICATIONS_CREATED count=%d event_id=%s",
+            created,
+            event["id"],
+        )
+
     return sub.tenant_id
 
 
@@ -294,6 +319,24 @@ def _handle_invoice_payment_failed(sess, event: Any, obj: dict) -> str | None:
         )
         return None
     _update_sub_status(sess, sub, "past_due", event["id"], event["type"])
+
+    notification_event = _event_with_tenant_metadata(
+        event,
+        tenant_id=sub.tenant_id,
+        fallback_subscription_id=sub.stripe_subscription_id,
+    )
+    created = create_stripe_billing_notifications(
+        sess,
+        event=notification_event,
+        stripe_event_id=event["id"],
+    )
+    if created > 0:
+        logger.info(
+            "WEBHOOK_BILLING_NOTIFICATIONS_CREATED count=%d event_id=%s",
+            created,
+            event["id"],
+        )
+
     return sub.tenant_id
 
 
@@ -309,6 +352,33 @@ def _find_sub_by_stripe_id(sess, stripe_subscription_id: str) -> Subscription | 
         .filter(Subscription.stripe_subscription_id == stripe_subscription_id)
         .first()
     )
+
+
+def _event_with_tenant_metadata(
+    event: Any,
+    *,
+    tenant_id: str,
+    fallback_subscription_id: str,
+) -> dict[str, Any]:
+    """Return a dict event with tenant metadata for notification creation."""
+    event_id = event.get("id") if isinstance(event, dict) else getattr(event, "id", None)
+    event_type = event.get("type") if isinstance(event, dict) else getattr(event, "type", None)
+    data = event.get("data") if isinstance(event, dict) else getattr(event, "data", None)
+    data_dict = data if isinstance(data, dict) else {}
+    obj = data_dict.get("object")
+    obj_dict = obj if isinstance(obj, dict) else {}
+    metadata = obj_dict.get("metadata")
+    metadata_dict = metadata if isinstance(metadata, dict) else {}
+
+    if not str(metadata_dict.get("tenant_id") or "").strip():
+        metadata_dict = {**metadata_dict, "tenant_id": tenant_id}
+
+    if not str(obj_dict.get("subscription") or "").strip() and fallback_subscription_id:
+        obj_dict = {**obj_dict, "subscription": fallback_subscription_id}
+
+    obj_dict = {**obj_dict, "metadata": metadata_dict}
+    data_dict = {**data_dict, "object": obj_dict}
+    return {"id": event_id, "type": event_type, "data": data_dict}
 
 
 def _update_sub_status(

@@ -82,4 +82,13 @@ Test Architecture Enterprise,bmad-testarch-test-design,Test Design,TD,Risk-based
 Test Architecture Enterprise,bmad-testarch-test-review,Test Review,RV,Quality audit (0-100 scoring).,,4-implementation,bmad-testarch-automate,,,,,false,test_artifacts,review report
 ,
 Test Architecture Enterprise,bmad-testarch-trace,Traceability,TR,Coverage traceability and gate.,,4-implementation,bmad-testarch-test-review,,,,,false,test_artifacts,traceability matrix|gate decision
+Custom Agents,agent-release-gate-auditor,Talk to Rhea,RG,Release gate auditing and remediation planning for ship or no-ship decisions.,,{artifact|path},anytime,,,Rhea,Release Gate Auditor,,false,implementation_artifacts,readiness report|remediation plan
+Custom Agents,agent-oncall-incident-commander,Talk to Imani,IC,Incident triage command and stakeholder communication for outages and degradation.,,{incident|path},anytime,,,Imani,On-Call Incident Commander,,false,implementation_artifacts,incident timeline|status updates
+Custom Agents,agent-webhook-security-guardian,Talk to Soren,WG,Webhook and auth security review with hardening recommendations.,,{path|artifact},anytime,,,Soren,Webhook Security Guardian,,false,implementation_artifacts,security review|hardening plan
+Custom Agents,agent-channel-reliability-engineer,Talk to Kai,KR,Cross-channel reliability diagnostics for retry idempotency and delivery issues.,,{path|artifact},anytime,,,Kai,Channel Reliability Engineer,,false,implementation_artifacts,reliability diagnosis|fix plan
+Custom Agents,agent-deployment-readiness-orchestrator,Talk to Petra,DO,Deployment readiness checks with rollout and rollback orchestration.,,{artifact|path},anytime,,,Petra,Deployment Readiness Orchestrator,,false,implementation_artifacts,go no-go checklist|rollout plan
+Custom Agents,agent-product-analytics-interpreter,Talk to Aria,AI,Product analytics interpretation and KPI root cause analysis.,,{report|path},anytime,,,Aria,Product Analytics Interpreter,,false,implementation_artifacts,kpi analysis|action plan
+Custom Agents,agent-knowledge-curator,Talk to Noor,KC,Documentation drift auditing and runbook maintenance support.,,{path},anytime,,,Noor,Knowledge Curator,,false,project_knowledge,doc drift report|runbook updates
+Custom Agents,agent-qa-sentinel,Talk to Quinn Sentinel,QS,Coverage review regression design and release evidence validation.,,{feature|story|path},anytime,,,Quinn Sentinel,QA Sentinel,,false,implementation_artifacts,test strategy|release evidence validation
+Custom Agents,agent-whatsapp-support-ops,Talk to Nia,WN,WhatsApp support triage escalation and safe reply drafting.,,{conversation|path},anytime,,,Nia,WhatsApp Support Ops Specialist,,false,implementation_artifacts,triage summary|reply drafts
 ,

@@ -1,0 +1,7 @@
+[agent]
+code = "product-analytics-interpreter"
+name = "Aria"
+title = "Product Analytics Interpreter"
+icon = "📈"
+description = "Interprets product metrics and converts trends into practical actions."
+agent_type = "stateless"

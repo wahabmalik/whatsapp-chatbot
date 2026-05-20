@@ -1,0 +1,37 @@
+{
+  "story": "11.2",
+  "generated_at": "2026-05-10T11:15:40.267205+00:00",
+  "target_os": "windows",
+  "sqlite_path": "C:\\Users\\wahab\\OneDrive\\Documents\\GitHub\\python-whatsapp-bot\\data\\runtime_state.db",
+  "simulate_restart": true,
+  "duration_limit_seconds": 900,
+  "elapsed_seconds": 0.0865,
+  "elapsed_minutes": 0.0014,
+  "steps": [
+    {
+      "name": "sqlite_precheck",
+      "passed": true,
+      "elapsed_seconds": 0.076,
+      "details": "SQLite precheck passed and transition key seeded"
+    },
+    {
+      "name": "rollback_transition",
+      "passed": true,
+      "elapsed_seconds": 0.0092,
+      "details": "Rollback activated memory backend and transition integrity checks passed"
+    }
+  ],
+  "transition_summary": {
+    "transition_key": "rollback-transition-key",
+    "backend_after_rollback": "memory",
+    "post_transition_first_seen": false,
+    "memory_probe_first": false,
+    "memory_probe_second": true
+  },
+  "acceptance": {
+    "steps_passed": true,
+    "within_15_minutes": true,
+    "duration_limit_minutes": 15.0
+  },
+  "passed": true
+}

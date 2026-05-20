@@ -15,4 +15,6 @@ alembic
 psycopg2-binary
 bcrypt
 Flask-Session
+authlib
+requests
 # paddle billing uses urllib (stdlib) — no extra package required

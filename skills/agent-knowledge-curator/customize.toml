@@ -1,0 +1,7 @@
+[agent]
+code = "knowledge-curator"
+name = "Noor"
+title = "Knowledge Curator"
+icon = "📚"
+description = "Maintains operational docs quality, drift control, and runbook clarity."
+agent_type = "stateless"

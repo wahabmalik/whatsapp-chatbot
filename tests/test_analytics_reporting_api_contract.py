@@ -135,6 +135,9 @@ class AnalyticsReportingApiContractTests(unittest.TestCase):
                 "escalation_trend",
                 "delivery_breakdown",
                 "latency_summary",
+                "latency_trend",
+                "coverage_hours",
+                "insufficient_data",
                 "window_days",
                 "retention_days",
                 "generated_at",
@@ -142,11 +145,13 @@ class AnalyticsReportingApiContractTests(unittest.TestCase):
             self.assertTrue(required_keys.issubset(payload.keys()))
             self.assertEqual(payload["window_days"], 7)
             self.assertEqual(payload["retention_days"], 7)
+            self.assertIsInstance(payload["insufficient_data"], bool)
 
             volume_trend = payload["volume_trend"]
             escalation_trend = payload["escalation_trend"]
             delivery_breakdown = payload["delivery_breakdown"]
             latency_summary = payload["latency_summary"]
+            latency_trend = payload["latency_trend"]
 
             self.assertEqual(len(volume_trend), 7)
             self.assertEqual(len(escalation_trend), 7)
@@ -156,6 +161,7 @@ class AnalyticsReportingApiContractTests(unittest.TestCase):
             self.assertGreaterEqual(latency_summary["p50_ms"], 0)
             self.assertGreaterEqual(latency_summary["p95_ms"], latency_summary["p50_ms"])
             self.assertGreaterEqual(latency_summary["p99_ms"], latency_summary["p95_ms"])
+            self.assertEqual(len(latency_trend), 7)
 
             self.assertEqual(sum(item["count"] for item in volume_trend), 1)
             self.assertEqual(sum(item["count"] for item in escalation_trend), 1)

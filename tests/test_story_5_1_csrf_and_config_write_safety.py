@@ -223,6 +223,48 @@ class SecretKeyFallbackAbsenceTests(unittest.TestCase):
             app = create_app()
         self.assertEqual(app.config.get("SECRET_KEY"), expected)
 
+    def test_secret_key_persists_outside_pytest_context(self):
+        """Outside pytest, generated fallback key should persist across app starts."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runtime_secret_path = os.path.join(tmp_dir, "runtime_secret_key.txt")
+
+            with patch.dict(
+                os.environ,
+                {
+                    **FULL_REQUIRED_ENV,
+                    "FLASK_SECRET_KEY": "",
+                    "SECRET_KEY": "",
+                    "RUNTIME_SECRET_KEY_PATH": runtime_secret_path,
+                },
+                clear=True,
+            ), patch("app.config.load_dotenv"), patch("app.config._running_under_pytest", return_value=False):
+                from app import create_app
+
+                app1 = create_app()
+                app2 = create_app()
+
+            key1 = app1.config.get("SECRET_KEY")
+            key2 = app2.config.get("SECRET_KEY")
+            self.assertTrue(bool(key1))
+            self.assertEqual(key1, key2)
+            self.assertTrue(os.path.exists(runtime_secret_path))
+
+    def test_secret_key_fallback_remains_non_persistent_under_pytest(self):
+        """In pytest context, fallback should remain ephemeral per app instance."""
+        with patch.dict(os.environ, {}, clear=True), patch("app.config.load_dotenv"), patch(
+            "app.config._running_under_pytest", return_value=True
+        ):
+            from app import create_app
+
+            app1 = create_app()
+            app2 = create_app()
+
+        self.assertNotEqual(
+            app1.config.get("SECRET_KEY"),
+            app2.config.get("SECRET_KEY"),
+            "Pytest fallback behavior should remain per-instance random",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

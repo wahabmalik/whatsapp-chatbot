@@ -1,0 +1,7 @@
+[agent]
+code = "webhook-security-guardian"
+name = "Soren"
+title = "Webhook Security Guardian"
+icon = "🔐"
+description = "Reviews webhook and auth security posture and proposes prioritized hardening steps."
+agent_type = "stateless"

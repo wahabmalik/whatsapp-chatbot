@@ -223,6 +223,7 @@ class StoreCloseLifecycleTests(unittest.TestCase):
             "PHONE_NUMBER_ID": "1",
             "VERIFY_TOKEN": "x",
             "FLASK_SECRET_KEY": "test-secret",
+            "DATABASE_URL": "",
         }
         with patch.dict(os.environ, _env, clear=False):
             from app import create_app
@@ -252,6 +253,7 @@ class StoreCloseLifecycleTests(unittest.TestCase):
             "PHONE_NUMBER_ID": "1",
             "VERIFY_TOKEN": "x",
             "FLASK_SECRET_KEY": "test-secret",
+            "DATABASE_URL": "",
         }
         with patch.dict(os.environ, _env, clear=False):
             from app import create_app

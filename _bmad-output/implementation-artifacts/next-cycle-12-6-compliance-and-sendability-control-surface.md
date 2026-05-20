@@ -1,12 +1,12 @@
 ---
 story_id: "12.6"
 story_key: "next-cycle-12-6-compliance-and-sendability-control-surface"
-status: "ready-for-dev"
+status: "done"
 epic: next-12
 story: "6"
 sprint_status_file: _bmad-output/implementation-artifacts/sprint-status-next-cycle.yaml
 created: "2026-05-10"
-updated: "2026-05-10"
+updated: "2026-05-15"
 depends_on:
   - next-cycle-12-4-india-d2c-starter-template-pack
   - next-cycle-10-2-dashboard-analytics-v1

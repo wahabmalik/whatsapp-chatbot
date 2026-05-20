@@ -145,6 +145,47 @@ class OutboundDeliveryTimeoutConfigTests(unittest.TestCase):
                 self.assertIn("WHATSAPP_SEND_TIMEOUT_SECONDS", str(e))
 
 
+class SessionCookieSecurityConfigTests(unittest.TestCase):
+    """Session cookie security defaults should follow deployment URL scheme."""
+
+    def test_session_cookie_secure_defaults_true_for_https_base_url(self):
+        from app.config import load_configurations
+
+        env = {
+            "APP_BASE_URL": "https://example.com",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            app = Flask(__name__)
+            load_configurations(app)
+
+        self.assertTrue(app.config["SESSION_COOKIE_SECURE"])
+
+    def test_session_cookie_secure_defaults_false_for_http_base_url(self):
+        from app.config import load_configurations
+
+        env = {
+            "APP_BASE_URL": "http://localhost:8000",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            app = Flask(__name__)
+            load_configurations(app)
+
+        self.assertFalse(app.config["SESSION_COOKIE_SECURE"])
+
+    def test_session_cookie_secure_explicit_env_override_wins(self):
+        from app.config import load_configurations
+
+        env = {
+            "APP_BASE_URL": "https://example.com",
+            "SESSION_COOKIE_SECURE": "false",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            app = Flask(__name__)
+            load_configurations(app)
+
+        self.assertFalse(app.config["SESSION_COOKIE_SECURE"])
+
+
 class FallbackDeliveryRetryPolicyTests(unittest.TestCase):
     """AC4: Fallback delivery has explicit, bounded retry policy."""
 

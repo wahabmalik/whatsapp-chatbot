@@ -123,6 +123,64 @@ def _as_csv_list(name: str, default: str) -> list[str]:
     return [token.strip().lower() for token in raw.split(",") if token.strip()]
 
 
+def _running_under_pytest() -> bool:
+    return bool(os.environ.get("PYTEST_CURRENT_TEST") or "pytest" in sys.modules)
+
+
+def _default_session_cookie_secure(app_base_url: str) -> bool:
+    return str(app_base_url or "").strip().lower().startswith("https://")
+
+
+def _read_persisted_secret_key(path: Path) -> str | None:
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+def _resolve_secret_key() -> str:
+    configured = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
+    if configured:
+        return configured
+
+    if _running_under_pytest():
+        return secrets.token_hex(32)
+
+    secret_path_raw = (os.getenv("RUNTIME_SECRET_KEY_PATH") or "").strip() or "data/runtime_secret_key.txt"
+    secret_path = Path(secret_path_raw)
+    try:
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logging.warning(
+            "RUNTIME_SECRET_KEY_PERSISTENCE_DIR_CREATE_FAILED path=%s reason=%s",
+            secret_path.parent,
+            exc,
+        )
+        return secrets.token_hex(32)
+
+    existing = _read_persisted_secret_key(secret_path)
+    if existing:
+        return existing
+
+    generated = secrets.token_hex(32)
+    try:
+        with secret_path.open("x", encoding="utf-8") as handle:
+            handle.write(f"{generated}\n")
+    except FileExistsError:
+        existing_after_race = _read_persisted_secret_key(secret_path)
+        if existing_after_race:
+            return existing_after_race
+    except OSError:
+        logging.warning(
+            "RUNTIME_SECRET_KEY_PERSISTENCE_WRITE_FAILED path=%s",
+            secret_path,
+        )
+        return generated
+
+    return generated
+
+
 def validate_config(app) -> list[str]:
     errors: list[str] = []
 
@@ -210,6 +268,21 @@ def validate_config(app) -> list[str]:
         if channel_url and not re.match(r"^https?://", channel_url):
             errors.append(f"{channel_url_key} must start with http:// or https://")
 
+    crm_export_enabled = bool(app.config.get("CRM_EXPORT_ENABLED", False))
+    crm_export_url = str(app.config.get("CRM_EXPORT_WEBHOOK_URL", "")).strip()
+    if crm_export_enabled and crm_export_url and not re.match(r"^https?://", crm_export_url):
+        errors.append("CRM_EXPORT_WEBHOOK_URL must start with http:// or https://")
+    if crm_export_enabled and not crm_export_url:
+        errors.append("CRM_EXPORT_ENABLED requires CRM_EXPORT_WEBHOOK_URL to be configured")
+
+    if bool(app.config.get("INDIA_D2C_STARTER_PACK_ENABLED", False)):
+        cost_country = str(app.config.get("INDIA_MESSAGE_COST_COUNTRY", "IN") or "IN").strip().upper()
+        if cost_country != "IN":
+            errors.append(
+                f"INDIA_MESSAGE_COST_COUNTRY must be 'IN' when INDIA_D2C_STARTER_PACK_ENABLED is true "
+                f"(got '{cost_country}'). Cost estimation is constrained to India-only pricing."
+            )
+
     return errors
 
 
@@ -224,12 +297,17 @@ def load_configurations(app):
     load_dotenv()
     provider = normalize_provider(os.getenv("WHATSAPP_PROVIDER"), os.environ)
     app.config["WHATSAPP_PROVIDER"] = provider
-    _secret_key = os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
+    _secret_key = _resolve_secret_key()
     if not _secret_key:
         _secret_key = secrets.token_hex(32)
         logging.warning(
             "FLASK_SECRET_KEY is not set — using a random secret key. "
             "All user sessions will be invalidated on every restart. "
+            "Set FLASK_SECRET_KEY in your .env file for production."
+        )
+    elif not (os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")) and not _running_under_pytest():
+        logging.warning(
+            "FLASK_SECRET_KEY is not set — using a persisted runtime key from RUNTIME_SECRET_KEY_PATH. "
             "Set FLASK_SECRET_KEY in your .env file for production."
         )
     app.config["SECRET_KEY"] = _secret_key
@@ -316,6 +394,12 @@ def load_configurations(app):
         "TIKTOK_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
     )
     app.config["TIKTOK_CONNECT_URL"] = os.getenv("TIKTOK_CONNECT_URL")
+    app.config["CRM_EXPORT_ENABLED"] = _as_bool("CRM_EXPORT_ENABLED", default=False)
+    app.config["CRM_EXPORT_WEBHOOK_URL"] = os.getenv("CRM_EXPORT_WEBHOOK_URL")
+    app.config["CRM_EXPORT_API_KEY"] = os.getenv("CRM_EXPORT_API_KEY")
+    app.config["CRM_EXPORT_TIMEOUT_SECONDS"] = _as_float(
+        "CRM_EXPORT_TIMEOUT_SECONDS", default=5.0, minimum=0.1
+    )
     app.config["STATE_STORE_BACKEND"] = os.getenv("STATE_STORE_BACKEND", "memory")
     sqlite_path = os.getenv("STATE_STORE_SQLITE_PATH", "data/runtime_state.db")
     app.config["STATE_STORE_SQLITE_PATH"] = sqlite_path
@@ -334,6 +418,42 @@ def load_configurations(app):
     app.config["ANALYTICS_RETENTION_DAYS"] = _as_int(
         "ANALYTICS_RETENTION_DAYS", default=90, minimum=1
     )
+    app.config["INDIA_D2C_STARTER_PACK_ENABLED"] = _as_bool(
+        "INDIA_D2C_STARTER_PACK_ENABLED", default=False
+    )
+    app.config["INDIA_D2C_STARTER_PACK_COHORT_PERCENT"] = _as_int(
+        "INDIA_D2C_STARTER_PACK_COHORT_PERCENT", default=0, minimum=0
+    )
+    app.config["INDIA_D2C_STARTER_PACK_COHORT_TENANTS"] = _as_csv_list(
+        "INDIA_D2C_STARTER_PACK_COHORT_TENANTS", default=""
+    )
+    app.config["INDIA_MESSAGE_COST_COUNTRY"] = os.getenv(
+        "INDIA_MESSAGE_COST_COUNTRY", "IN"
+    ).strip().upper()
+    app.config["INDIA_MESSAGE_COST_MARKETING_PAISA"] = _as_int(
+        "INDIA_MESSAGE_COST_MARKETING_PAISA", default=75, minimum=1
+    )
+    app.config["INDIA_MESSAGE_COST_UTILITY_PAISA"] = _as_int(
+        "INDIA_MESSAGE_COST_UTILITY_PAISA", default=20, minimum=1
+    )
+    app.config["INDIA_MESSAGE_COST_AUTHENTICATION_PAISA"] = _as_int(
+        "INDIA_MESSAGE_COST_AUTHENTICATION_PAISA", default=15, minimum=1
+    )
+    app.config["INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA"] = _as_int(
+        "INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA", default=100, minimum=0
+    )
+    app.config["USAGE_ALERT_THRESHOLD_PCTS"] = os.getenv(
+        "USAGE_ALERT_THRESHOLD_PCTS", "80"
+    )
+    app.config["RECONNECTION_DETECTION_WINDOW_SECONDS"] = _as_int(
+        "RECONNECTION_DETECTION_WINDOW_SECONDS", default=60, minimum=1
+    )
+    app.config["RECONNECTION_MAX_RETRIES"] = _as_int(
+        "RECONNECTION_MAX_RETRIES", default=3, minimum=1
+    )
+    app.config["STARTER_PACK_TELEMETRY_PATH"] = os.getenv(
+        "STARTER_PACK_TELEMETRY_PATH", "data/starter_pack_telemetry.jsonl"
+    )
     app.config["CONVERSATION_CONTEXT_TIMEOUT_SECONDS"] = _as_int(
         "CONVERSATION_CONTEXT_TIMEOUT_SECONDS", default=1800, minimum=1
     )
@@ -344,7 +464,10 @@ def load_configurations(app):
     app.config["SESSION_PERMANENT"] = _as_bool("SESSION_PERMANENT", default=False)
     app.config["SESSION_COOKIE_HTTPONLY"] = _as_bool("SESSION_COOKIE_HTTPONLY", default=True)
     app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
-    app.config["SESSION_COOKIE_SECURE"] = _as_bool("SESSION_COOKIE_SECURE", default=False)
+    app_base_url = os.getenv("APP_BASE_URL", "").rstrip("/")
+    app.config["APP_BASE_URL"] = app_base_url
+    secure_default = _default_session_cookie_secure(app_base_url)
+    app.config["SESSION_COOKIE_SECURE"] = _as_bool("SESSION_COOKIE_SECURE", default=secure_default)
     app.config["PASSWORD_RESET_TOKEN_TTL_MINUTES"] = _as_int(
         "PASSWORD_RESET_TOKEN_TTL_MINUTES", default=30, minimum=1
     )
@@ -355,7 +478,12 @@ def load_configurations(app):
     app.config["SMTP_PASSWORD"] = os.getenv("SMTP_PASSWORD")
     app.config["SMTP_FROM_ADDRESS"] = os.getenv("SMTP_FROM_ADDRESS")
     app.config["SMTP_USE_TLS"] = _as_bool("SMTP_USE_TLS", default=True)
-    app.config["APP_BASE_URL"] = os.getenv("APP_BASE_URL", "").rstrip("/")
+    app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+    app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+    app.config["FACEBOOK_OAUTH_APP_ID"] = os.getenv("FACEBOOK_OAUTH_APP_ID")
+    app.config["FACEBOOK_OAUTH_APP_SECRET"] = os.getenv("FACEBOOK_OAUTH_APP_SECRET")
+    app.config["LINKEDIN_OAUTH_CLIENT_ID"] = os.getenv("LINKEDIN_OAUTH_CLIENT_ID")
+    app.config["LINKEDIN_OAUTH_CLIENT_SECRET"] = os.getenv("LINKEDIN_OAUTH_CLIENT_SECRET")
     # Paddle billing — all optional; billing endpoints return 503 when not set.
     app.config["PADDLE_API_KEY"] = os.getenv("PADDLE_API_KEY")
     app.config["PADDLE_CLIENT_TOKEN"] = os.getenv("PADDLE_CLIENT_TOKEN")
@@ -366,6 +494,7 @@ def load_configurations(app):
     app.config["BYPASS_BILLING_FOR_TESTS"] = _as_bool("BYPASS_BILLING_FOR_TESTS", default=False)
     Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["ESCALATION_QUEUE_PATH"]).parent.mkdir(parents=True, exist_ok=True)
+    Path(app.config["STARTER_PACK_TELEMETRY_PATH"]).parent.mkdir(parents=True, exist_ok=True)
     Path(session_dir).mkdir(parents=True, exist_ok=True)
 
 

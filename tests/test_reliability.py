@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
+from typing import Optional
 
 from flask import Flask, jsonify
 
@@ -175,13 +176,7 @@ class WebhookIdempotencyTests(unittest.TestCase):
             ],
         }
 
-    def _payload_without_message_id(
-        self,
-        *,
-        body: str = "hello",
-        timestamp: str = "1700000000",
-        context_id: str | None = None,
-    ) -> dict:
+    def _payload_with_context(self, *, body: str = "hello", timestamp: str = "1700000000", context_id: Optional[str] = None) -> dict:
         message = {
             "text": {"body": body},
             "timestamp": timestamp,

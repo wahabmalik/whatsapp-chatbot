@@ -14,6 +14,7 @@ from app.config import PROVIDER_EVOLUTION, PROVIDER_META, normalize_provider
 from app.services.agent_registry import get_selected_agent
 from app.services.channel_interface import get_outbound_channel
 from app.services.conversation_analytics import emit_analytics_event
+from app.services.conversation_history import record_conversation_exchange
 from app.services.escalation_queue import append_review_artifact
 from app.services.faq_store import find_faq_answer
 from app.services.message_log import get_message_log_buffer
@@ -824,6 +825,7 @@ def _complete_deferred_delivery(app, data, request_id: str, delivery_context: di
                 app,
                 stage="outbound_outcome",
                 correlation_id=request_id,
+                tenant_id=(delivery_context or {}).get("tenant_id"),
                 user_id=(delivery_context or {}).get("wa_id"),
                 conversation_id=(delivery_context or {}).get("message_id"),
                 outcome_status=str(result.get("status") or "error"),
@@ -939,6 +941,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
     message_id = inbound.get("message_id")
     message_body = str(inbound.get("message_text") or inbound.get("text") or "").strip()
     evolution_instance = str(inbound.get("evolution_instance") or "").strip() or None
+    tenant_id = str(inbound.get("tenant_id") or "").strip() or None
     if not wa_id or not message_body:
         raise ValueError("No inbound message payload found")
 
@@ -952,6 +955,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
             current_app,
             stage="ai_outcome",
             correlation_id=request_id,
+            tenant_id=tenant_id,
             user_id=wa_id,
             conversation_id=message_id,
             outcome_status="faq_hit",
@@ -972,6 +976,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
                 current_app,
                 stage="ai_outcome",
                 correlation_id=request_id,
+                tenant_id=tenant_id,
                 user_id=wa_id,
                 conversation_id=message_id,
                 outcome_status=str(ai_result.get("status") or "success"),
@@ -990,6 +995,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
                 current_app,
                 stage="ai_outcome",
                 correlation_id=request_id,
+                tenant_id=tenant_id,
                 user_id=wa_id,
                 conversation_id=message_id,
                 outcome_status="fallback",
@@ -1018,6 +1024,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
         data,
         request_id=request_id,
         delivery_context={
+            "tenant_id": tenant_id,
             "wa_id": wa_id,
             "recipient_id": str(inbound.get("recipient_id") or wa_id),
             "instagram_recipient_id": str(inbound.get("instagram_recipient_id") or ""),
@@ -1040,6 +1047,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
         current_app,
         stage="escalation_flag",
         correlation_id=request_id,
+        tenant_id=tenant_id,
         user_id=wa_id,
         conversation_id=message_id,
         outcome_status="flagged" if operator_review_flagged else "clear",
@@ -1074,6 +1082,7 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
         current_app,
         stage="outbound_outcome",
         correlation_id=request_id,
+        tenant_id=tenant_id,
         user_id=wa_id,
         conversation_id=message_id,
         outcome_status=str(delivery.get("status", "error")),
@@ -1082,6 +1091,18 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
             "operator_review_flagged": operator_review_flagged,
             "operator_review_reason": escalation_reason,
         },
+    )
+
+    record_conversation_exchange(
+        current_app,
+        tenant_id=tenant_id,
+        wa_id=wa_id,
+        conversation_id=message_id,
+        correlation_id=request_id,
+        inbound_text=message_body,
+        outbound_text=response,
+        outbound_status=str(delivery.get("status", "error")),
+        escalation_flag=operator_review_flagged,
     )
 
     return {

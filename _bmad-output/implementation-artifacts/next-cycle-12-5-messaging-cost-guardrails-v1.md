@@ -1,12 +1,12 @@
 ---
 story_id: "12.5"
 story_key: "next-cycle-12-5-messaging-cost-guardrails-v1"
-status: "ready-for-dev"
+status: "done"
 epic: next-12
 story: "5"
 sprint_status_file: _bmad-output/implementation-artifacts/sprint-status-next-cycle.yaml
 created: "2026-05-10"
-updated: "2026-05-10"
+updated: "2026-05-15"
 depends_on:
   - next-cycle-10-1-analytics-reporting-api
   - next-cycle-10-2-dashboard-analytics-v1
@@ -67,13 +67,13 @@ The approved market research shows that cost sensitivity in this ICP is driven b
 
 ## Tasks / Subtasks
 
-- [ ] Define a bounded India-only price-table configuration surface and estimator service. (AC: 12.5.1, 12.5.6)
-- [ ] Add estimate payload generation for dashboard-triggered template send flows, including recalculation on changed inputs. (AC: 12.5.1, 12.5.2)
-- [ ] Add threshold-based explicit confirmation flow for above-threshold sends. (AC: 12.5.3)
-- [ ] Enforce fail-closed estimation behavior with actionable operator messaging and audit logging. (AC: 12.5.4)
-- [ ] Persist category and estimate decision metadata into analytics/audit surfaces. (AC: 12.5.5)
-- [ ] Prove quota and retry/fallback behavior remain unchanged by the new guardrail layer. (AC: 12.5.7)
-- [ ] Add focused unit, integration, and contract tests for estimation, threshold branching, and blocked-send semantics. (AC: 12.5.1-12.5.7)
+- [x] Define a bounded India-only price-table configuration surface and estimator service. (AC: 12.5.1, 12.5.6)
+- [x] Add estimate payload generation for dashboard-triggered template send flows, including recalculation on changed inputs. (AC: 12.5.1, 12.5.2)
+- [x] Add threshold-based explicit confirmation flow for above-threshold sends. (AC: 12.5.3)
+- [x] Enforce fail-closed estimation behavior with actionable operator messaging and audit logging. (AC: 12.5.4)
+- [x] Persist category and estimate decision metadata into analytics/audit surfaces. (AC: 12.5.5)
+- [x] Prove quota and retry/fallback behavior remain unchanged by the new guardrail layer. (AC: 12.5.7)
+- [x] Add focused unit, integration, and contract tests for estimation, threshold branching, and blocked-send semantics. (AC: 12.5.1-12.5.7)
 
 ## Risks, Assumptions, and Mitigations
 
@@ -115,13 +115,13 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Definition of Done Evidence Checklist
 
-- [ ] Story status updated in `sprint-status-next-cycle.yaml` according to workflow.
-- [ ] India-only price table and threshold defaults documented in completion notes.
-- [ ] Targeted pytest output captured for unit, integration, and contract coverage.
-- [ ] Audit/event evidence shows estimate inputs, operator confirmation decision, and correlation_id.
-- [ ] Failure evidence shows estimate errors fail closed without dispatch.
-- [ ] Regression evidence shows quota enforcement and retry/fallback behavior were not weakened.
-- [ ] Rollout mode and fallback configuration documented.
+- [x] Story status updated in `sprint-status-next-cycle.yaml` according to workflow.
+- [x] India-only price table and threshold defaults documented in completion notes.
+- [x] Targeted pytest output captured for unit, integration, and contract coverage.
+- [x] Audit/event evidence shows estimate inputs, operator confirmation decision, and correlation_id.
+- [x] Failure evidence shows estimate errors fail closed without dispatch.
+- [x] Regression evidence shows quota enforcement and retry/fallback behavior were not weakened.
+- [x] Rollout mode and fallback configuration documented.
 
 ## Effort Estimate
 
@@ -160,5 +160,47 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Story Completion Status
 
-- Story document created and context-complete for implementation.
-- Status set to `ready-for-dev`.
+## Completion State
+
+- Story status: `done`
+- Completed on: 2026-05-15
+- Acceptance criteria: AC 12.5.1 through AC 12.5.7 implemented and validated.
+
+## Validation Evidence
+
+- `python -m pytest tests/test_story_12_4_india_d2c_starter_template_pack.py tests/test_story_12_5_messaging_cost_guardrails_v1.py` -> 8 passed
+- `$env:DATABASE_URL='sqlite:///:memory:'; python -m pytest tests/test_retry_escalation_contract.py` -> 23 passed
+- `python validate_story_closure_evidence.py` -> PASS
+- `python validate_sprint_status_integrity.py` -> PASS WITH WARNINGS (existing stale timestamp warning on legacy sprint-status.yaml)
+
+## Dev Agent Record
+
+### Agent Model Used
+
+GPT-5.4
+
+### Completion Notes List
+
+- Added India-only messaging cost configuration in paisa for marketing, utility, and authentication categories plus an environment-scoped warning threshold.
+- Added starter-pack activation cost estimation that returns explicit input metadata, price-table scope, projected spend, and threshold outcome before activation.
+- Added threshold-triggered explicit confirmation enforcement for above-threshold activation attempts.
+- Added fail-closed estimation handling for missing recipient count, unsupported category metadata, and non-India price-table configuration.
+- Extended audit-log payloads and starter-pack telemetry with category label, recipient count, projected spend, threshold outcome, operator confirmation decision, estimation error, and correlation_id.
+- Kept quota and outbound retry/fallback paths untouched and validated the existing retry contract suite after the change.
+- Added focused Story 12.5 tests for estimate preview, recalculation, threshold confirmation, fail-closed behavior, and telemetry or audit tagging.
+
+### File List
+
+- app/config.py
+- app/onboarding/routes.py
+- app/services/starter_pack.py
+- tests/test_story_12_4_india_d2c_starter_template_pack.py
+- tests/test_story_12_5_messaging_cost_guardrails_v1.py
+- _bmad-output/implementation-artifacts/next-cycle-12-5-messaging-cost-guardrails-v1.md
+- _bmad-output/implementation-artifacts/sprint-status-next-cycle.yaml
+
+### Change Log
+
+| Date | Change |
+| --- | --- |
+| 2026-05-15 | Implemented Story 12.5 messaging cost guardrails for starter-pack activation with India-only estimation, threshold confirmation, fail-closed handling, audit or telemetry tagging, and focused tests. |

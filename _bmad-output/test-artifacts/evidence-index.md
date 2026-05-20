@@ -1,6 +1,6 @@
 # Release Evidence Index
 
-Updated: 2026-05-02
+Updated: 2026-05-10
 Scope: GO/NO-GO operational evidence package
 
 ## Core Release Artifacts
@@ -18,5 +18,7 @@ Scope: GO/NO-GO operational evidence package
 
 ## Onboarding and Ops Evidence
 - `_bmad-output/test-artifacts/clean-room-onboarding-2026-05-02.md`
+- `_bmad-output/test-artifacts/sqlite-soak-report.json`
+- `_bmad-output/test-artifacts/sqlite-soak-evidence-20260510.md`
 - `docs/operations_runbook.md`
 - `docs/release_smoke_checklist.md`

@@ -286,3 +286,62 @@ def test_reset_password_rejects_weak_password(auth_app, client):
     user = _get_user(auth_app)
     assert user.reset_token is not None
     assert user.reset_token_expires is not None
+
+
+def test_create_app_registers_password_reset_dispatch_when_smtp_host_configured(tmp_path):
+    session_dir = tmp_path / "sessions"
+    session_dir.mkdir()
+
+    env = {
+        **_BASE_ENV,
+        "SESSION_FILE_DIR": str(session_dir),
+        "SMTP_HOST": "smtp.example.com",
+        "SMTP_PORT": "2525",
+        "SMTP_USERNAME": "mailer@example.com",
+        "SMTP_PASSWORD": "password",
+        "SMTP_FROM_ADDRESS": "noreply@example.com",
+        "SMTP_USE_TLS": "true",
+        "PASSWORD_RESET_TOKEN_TTL_MINUTES": "45",
+    }
+
+    dispatch = object()
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None), patch(
+        "app.build_smtp_dispatch", return_value=dispatch
+    ) as build_dispatch:
+        from app import create_app
+
+        app = create_app()
+
+    assert app.config.get("AUTH_PASSWORD_RESET_DISPATCH") is dispatch
+    build_dispatch.assert_called_once_with(
+        smtp_host="smtp.example.com",
+        smtp_port=2525,
+        smtp_username="mailer@example.com",
+        smtp_password="password",
+        from_address="noreply@example.com",
+        use_tls=True,
+        ttl_minutes=45,
+    )
+
+
+def test_create_app_warns_when_password_reset_dispatch_not_configured(tmp_path):
+    session_dir = tmp_path / "sessions"
+    session_dir.mkdir()
+
+    env = {
+        **_BASE_ENV,
+        "SESSION_FILE_DIR": str(session_dir),
+        "SMTP_HOST": "   ",
+    }
+
+    with patch.dict(os.environ, env, clear=True), patch("app.config.load_dotenv", return_value=None), patch(
+        "app.logging.warning"
+    ) as warning_mock:
+        from app import create_app
+
+        app = create_app()
+
+    assert app.config.get("AUTH_PASSWORD_RESET_DISPATCH") is None
+    warning_mock.assert_any_call(
+        "AUTH_PASSWORD_RESET_DISPATCH_NOT_CONFIGURED SMTP_HOST is missing; forgot-password emails are disabled"
+    )

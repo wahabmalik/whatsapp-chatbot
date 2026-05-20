@@ -208,6 +208,39 @@ def test_login_rejects_disabled_account(auth_app, client):
     assert payload["error_code"] == "ACCOUNT_DISABLED"
 
 
+def test_login_with_orphaned_tenant_fails_with_invalid_credentials(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-orphan-tenant"),
+    )
+    assert signup.status_code == 302
+
+    from app.models import User
+
+    db = auth_app.extensions["saas_db"]
+    session = db.session()
+    try:
+        user = session.query(User).filter(User.email == "owner@example.com").one()
+        user.tenant_id = "00000000-0000-0000-0000-000000000000"
+        session.commit()
+    finally:
+        session.close()
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-orphan-tenant"))
+
+    response = client.post(
+        "/auth/login",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-orphan-tenant"),
+    )
+
+    assert response.status_code == 401
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "INVALID_CREDENTIALS"
+
+
 def test_logout_invalidates_session_and_protected_page_redirects_to_login(client):
     signup = client.post(
         "/auth/signup",
@@ -314,6 +347,108 @@ def test_login_with_next_param_uses_safe_relative_target(auth_app, client):
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/onboarding")
+
+
+def test_login_with_next_auth_login_does_not_loop_back_to_signin(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-no-loop-target"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-no-loop-target"))
+
+    response = client.post(
+        "/auth/login?next=/auth/login",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-no-loop-target"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/billing/plans")
+
+
+def test_login_with_next_auth_logout_does_not_loop_or_logout_immediately(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-no-logout-loop-target"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-no-logout-loop-target"))
+
+    response = client.post(
+        "/auth/login?next=/auth/logout",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-no-logout-loop-target"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/billing/plans")
+
+
+def test_login_with_next_auth_signup_does_not_loop_back_to_signup(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-no-signup-loop-target"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-no-signup-loop-target"))
+
+    response = client.post(
+        "/auth/login?next=/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-no-signup-loop-target"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/billing/plans")
+
+
+def test_login_with_next_auth_signup_trailing_slash_does_not_loop(auth_app, client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-no-signup-slash-loop-target"),
+    )
+    assert signup.status_code == 302
+
+    client.post("/auth/logout", headers=_csrf_headers(client, "logout-no-signup-slash-loop-target"))
+
+    response = client.post(
+        "/auth/login?next=/auth/signup/",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "login-no-signup-slash-loop-target"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/billing/plans")
+
+
+def test_login_and_signup_pages_redirect_authenticated_user_to_post_login_target(client):
+    signup = client.post(
+        "/auth/signup",
+        data={"email": "owner@example.com", "password": "StrongPass123!"},
+        headers=_csrf_headers(client, "signup-auth-redirect"),
+        follow_redirects=False,
+    )
+    assert signup.status_code == 302
+
+    login_page = client.get("/auth/login", follow_redirects=False)
+    signup_page = client.get("/auth/signup", follow_redirects=False)
+
+    assert login_page.status_code == 302
+    assert login_page.headers["Location"].endswith("/billing/plans")
+    assert signup_page.status_code == 302
+    assert signup_page.headers["Location"].endswith("/billing/plans")
 
 
 @pytest.mark.parametrize(

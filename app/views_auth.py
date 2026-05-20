@@ -7,9 +7,12 @@ import re
 import secrets
 import time
 
+from authlib.integrations.flask_client import OAuthError
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, session, stream_with_context, url_for
+from app.models.base import new_uuid
 from app.services.auth_service import (
     AccountDisabledError,
+    AuthIdentity,
     AuthError,
     EmailTakenError,
     InvalidResetTokenError,
@@ -55,8 +58,19 @@ def _error_response(error: AuthError):
 def _login_redirect_target() -> str:
     target = (request.args.get("next") or "").strip()
     if target.startswith("/") and not target.startswith("//"):
+        normalized = target.split("?", 1)[0].rstrip("/") or "/"
+        if normalized in {"/auth/login", "/auth/signup", "/auth/logout"}:
+            return "/"
         return target
     return "/"
+
+
+def _external_auth_url(endpoint: str, **values) -> str:
+    base_url = (current_app.config.get("APP_BASE_URL") or "").rstrip("/")
+    relative_url = url_for(endpoint, _external=False, **values)
+    if base_url:
+        return f"{base_url}{relative_url}"
+    return url_for(endpoint, _external=True, **values)
 
 
 def _route_exists(path: str) -> bool:
@@ -105,6 +119,9 @@ def _session_suffix(session_id: str) -> str:
 
 @auth_blueprint.get("/auth/signup")
 def signup_form():
+    if current_identity(session) is not None:
+        role = session.get("auth_user_role") or "customer"
+        return redirect(_default_post_login_target(role))
     return render_template("auth_signup.html", csrf_token=_get_csrf_token())
 
 
@@ -128,6 +145,9 @@ def signup():
 
 @auth_blueprint.get("/auth/login")
 def login():
+    if current_identity(session) is not None:
+        role = session.get("auth_user_role") or "customer"
+        return redirect(_default_post_login_target(role))
     return render_template("auth_login.html", csrf_token=_get_csrf_token())
 
 
@@ -159,7 +179,10 @@ def login_post():
     session["auth_user_role"] = role
 
     if request.args.get("next") is not None:
-        return redirect(_login_redirect_target())
+        next_target = _login_redirect_target()
+        if next_target == "/":
+            next_target = _default_post_login_target(role)
+        return redirect(next_target)
 
     return redirect(_default_post_login_target(role))
 
@@ -470,3 +493,180 @@ def billing_paddle_webhook():
     result_status = result.get("status", "processed") if isinstance(result, dict) else "processed"
     result_label = "already_processed" if result_status == "duplicate" else result_status
     return jsonify({"ok": True, "data": {"result": result_label, **(result if isinstance(result, dict) else {})}, "error": None}), 200
+
+
+# ---------------------------------------------------------------------------
+# OAuth2 Sign-In Routes
+# ---------------------------------------------------------------------------
+
+@auth_blueprint.get("/oauth/authorize/<provider>")
+def oauth_authorize(provider: str):
+    """Initiate OAuth2 authorization flow."""
+    if provider not in ["google", "facebook", "linkedin"]:
+        return jsonify({"ok": False, "error_code": "INVALID_PROVIDER", "message": "Invalid OAuth provider."}), 400
+    
+    from app.services.oauth_service import oauth_service
+    
+    # Get the OAuth app
+    oauth_app = oauth_service.oauth.create_client(provider)
+    if oauth_app is None:
+        return jsonify({"ok": False, "error_code": "PROVIDER_NOT_CONFIGURED", "message": f"OAuth provider '{provider}' is not configured."}), 503
+    
+    redirect_uri = _external_auth_url("auth.oauth_callback", provider=provider)
+    state = secrets.token_urlsafe(32)
+    session[f"oauth_state_{provider}"] = state
+    
+    return oauth_app.authorize_redirect(redirect_uri, state=state)
+
+
+@auth_blueprint.get("/oauth/callback/<provider>")
+def oauth_callback(provider: str):
+    """Handle OAuth2 callback after user authorization."""
+    if provider not in ["google", "facebook", "linkedin"]:
+        return redirect(url_for("auth.login", error="invalid_provider"))
+    
+    from app.services.oauth_service import oauth_service
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return redirect(url_for("auth.login", error="saas_unavailable"))
+    
+    # Verify state parameter
+    state = request.args.get("state")
+    stored_state = session.pop(f"oauth_state_{provider}", None)
+    if not state or state != stored_state:
+        logging.warning(f"OAuth state mismatch for provider={provider}")
+        return redirect(url_for("auth.login", error="invalid_state"))
+    
+    try:
+        # Get the OAuth app
+        oauth_app = oauth_service.oauth.create_client(provider)
+        if oauth_app is None:
+            raise ValueError(f"OAuth provider '{provider}' is not configured")
+        
+        # Exchange authorization code for access token
+        token = oauth_app.authorize_access_token()
+        if not token:
+            raise ValueError("Failed to obtain access token")
+        
+        # Get user info from provider
+        user_info = oauth_service.get_user_info(provider, token.get("access_token"))
+        if not user_info:
+            raise ValueError("Failed to retrieve user info from provider")
+        
+        # Find or create user
+        user, _created = oauth_service.find_or_create_user(db, provider, user_info)
+        
+        # Log in the user
+        login_session(session, AuthIdentity(user_id=user.id, tenant_id=user.tenant_id))
+        
+        # Redirect to appropriate page
+        next_url = _login_redirect_target()
+        if not next_url or next_url == "/":
+            next_url = _default_post_login_target("user")
+        
+        return redirect(next_url)
+    
+    except OAuthError as e:
+        logging.error(f"OAuth error for provider={provider}: {e}")
+        return redirect(url_for("auth.login", error="oauth_error"))
+    except Exception as e:
+        logging.error(f"Unexpected error in OAuth callback for provider={provider}: {e}")
+        return redirect(url_for("auth.login", error="callback_error"))
+
+
+@auth_blueprint.get("/oauth/link/<provider>")
+def oauth_link(provider: str):
+    """Link OAuth account to existing user."""
+    identity = current_identity(session)
+    if identity is None:
+        return redirect(url_for("auth.login"))
+    
+    if provider not in ["google", "facebook", "linkedin"]:
+        return jsonify({"ok": False, "error_code": "INVALID_PROVIDER", "message": "Invalid OAuth provider."}), 400
+    
+    from app.services.oauth_service import oauth_service
+    
+    oauth_app = oauth_service.oauth.create_client(provider)
+    if oauth_app is None:
+        return jsonify({"ok": False, "error_code": "PROVIDER_NOT_CONFIGURED", "message": f"OAuth provider '{provider}' is not configured."}), 503
+    
+    redirect_uri = _external_auth_url("auth.oauth_link_callback", provider=provider)
+    state = secrets.token_urlsafe(32)
+    session[f"oauth_link_state_{provider}"] = state
+    session[f"oauth_link_user_id"] = identity.user_id
+    
+    return oauth_app.authorize_redirect(redirect_uri, state=state)
+
+
+@auth_blueprint.get("/oauth/link/callback/<provider>")
+def oauth_link_callback(provider: str):
+    """Handle OAuth link callback."""
+    identity = current_identity(session)
+    if identity is None:
+        return redirect(url_for("auth.login"))
+    
+    if provider not in ["google", "facebook", "linkedin"]:
+        return redirect(url_for("auth.login", error="invalid_provider"))
+    
+    from app.services.oauth_service import oauth_service
+    from app.models import OAuthProvider
+
+    db = current_app.extensions.get("saas_db")
+    if db is None or not getattr(db, "is_ready", False):
+        return redirect(url_for("auth.login", error="saas_unavailable"))
+    
+    # Verify state
+    state = request.args.get("state")
+    stored_state = session.pop(f"oauth_link_state_{provider}", None)
+    if not state or state != stored_state:
+        logging.warning(f"OAuth link state mismatch for provider={provider}")
+        return redirect(url_for("auth.login", error="invalid_state"))
+    
+    try:
+        oauth_app = oauth_service.oauth.create_client(provider)
+        if oauth_app is None:
+            raise ValueError(f"OAuth provider '{provider}' is not configured")
+        
+        token = oauth_app.authorize_access_token()
+        if not token:
+            raise ValueError("Failed to obtain access token")
+        
+        user_info = oauth_service.get_user_info(provider, token.get("access_token"))
+        if not user_info:
+            raise ValueError("Failed to retrieve user info from provider")
+        
+        provider_id = user_info.get("id")
+        if not provider_id:
+            raise ValueError(f"Provider {provider} did not return user ID")
+        
+        db_session = db.session()
+        try:
+            existing_provider = db_session.query(OAuthProvider).filter(
+                OAuthProvider.provider == provider,
+                OAuthProvider.provider_user_id == provider_id,
+            ).one_or_none()
+            if existing_provider is None:
+                oauth_provider = OAuthProvider(
+                    id=new_uuid(),
+                    user_id=identity.user_id,
+                    provider=provider,
+                    provider_user_id=provider_id,
+                    email=user_info.get("email"),
+                    name=user_info.get("name"),
+                    picture_url=user_info.get("picture_url"),
+                )
+                db_session.add(oauth_provider)
+                db_session.commit()
+        except Exception:
+            db_session.rollback()
+            raise
+        finally:
+            db_session.close()
+        
+        # Redirect to dashboard with success message
+        return redirect(url_for("views_dashboard.dashboard", success="oauth_linked"))
+    
+    except Exception as e:
+        logging.error(f"Error linking OAuth account for provider={provider}: {e}")
+        return redirect(url_for("views_dashboard.dashboard", error="oauth_link_failed"))

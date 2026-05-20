@@ -82,6 +82,15 @@ gates:
     key: outbound_fallback_test_pass
     max_age_hours: 168
 
+  - id: SAAS6-REL-07
+    legacy_id: E4-REL-07
+    label: "SQLite 24h soak evidence artifact generated"
+    domain: reliability
+    blocking: true
+    source: file_contains
+    key: "_bmad-output/test-artifacts/sqlite-soak-evidence-latest.md::## final determination"
+    max_age_hours: 72
+
 # ---------------------------------------------------------------------------
 # Latency / Performance domain
 # ---------------------------------------------------------------------------

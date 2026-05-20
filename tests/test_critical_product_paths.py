@@ -42,6 +42,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from io import StringIO
+from typing import Optional
 
 from flask import Flask
 import logging
@@ -109,7 +110,7 @@ def _make_webhook_payload(wa_id: str = "1234567890", message_id: str = "msg123")
     }
 
 
-def _create_app_with_env(env_overrides: dict | None = None) -> Flask:
+def _create_app_with_env(env_overrides: Optional[dict] = None) -> Flask:
     """Create Flask app with specified environment."""
     env = {**REQUIRED_ENV}
     if env_overrides:

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<section class="panel signal-banner {{ 'signal-stop' if escalation.has_stop_signal else 'signal-clear' }}" aria-live="polite">
+<section class="panel panel-enter signal-banner {{ 'signal-stop' if escalation.has_stop_signal else 'signal-clear' }}" aria-live="polite">
   {% if escalation.has_stop_signal %}
     <h2>Automation stop signal active</h2>
     <p>
@@ -18,6 +18,108 @@
     <p class="subtle-help">Automation is currently clear. Escalated threads will appear here as soon as they are flagged.</p>
   {% endif %}
 </section>
+
+<section class="panel panel-enter quick-actions" aria-label="Quick actions">
+  <header class="panel-head">
+    <h3>Quick Actions</h3>
+    <span class="subtle-help">Fast path for daily operator tasks</span>
+  </header>
+  <div class="action-row">
+    <a class="button-link" href="{{ url_for('dashboard.setup') }}">Setup</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.agents_page') }}">Agents</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.metrics_page') }}">Metrics</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.logs_page') }}">Logs</a>
+  </div>
+</section>
+
+<section class="panel panel-enter" data-notification-center>
+  <header class="panel-head">
+    <h3>Notification Center</h3>
+    <span class="subtle-help" data-notification-count>{{ notifications|length }} active</span>
+  </header>
+
+  {% if notifications %}
+    <ul class="activity-list" data-notification-list>
+      {% for item in notifications %}
+      <li data-notification-item-id="{{ item.id }}">
+        <span>
+          <strong>{{ item.title }}</strong><br>
+          <small class="subtle-help">{{ item.message }}</small>
+        </span>
+        <span>{{ item.created_at }}</span>
+        <span>
+          <button type="button" class="button-link button-quiet" data-dismiss-notification="{{ item.id }}">Dismiss</button>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state" data-notification-empty>No active billing, usage, or connectivity alerts.</p>
+    <ul class="activity-list" data-notification-list style="display:none;"></ul>
+  {% endif %}
+</section>
+
+<section class="panel panel-enter" data-reconnection-panel>
+  <header class="panel-head">
+    <h3>Reconnection Assistant</h3>
+    <span class="subtle-help" data-reconnection-status>Idle</span>
+  </header>
+
+  <p class="subtle-help" data-reconnection-summary>
+    Open guided troubleshooting to diagnose channel connectivity issues and retry recovery steps.
+  </p>
+
+  <div class="action-row">
+    <button type="button" class="button-link" data-reconnection-open-flow data-loading-label="Opening flow...">Open guided flow</button>
+    <button type="button" class="button-link button-secondary" data-reconnection-escalate data-loading-label="Escalating...">Escalate to support</button>
+    <button type="button" class="button-link button-danger" data-reconnection-abandon data-loading-label="Marking abandoned...">Mark flow abandoned</button>
+  </div>
+
+  <p class="warning-text hide" data-reconnection-error></p>
+
+  <ul class="activity-list" data-reconnection-steps>
+    <li>
+      <span>Guided steps will appear after opening the flow.</span>
+      <span></span>
+      <span></span>
+    </li>
+  </ul>
+</section>
+
+{% if starter_pack_visible %}
+<section class="panel panel-enter" data-starter-pack-panel>
+  <header class="panel-head">
+    <h3>{{ starter_pack_label }}</h3>
+    <span class="subtle-help">Cohort: {{ starter_pack_cohort }}</span>
+  </header>
+  <p class="subtle-help" style="margin-top:0;">
+    Create fixed India D2C workflow drafts (abandoned cart, order status, COD confirmation, support triage).
+    Categories influence pricing and approval flow.
+    <a href="{{ starter_pack_category_explainer_url }}" target="_blank" rel="noopener">Learn more</a>.
+  </p>
+  <div class="action-row">
+    <button class="button-link" type="button" data-starter-pack-enable data-loading-label="Enabling starter pack...">Enable starter pack</button>
+    <button class="button-link button-secondary" type="button" data-starter-pack-replace data-loading-label="Replacing drafts..." style="display:none;">Replace drafts</button>
+    <span class="subtle-help" data-starter-pack-status></span>
+  </div>
+  <div class="warning-text hide" data-starter-pack-failures></div>
+  <ul class="activity-list" data-starter-pack-drafts>
+    {% for draft in starter_pack_drafts %}
+    <li>
+      <span>{{ draft.workflow_slug }}</span>
+      <span>{{ draft.category_label }}</span>
+      <span>{{ draft.draft_status|upper }}</span>
+    </li>
+    {% else %}
+    <li>
+      <span>No starter drafts yet.</span>
+      <span></span>
+      <span></span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 
 <section class="agency-hero" id="services">
   <div class="hero-copy">
@@ -139,6 +241,123 @@
   {% endif %}
 </section>
 
+<section
+  class="panel analytics-panel"
+  data-analytics-section
+  data-analytics-summary-url="{{ url_for('dashboard.analytics_summary_api') }}"
+  aria-live="polite"
+>
+  <header class="panel-head">
+    <h3>Analytics v1 (7-day)</h3>
+    <span class="subtle-help" data-analytics-status>Loading analytics...</span>
+  </header>
+
+  <p class="warning-text hide" data-analytics-insufficient>
+    Insufficient data: fewer than 24h of analytics events. Trends will populate automatically once enough history is available.
+  </p>
+
+  <section class="analytics-kpis" aria-label="Analytics summary cards">
+    <article class="metric-card">
+      <strong data-analytics-escalation-rate>--</strong>
+      <h3>Escalation Rate</h3>
+    </article>
+    <article class="metric-card">
+      <strong data-analytics-delivery-total>--</strong>
+      <h3>Delivery Events</h3>
+    </article>
+    <article class="metric-card">
+      <strong data-analytics-latency-p95>--</strong>
+      <h3>Latency P95</h3>
+    </article>
+    <article class="metric-card">
+      <strong data-analytics-coverage-hours>--</strong>
+      <h3>Coverage (hours)</h3>
+    </article>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel analytics-subpanel">
+      <header class="panel-head">
+        <h4>Message Volume Trend</h4>
+      </header>
+      <div class="bar-stack" data-analytics-volume-trend>
+        <p class="subtle-help">No trend data yet.</p>
+      </div>
+    </article>
+
+    <article class="panel analytics-subpanel">
+      <header class="panel-head">
+        <h4>Delivery Outcome Breakdown</h4>
+      </header>
+      <div class="bar-stack" data-analytics-delivery-breakdown>
+        <p class="subtle-help">No breakdown data yet.</p>
+      </div>
+    </article>
+
+    <article class="panel analytics-subpanel">
+      <header class="panel-head">
+        <h4>Latency Trend (P95)</h4>
+      </header>
+      <div class="bar-stack" data-analytics-latency-trend>
+        <p class="subtle-help">No latency data yet.</p>
+      </div>
+    </article>
+  </section>
+</section>
+
+<section
+  class="panel conversation-panel"
+  data-conversation-history
+  data-list-endpoint="{{ url_for('dashboard_api.list_conversations') }}"
+  data-detail-endpoint-template="{{ url_for('dashboard_api.get_conversation_detail', conversation_id='__conversation_id__') }}"
+>
+  <header class="panel-head">
+    <h3>Conversations</h3>
+    <span class="subtle-help" data-conversation-status>Loading...</span>
+  </header>
+
+  <form class="conversation-toolbar" data-conversation-filters>
+    <input type="text" name="wa_id" placeholder="Search wa_id" autocomplete="off">
+    <input type="date" name="start_date" aria-label="Start date">
+    <input type="date" name="end_date" aria-label="End date">
+    <button type="submit" class="button-link">Apply filters</button>
+    <button type="button" class="ghost-link" data-conversation-reset>Reset</button>
+  </form>
+
+  <div class="table-wrap">
+    <table class="metrics-table" data-conversation-table>
+      <thead>
+        <tr>
+          <th>wa_id</th>
+          <th>Date</th>
+          <th>Messages</th>
+          <th>Escalation</th>
+          <th>Thread</th>
+        </tr>
+      </thead>
+      <tbody data-conversation-table-body>
+        <tr><td colspan="5" class="subtle-help">Loading conversations...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="conversation-pagination">
+    <button type="button" class="ghost-link" data-conversation-prev>Previous</button>
+    <span class="subtle-help" data-conversation-page-label>Page 1</span>
+    <button type="button" class="ghost-link" data-conversation-next>Next</button>
+  </div>
+
+  <article class="panel conversation-thread hide" data-conversation-thread>
+    <header class="panel-head">
+      <h4 data-conversation-thread-title>Thread details</h4>
+      <span class="subtle-help" data-conversation-thread-meta></span>
+    </header>
+    <ul class="thread-messages" data-conversation-thread-list>
+      <li class="subtle-help">Select a conversation to view messages.</li>
+    </ul>
+  </article>
+</section>
+
 <section class="detail-grid">
   <section class="panel" id="pricing">
     <header class="panel-head">
@@ -171,5 +390,645 @@
 {% block scripts %}
 <script>
   window.dashboardBoot = { autoRefresh: true };
+
+  (function () {
+    var section = document.querySelector('[data-conversation-history]');
+    if (!section) {
+      return;
+    }
+
+    var listEndpoint = section.getAttribute('data-list-endpoint');
+    var detailTemplate = section.getAttribute('data-detail-endpoint-template') || '';
+    var filtersForm = section.querySelector('[data-conversation-filters]');
+    var resetButton = section.querySelector('[data-conversation-reset]');
+    var statusNode = section.querySelector('[data-conversation-status]');
+    var tableBody = section.querySelector('[data-conversation-table-body]');
+    var prevButton = section.querySelector('[data-conversation-prev]');
+    var nextButton = section.querySelector('[data-conversation-next]');
+    var pageLabel = section.querySelector('[data-conversation-page-label]');
+    var threadPanel = section.querySelector('[data-conversation-thread]');
+    var threadTitle = section.querySelector('[data-conversation-thread-title]');
+    var threadMeta = section.querySelector('[data-conversation-thread-meta]');
+    var threadList = section.querySelector('[data-conversation-thread-list]');
+
+    var page = 1;
+    var perPage = 20;
+    var total = 0;
+    var activeConversationId = null;
+
+    function buildQuery() {
+      var params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('per_page', String(perPage));
+      if (!filtersForm) {
+        return params;
+      }
+      var waId = (filtersForm.elements.wa_id.value || '').trim();
+      var startDate = (filtersForm.elements.start_date.value || '').trim();
+      var endDate = (filtersForm.elements.end_date.value || '').trim();
+      if (waId) {
+        params.set('wa_id', waId);
+      }
+      if (startDate) {
+        params.set('start_date', startDate);
+      }
+      if (endDate) {
+        params.set('end_date', endDate);
+      }
+      return params;
+    }
+
+    function setStatus(text) {
+      if (statusNode) {
+        statusNode.textContent = text;
+      }
+    }
+
+    function renderRows(items) {
+      if (!tableBody) {
+        return;
+      }
+      tableBody.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="subtle-help">No conversations match these filters.</td></tr>';
+        return;
+      }
+
+      items.forEach(function (row) {
+        var tr = document.createElement('tr');
+
+        var wa = document.createElement('td');
+        wa.textContent = row.wa_id || '-';
+        tr.appendChild(wa);
+
+        var date = document.createElement('td');
+        date.textContent = row.latest_timestamp || row.created_at || '-';
+        tr.appendChild(date);
+
+        var count = document.createElement('td');
+        count.textContent = String(row.message_count || 0);
+        tr.appendChild(count);
+
+        var escalation = document.createElement('td');
+        escalation.textContent = row.escalation_flag ? 'Yes' : 'No';
+        tr.appendChild(escalation);
+
+        var action = document.createElement('td');
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button-link button-secondary';
+        button.textContent = 'View thread';
+        button.addEventListener('click', function () {
+          loadConversationDetail(row.id);
+        });
+        action.appendChild(button);
+        tr.appendChild(action);
+
+        if (activeConversationId && row.id === activeConversationId) {
+          tr.classList.add('row-active');
+        }
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function renderPagination() {
+      var pages = Math.max(1, Math.ceil(total / perPage));
+      if (pageLabel) {
+        pageLabel.textContent = 'Page ' + page + ' of ' + pages;
+      }
+      if (prevButton) {
+        prevButton.disabled = page <= 1;
+      }
+      if (nextButton) {
+        nextButton.disabled = page >= pages;
+      }
+    }
+
+    function loadConversations() {
+      if (!listEndpoint) {
+        return;
+      }
+      setStatus('Loading...');
+      var query = buildQuery();
+      fetch(listEndpoint + '?' + query.toString(), { credentials: 'same-origin' })
+        .then(function (response) {
+          return response.json().then(function (payload) {
+            return { ok: response.ok, payload: payload };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.payload || !result.payload.ok) {
+            setStatus((result.payload && result.payload.message) || 'Could not load conversations.');
+            renderRows([]);
+            total = 0;
+            renderPagination();
+            return;
+          }
+
+          var items = result.payload.items || [];
+          total = Number(result.payload.total || 0);
+          renderRows(items);
+          renderPagination();
+          setStatus(String(total) + ' conversations');
+        })
+        .catch(function () {
+          setStatus('Could not load conversations.');
+          renderRows([]);
+          total = 0;
+          renderPagination();
+        });
+    }
+
+    function loadConversationDetail(conversationId) {
+      if (!conversationId || !detailTemplate || !threadPanel || !threadList) {
+        return;
+      }
+      var endpoint = detailTemplate.replace('__conversation_id__', encodeURIComponent(conversationId));
+      fetch(endpoint, { credentials: 'same-origin' })
+        .then(function (response) {
+          return response.json().then(function (payload) {
+            return { ok: response.ok, payload: payload };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.payload || !result.payload.ok) {
+            setStatus((result.payload && result.payload.message) || 'Could not load thread details.');
+            return;
+          }
+
+          var conversation = result.payload.conversation || {};
+          var messages = conversation.messages || [];
+          activeConversationId = conversation.id || null;
+          threadPanel.classList.remove('hide');
+
+          if (threadTitle) {
+            threadTitle.textContent = 'Thread: ' + (conversation.wa_id || '-');
+          }
+          if (threadMeta) {
+            threadMeta.textContent = 'Messages: ' + String(conversation.message_count || messages.length || 0);
+          }
+
+          threadList.innerHTML = '';
+          if (!messages.length) {
+            threadList.innerHTML = '<li class="subtle-help">No messages recorded for this conversation yet.</li>';
+            return;
+          }
+
+          messages.forEach(function (message) {
+            var item = document.createElement('li');
+            item.innerHTML =
+              '<strong>' + String(message.sender || '-').toUpperCase() + '</strong>' +
+              '<span>' + (message.timestamp || '-') + '</span>' +
+              '<span>' + (message.text_body || '-') + '</span>' +
+              '<span class="subtle-help">Status: ' + (message.delivery_status || '-') + '</span>';
+            threadList.appendChild(item);
+          });
+
+          loadConversations();
+        })
+        .catch(function () {
+          setStatus('Could not load thread details.');
+        });
+    }
+
+    if (filtersForm) {
+      filtersForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        page = 1;
+        loadConversations();
+      });
+    }
+
+    if (resetButton && filtersForm) {
+      resetButton.addEventListener('click', function () {
+        filtersForm.reset();
+        page = 1;
+        loadConversations();
+      });
+    }
+
+    if (prevButton) {
+      prevButton.addEventListener('click', function () {
+        if (page > 1) {
+          page -= 1;
+          loadConversations();
+        }
+      });
+    }
+
+    if (nextButton) {
+      nextButton.addEventListener('click', function () {
+        var pages = Math.max(1, Math.ceil(total / perPage));
+        if (page < pages) {
+          page += 1;
+          loadConversations();
+        }
+      });
+    }
+
+    loadConversations();
+  })();
+
+  (function () {
+    var panel = document.querySelector('[data-reconnection-panel]');
+    if (!panel) {
+      return;
+    }
+
+    var csrfToken = "{{ csrf_token }}";
+    var openButton = panel.querySelector('[data-reconnection-open-flow]');
+    var escalateButton = panel.querySelector('[data-reconnection-escalate]');
+    var abandonButton = panel.querySelector('[data-reconnection-abandon]');
+    var statusNode = panel.querySelector('[data-reconnection-status]');
+    var summaryNode = panel.querySelector('[data-reconnection-summary]');
+    var errorNode = panel.querySelector('[data-reconnection-error]');
+    var stepsNode = panel.querySelector('[data-reconnection-steps]');
+    var activeFlowChannel = null;
+
+    function withBusy(button, callback) {
+      if (!button) {
+        return callback();
+      }
+      if (button.disabled) {
+        return Promise.resolve();
+      }
+      var originalLabel = button.textContent;
+      var loadingLabel = button.getAttribute('data-loading-label') || 'Working...';
+      button.disabled = true;
+      button.classList.add('is-loading');
+      button.textContent = loadingLabel;
+
+      return Promise.resolve()
+        .then(callback)
+        .finally(function () {
+          button.disabled = false;
+          button.classList.remove('is-loading');
+          button.textContent = originalLabel;
+        });
+    }
+
+    function setError(message) {
+      if (!errorNode) {
+        return;
+      }
+      if (!message) {
+        errorNode.classList.add('hide');
+        errorNode.textContent = '';
+        return;
+      }
+      errorNode.classList.remove('hide');
+      errorNode.textContent = message;
+    }
+
+    function postForm(url, data) {
+      var body = new URLSearchParams();
+      Object.keys(data || {}).forEach(function (key) {
+        body.set(key, data[key]);
+      });
+      body.set('csrf_token', csrfToken);
+      return fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+      }).then(function (res) {
+        return res.json().then(function (payload) {
+          return { ok: res.ok, payload: payload };
+        });
+      });
+    }
+
+    function renderSteps(flowPayload) {
+      if (!stepsNode) {
+        return;
+      }
+      var steps = flowPayload && flowPayload.steps ? flowPayload.steps : [];
+      stepsNode.innerHTML = '';
+
+      if (!steps.length) {
+        stepsNode.innerHTML = '<li><span>No troubleshooting steps available.</span><span></span><span></span></li>';
+        return;
+      }
+
+      steps.forEach(function (step) {
+        var row = document.createElement('li');
+        var details = document.createElement('span');
+        details.innerHTML = '<strong>' + step.title + '</strong><br><small class="subtle-help">' + step.instruction + '</small>';
+
+        var diagnosis = document.createElement('span');
+        diagnosis.textContent = step.diagnosis || '';
+
+        var actions = document.createElement('span');
+        var retryButton = document.createElement('button');
+        retryButton.type = 'button';
+        retryButton.className = 'button-link button-secondary';
+        retryButton.setAttribute('data-loading-label', 'Retrying...');
+        retryButton.textContent = 'Retry';
+        retryButton.addEventListener('click', function () {
+          withBusy(retryButton, function () {
+            statusNode.textContent = 'Retrying ' + step.title + '...';
+            setError('');
+            return postForm('/api/reconnection-assistant/steps/' + encodeURIComponent(step.key) + '/retry', {
+              channel: activeFlowChannel || ''
+            })
+              .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                  throw new Error((result.payload && result.payload.message) || 'Retry failed.');
+                }
+                var payload = result.payload;
+                var suffix = payload.resolved
+                  ? 'resolved'
+                  : (payload.escalation_recommended ? 'unresolved, escalation recommended' : 'unresolved');
+                statusNode.textContent = 'Step ' + step.title + ': ' + suffix + '.';
+              })
+              .catch(function (err) {
+                statusNode.textContent = 'Retry failed.';
+                setError(err && err.message ? err.message : 'Retry request failed.');
+              });
+          });
+        });
+        actions.appendChild(retryButton);
+
+        row.appendChild(details);
+        row.appendChild(diagnosis);
+        row.appendChild(actions);
+        stepsNode.appendChild(row);
+      });
+    }
+
+    function loadFlow() {
+      return withBusy(openButton, function () {
+        statusNode.textContent = 'Loading flow...';
+        setError('');
+        return fetch('/api/reconnection-assistant/flow', { credentials: 'same-origin' })
+          .then(function (res) {
+            return res.json().then(function (payload) {
+              return { ok: res.ok, payload: payload };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok || !result.payload || !result.payload.ok) {
+              throw new Error((result.payload && result.payload.message) || 'Could not load guided flow.');
+            }
+            var payload = result.payload;
+            activeFlowChannel = payload.channel || null;
+            var state = payload.degraded ? 'degraded' : 'connected';
+            statusNode.textContent = payload.channel_label + ' status: ' + state;
+            if (summaryNode) {
+              summaryNode.textContent = payload.escalation && payload.escalation.message
+                ? payload.escalation.message
+                : 'Guided flow loaded.';
+            }
+            renderSteps(payload);
+          })
+          .catch(function (err) {
+            statusNode.textContent = 'Could not load flow.';
+            setError(err && err.message ? err.message : 'Flow request failed.');
+          });
+      });
+    }
+
+    if (openButton) {
+      openButton.addEventListener('click', loadFlow);
+    }
+
+    if (escalateButton) {
+      escalateButton.addEventListener('click', function () {
+        withBusy(escalateButton, function () {
+          statusNode.textContent = 'Escalating issue...';
+          setError('');
+          return postForm('/api/reconnection-assistant/escalate', { reason: 'operator_requested' })
+            .then(function (result) {
+              if (!result.ok || !result.payload || !result.payload.ok) {
+                throw new Error((result.payload && result.payload.message) || 'Escalation failed.');
+              }
+              statusNode.textContent = 'Escalation queued for support.';
+            })
+            .catch(function (err) {
+              statusNode.textContent = 'Escalation failed.';
+              setError(err && err.message ? err.message : 'Escalation request failed.');
+            });
+        });
+      });
+    }
+
+    if (abandonButton) {
+      abandonButton.addEventListener('click', function () {
+        withBusy(abandonButton, function () {
+          statusNode.textContent = 'Recording abandonment...';
+          setError('');
+          return postForm('/api/reconnection-assistant/abandon', {})
+            .then(function (result) {
+              if (!result.ok || !result.payload || !result.payload.ok) {
+                throw new Error((result.payload && result.payload.message) || 'Could not mark abandoned.');
+              }
+              statusNode.textContent = 'Flow marked as abandoned.';
+            })
+            .catch(function (err) {
+              statusNode.textContent = 'Abandon request failed.';
+              setError(err && err.message ? err.message : 'Abandon request failed.');
+            });
+        });
+      });
+    }
+  })();
+
+  (function () {
+    var panel = document.querySelector('[data-starter-pack-panel]');
+    if (!panel) {
+      return;
+    }
+
+    var csrfToken = "{{ csrf_token }}";
+    var enableBtn = panel.querySelector('[data-starter-pack-enable]');
+    var replaceBtn = panel.querySelector('[data-starter-pack-replace]');
+    var statusEl = panel.querySelector('[data-starter-pack-status]');
+    var failuresEl = panel.querySelector('[data-starter-pack-failures]');
+    var draftsEl = panel.querySelector('[data-starter-pack-drafts]');
+
+    function renderDrafts(drafts) {
+      draftsEl.innerHTML = '';
+      if (!drafts || drafts.length === 0) {
+        draftsEl.innerHTML = '<li><span>No starter drafts yet.</span><span></span><span></span></li>';
+        replaceBtn.style.display = 'none';
+        return;
+      }
+      replaceBtn.style.display = 'inline-flex';
+
+      drafts.forEach(function (draft) {
+        var row = document.createElement('li');
+        row.innerHTML =
+          '<span>' + draft.workflow_slug + '</span>' +
+          '<span>' + draft.category_label + '</span>' +
+          '<span>' + String(draft.draft_status || '').toUpperCase() + '</span>';
+        draftsEl.appendChild(row);
+      });
+    }
+
+    function renderFailures(failures, correlationId) {
+      if (!failures || failures.length === 0) {
+        failuresEl.classList.add('hide');
+        failuresEl.textContent = '';
+        return;
+      }
+      failuresEl.classList.remove('hide');
+      failuresEl.textContent = 'Partial creation failure. Retry required workflows. Correlation ID: ' + (correlationId || 'n/a');
+    }
+
+    function refresh() {
+      fetch('/onboarding/starter-pack/status', { credentials: 'same-origin' })
+        .then(function (res) { return res.json(); })
+        .then(function (payload) {
+          if (!payload.ok) {
+            statusEl.textContent = payload.message || 'Could not load starter-pack status.';
+            return;
+          }
+          renderDrafts(payload.starter_pack_drafts || []);
+          statusEl.textContent = 'Ready';
+        })
+        .catch(function () {
+          statusEl.textContent = 'Could not load starter-pack status.';
+        });
+    }
+
+    function enable(replaceExisting) {
+      var body = new URLSearchParams();
+      body.set('replace_existing', replaceExisting ? 'true' : 'false');
+      body.set('csrf_token', csrfToken);
+
+      statusEl.textContent = 'Syncing starter drafts...';
+      return fetch('/onboarding/starter-pack/enable', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (payload) {
+          if (!payload.ok && payload.summary && payload.summary.failed) {
+            statusEl.textContent = 'Starter pack updated with partial failures.';
+            renderFailures(payload.failures || [], payload.correlation_id);
+            refresh();
+            return;
+          }
+          if (!payload.ok) {
+            statusEl.textContent = payload.message || 'Starter pack sync failed.';
+            return;
+          }
+          renderFailures([], null);
+          statusEl.textContent = 'Starter pack synced.';
+          refresh();
+        })
+        .catch(function () {
+          statusEl.textContent = 'Starter pack sync failed.';
+        });
+    }
+
+    enableBtn.addEventListener('click', function () {
+      var original = enableBtn.textContent;
+      enableBtn.disabled = true;
+      enableBtn.classList.add('is-loading');
+      enableBtn.textContent = enableBtn.getAttribute('data-loading-label') || 'Working...';
+      Promise.resolve(enable(false)).finally(function () {
+        enableBtn.disabled = false;
+        enableBtn.classList.remove('is-loading');
+        enableBtn.textContent = original;
+      });
+    });
+    replaceBtn.addEventListener('click', function () {
+      if (!window.confirm('Replace existing starter drafts with default content?')) {
+        return;
+      }
+      var original = replaceBtn.textContent;
+      replaceBtn.disabled = true;
+      replaceBtn.classList.add('is-loading');
+      replaceBtn.textContent = replaceBtn.getAttribute('data-loading-label') || 'Working...';
+      Promise.resolve(enable(true)).finally(function () {
+        replaceBtn.disabled = false;
+        replaceBtn.classList.remove('is-loading');
+        replaceBtn.textContent = original;
+      });
+    });
+  })();
+
+  (function () {
+    var container = document.querySelector('[data-notification-center]');
+    if (!container) {
+      return;
+    }
+
+    var csrfToken = "{{ csrf_token }}";
+    var countNode = container.querySelector('[data-notification-count]');
+    var listNode = container.querySelector('[data-notification-list]');
+    var emptyNode = container.querySelector('[data-notification-empty]');
+
+    function updateCount() {
+      if (!countNode || !listNode) {
+        return;
+      }
+      var count = listNode.querySelectorAll('[data-notification-item-id]').length;
+      countNode.textContent = count + ' active';
+      if (emptyNode) {
+        emptyNode.style.display = count === 0 ? '' : 'none';
+      }
+      listNode.style.display = count === 0 ? 'none' : '';
+    }
+
+    container.querySelectorAll('[data-dismiss-notification]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var notificationId = button.getAttribute('data-dismiss-notification');
+        if (!notificationId) {
+          return;
+        }
+
+        button.disabled = true;
+        button.classList.add('is-loading');
+        fetch('/api/notifications/' + encodeURIComponent(notificationId) + '/dismiss', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'csrf_token=' + encodeURIComponent(csrfToken)
+        })
+          .then(function (res) { return res.json().then(function (payload) { return { ok: res.ok, payload: payload }; }); })
+          .then(function (result) {
+            if (!result.ok) {
+              button.disabled = false;
+              button.classList.remove('is-loading');
+              return;
+            }
+            var row = container.querySelector('[data-notification-item-id="' + notificationId + '"]');
+            if (row) {
+              row.classList.add('is-dismissing');
+              window.setTimeout(function () {
+                if (row.parentNode) {
+                  row.parentNode.removeChild(row);
+                }
+                updateCount();
+              }, 180);
+              return;
+            }
+            updateCount();
+          })
+          .catch(function () {
+            button.disabled = false;
+            button.classList.remove('is-loading');
+            // Intentionally silent; notification remains visible when request fails.
+          });
+      });
+    });
+
+    updateCount();
+  })();
 </script>
 {% endblock %}

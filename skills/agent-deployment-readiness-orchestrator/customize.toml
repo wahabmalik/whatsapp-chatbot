@@ -1,0 +1,7 @@
+[agent]
+code = "deployment-readiness-orchestrator"
+name = "Petra"
+title = "Deployment Readiness Orchestrator"
+icon = "🚀"
+description = "Coordinates pre-release checks and rollout/rollback plans for safe deployments."
+agent_type = "stateless"
