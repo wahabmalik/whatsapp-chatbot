@@ -1,24 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Channels{% endblock %}
-{% block meta_description %}Connect and monitor Closar outbound channels across messaging, social, and workplace platforms.{% endblock %}
+{% block meta_description %}Connect and monitor Closar outbound channels across messaging and social platforms.{% endblock %}
 {% block content %}
 <section class="channels-page panel-enter" aria-labelledby="channels-title">
   <header class="sheet-header">
     <div>
       <p class="sheet-kicker">Multi-channel sales</p>
       <h1 id="channels-title">Channels</h1>
-      <p class="sheet-sub">Discover need, chat, follow up, and close — on the platforms your buyers already use.</p>
+      <p class="sheet-sub">Statuses reflect your environment configuration. WhatsApp onboarding is the first-class connect flow.</p>
     </div>
     <div class="ops-status-rail compact">
       <div class="status-pill {% if bot_online %}is-online{% else %}is-offline{% endif %}">
         <span class="status-pulse" aria-hidden="true"></span>
         <span>
           <strong>Active outbound · {{ active_channel }}</strong>
-          <small>{% if bot_online %}Ready to send{% else %}Offline{% endif %}</small>
+          <small>{% if bot_online %}Runtime healthy{% else %}Runtime degraded{% endif %}</small>
         </span>
       </div>
     </div>
   </header>
+
+  <aside class="demo-banner" role="note">
+    <strong>Config-backed status</strong>
+    <span>Configured means the required env keys are present. Coming soon platforms are listed for roadmap clarity only.</span>
+  </aside>
 
   <div class="channel-grid" role="list">
     {% for channel in channels %}
@@ -27,15 +32,19 @@
         <span class="channel-glyph" aria-hidden="true">{{ channel.label[:1] }}</span>
         <div>
           <h2>{{ channel.label }}</h2>
-          <p>{{ channel.category }}</p>
+          <p>{{ channel.category }}{% if not channel.supported %} · roadmap{% endif %}</p>
         </div>
       </div>
       <span class="channel-status-badge">{{ channel.status_label }}</span>
       <div class="channel-actions">
-        {% if channel.status == 'not_connected' %}
-        <a class="button-link button-secondary" href="{{ url_for('dashboard.setup') }}">Connect</a>
+        {% if channel.action_enabled and channel.action_url %}
+        <a
+          class="{% if channel.status == 'not_connected' %}button-link button-secondary{% else %}ghost-link{% endif %}"
+          href="{{ channel.action_url }}"
+          {% if channel.action_external %}target="_blank" rel="noopener noreferrer"{% endif %}
+        >{{ channel.action_label }}</a>
         {% else %}
-        <a class="ghost-link" href="{{ url_for('dashboard.setup') }}">Configure</a>
+        <span class="subtle-help">{{ channel.action_label }}</span>
         {% endif %}
       </div>
     </article>

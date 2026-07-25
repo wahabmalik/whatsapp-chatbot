@@ -44,7 +44,7 @@ def export_analytics_event_to_crm(app, event: dict[str, Any]) -> bool:
     api_key = str(app.config.get("CRM_EXPORT_API_KEY") or "").strip()
     headers = {
         "Content-Type": "application/json",
-        "X-Malixis-Event-Source": "conversation_analytics",
+        "X-Closar-Event-Source": "conversation_analytics",
     }
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"

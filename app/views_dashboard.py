@@ -82,11 +82,12 @@ from app.services.reconnection_assistant import (
     sync_reconnection_notifications,
 )
 from app.models import ConversationMessage, ConversationSummary
+from app.services.crm_export import crm_export_enabled
 from app.services.operator_crm import (
-    demo_channel_status,
+    build_channel_status,
+    build_operator_crm_context,
     demo_leads,
     demo_sales,
-    overview_stats,
 )
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
@@ -120,9 +121,20 @@ def _validate_csrf_token() -> bool:
     return hmac.compare_digest(session_token, submitted)
 
 
+def _onboarding_url() -> str:
+    """Prefer WhatsApp onboarding; fall back to Setup when blueprint is absent."""
+    try:
+        return url_for("onboarding.onboarding_page")
+    except BuildError:
+        return url_for("dashboard.setup")
+
+
 @dashboard_blueprint.app_context_processor
 def _inject_csrf_token():
-    context: dict[str, Any] = {"csrf_token": _get_csrf_token()}
+    context: dict[str, Any] = {
+        "csrf_token": _get_csrf_token(),
+        "onboarding_url": _onboarding_url(),
+    }
 
     identity = current_identity(session)
     context["auth_logged_in"] = identity is not None
@@ -606,7 +618,7 @@ def operator_dashboard():
             )
         notifications = list_tenant_notifications(db, identity.tenant_id)
 
-    crm = overview_stats()
+    crm_context = build_operator_crm_context(current_app)
     return render_template(
         "dashboard.html",
         page_key="dashboard",
@@ -614,7 +626,8 @@ def operator_dashboard():
         setup_complete=True,
         escalation=_build_operator_escalation_context(),
         notifications=notifications,
-        crm=crm,
+        crm=crm_context["crm"],
+        is_demo=crm_context["is_demo"],
         **starter_pack_context,
         **context,
     )
@@ -641,6 +654,7 @@ def leads_sheet():
         leads=leads,
         lead_filter=filter_key,
         empty=len(leads) == 0,
+        is_demo=True,
     )
 
 
@@ -667,6 +681,7 @@ def sales_sheet():
         sales=sales,
         sales_filter=filter_key,
         empty=len(sales) == 0,
+        is_demo=True,
     )
 
 
@@ -676,14 +691,20 @@ def channels_page():
     if guarded is not None:
         return guarded
 
-    crm = overview_stats()
+    crm_context = build_operator_crm_context(current_app)
+    channels = build_channel_status(
+        current_app.config,
+        setup_url=url_for("dashboard.setup"),
+        onboarding_url=_onboarding_url(),
+    )
     return render_template(
         "channels.html",
         page_key="channels",
         nav_mode="operator",
-        channels=demo_channel_status(active_outbound="whatsapp"),
-        active_channel=crm["active_channel"],
-        bot_online=crm["bot_online"],
+        channels=channels,
+        active_channel=crm_context["crm"]["active_channel"],
+        bot_online=crm_context["crm"]["bot_online"],
+        is_demo=False,
     )
 
 
@@ -698,7 +719,12 @@ def setup():
     if not complete:
         session.pop(_SETUP_VERIFIED_SESSION_KEY, None)
 
-    crm = overview_stats()
+    crm_context = build_operator_crm_context(current_app)
+    channel_options = build_channel_status(
+        current_app.config,
+        setup_url=url_for("dashboard.setup"),
+        onboarding_url=_onboarding_url(),
+    )
     return render_template(
         "setup.html",
         page_key="setup",
@@ -710,8 +736,11 @@ def setup():
         setup_missing_keys=_setup_missing_keys(),
         setup_status_url=url_for("dashboard.setup_status_legacy_api"),
         webhook_url=_webhook_url(),
-        crm=crm,
-        channel_options=demo_channel_status(active_outbound="whatsapp"),
+        crm=crm_context["crm"],
+        channel_options=[row for row in channel_options if row.get("supported")],
+        outbound_channel=str(current_app.config.get("OUTBOUND_CHANNEL") or "whatsapp"),
+        crm_export_on=crm_export_enabled(current_app),
+        is_demo=True,
     )
 
 

@@ -32,25 +32,36 @@
         <small>Active channel · {{ crm.active_channel }}</small>
       </span>
     </div>
-    <p class="status-note">Lead generation is {% if crm.lead_generation_enabled %}<strong>ON</strong>{% else %}<strong>OFF</strong>{% endif %}. Built-in CRM is free — export stays optional.</p>
+    <p class="status-note">
+      Runtime health drives this status.
+      CRM export is {% if crm.crm_export_enabled %}<strong>ON</strong>{% else %}<strong>OFF</strong>{% endif %} (env).
+    </p>
   </aside>
 </section>
 
-<section class="stat-strip panel-enter" aria-label="Today’s pipeline">
+{% if is_demo %}
+<aside class="demo-banner panel-enter" role="note">
+  <strong>Sample CRM preview</strong>
+  <span>Leads and Sales sheets show demo rows so you can learn the dual-sheet layout. Live chats are below in Conversations.</span>
+  <a class="ghost-link" href="#conversations">View conversations</a>
+</aside>
+{% endif %}
+
+<section class="stat-strip panel-enter" aria-label="Sample pipeline stats">
   <a class="stat-cell" href="{{ url_for('dashboard.leads_sheet') }}">
-    <span class="stat-label">Today’s new leads</span>
+    <span class="stat-label">Sample leads</span>
     <strong class="stat-value">{{ crm.new_leads_today }}</strong>
   </a>
   <a class="stat-cell" href="{{ url_for('dashboard.leads_sheet', filter='follow-up') }}">
-    <span class="stat-label">Follow-ups due</span>
+    <span class="stat-label">Sample follow-ups</span>
     <strong class="stat-value">{{ crm.follow_ups_due }}</strong>
   </a>
   <a class="stat-cell sales-tone" href="{{ url_for('dashboard.sales_sheet', filter='closed') }}">
-    <span class="stat-label">Closed sales</span>
+    <span class="stat-label">Sample closed sales</span>
     <strong class="stat-value">{{ crm.closed_sales }}</strong>
   </a>
   <a class="stat-cell sales-tone" href="{{ url_for('dashboard.sales_sheet', filter='build') }}">
-    <span class="stat-label">Build requests</span>
+    <span class="stat-label">Sample build requests</span>
     <strong class="stat-value">{{ crm.build_requests }}</strong>
   </a>
 </section>
@@ -61,16 +72,16 @@
       <p class="sheet-kicker">Sheet 1 · Lead generation</p>
       <h2>Leads Sheet</h2>
     </header>
-    <p>Qualify and advance prospects through Discover → Chat → Follow-up → Proposal. Separate from closed clients.</p>
-    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_sheet') }}">Open pipeline</a>
+    <p>Preview the open pipeline (Discover → Chat → Follow-up → Proposal). Live threads stay in Conversations until CRM persistence ships.</p>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_sheet') }}">Open pipeline preview</a>
   </article>
   <article class="sheet-preview sales-tone">
     <header>
       <p class="sheet-kicker">Sheet 2 · Closed clients</p>
       <h2>Sales Sheet</h2>
     </header>
-    <p>Won deals and “build what they want” requests land here — never mixed with open leads.</p>
-    <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Open closed book</a>
+    <p>Preview the closed book for won deals and build requests — kept separate from open leads.</p>
+    <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Open closed-book preview</a>
   </article>
 </section>
 
@@ -95,15 +106,17 @@
 <section class="panel panel-enter quick-actions" aria-label="Quick actions">
   <header class="panel-head">
     <h3>Quick Actions</h3>
-    <span class="subtle-help">Fast path for daily operator tasks</span>
+    <span class="subtle-help">CRM previews and live operator tools</span>
   </header>
   <div class="action-row">
     <a class="button-link" href="{{ url_for('dashboard.leads_sheet') }}">Leads Sheet</a>
     <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Sales Sheet</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.channels_page') }}">Channels</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.setup') }}">Setup</a>
+    <a class="button-link button-secondary" href="#conversations">Conversations</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.agents_page') }}">Agents</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.logs_page') }}">Logs</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.metrics_page') }}">Metrics</a>
   </div>
 </section>
 
@@ -196,103 +209,47 @@
 </section>
 {% endif %}
 
-<section class="agency-hero" id="services">
-  <div class="hero-copy">
-    <p class="eyebrow">ELITE DIGITAL AGENCY</p>
-    <h1>
-      We Build Digital Systems That
-      <span class="accent-text">Grow Your Business</span>
-    </h1>
-    <p class="hero-lead">Marketing, websites, SEO, and automation &mdash; everything you need to scale in one place.</p>
-
-    <div class="hero-actions">
-      <a class="button-link" href="{{ url_for('dashboard.setup') }}">Book a Free Consultation</a>
-            <a class="ghost-link" href="{{ url_for('dashboard.metrics_page') }}#results">View Our Work</a>
-    </div>
-
-    <p class="tiny-note">Trusted by growing businesses</p>
-  </div>
-
-  <div class="growth-card">
-    <div class="growth-head">
-      <div>
-        <h2>Growth Dashboard</h2>
-        <p>Live Metrics</p>
-      </div>
-      <div class="window-dots" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
-
-    <div class="chart-kpis" aria-hidden="true">
-      <span>Response stability</span>
-      <span>Lead flow</span>
-      <span>Error trend</span>
-    </div>
-
-    <div class="chart-frame" aria-hidden="true">
-      <svg viewBox="0 0 600 240" preserveAspectRatio="none" role="presentation">
-        <path class="chart-area" d="M0,220 L60,195 L120,202 L180,160 L240,170 L300,120 L360,132 L420,98 L480,110 L540,78 L600,88 L600,240 L0,240 Z"></path>
-        <path class="chart-line" d="M0,220 L60,195 L120,202 L180,160 L240,170 L300,120 L360,132 L420,98 L480,110 L540,78 L600,88"></path>
-        <circle class="chart-dot" cx="300" cy="120" r="6"></circle>
-        <circle class="chart-dot" cx="540" cy="78" r="6"></circle>
-      </svg>
-    </div>
-
-    <section class="grid-metrics" id="results">
-      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
-        <strong data-metric-counter="webhook.processed_messages_total">{{ metrics.counters.get('webhook.processed_messages_total', 0) }}</strong>
-        <h3>Leads</h3>
-      </a>
-      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
-        <strong data-metric-duration="webhook.handle_message_seconds">
-          {% if metrics.durations.averages.get('webhook.handle_message_seconds') is not none %}
-            {{ "%.2fs"|format(metrics.durations.averages.get('webhook.handle_message_seconds', 0.0)) }}
-          {% else %}
-            No data
-          {% endif %}
-        </strong>
-        <h3>Conversion</h3>
-      </a>
-      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
-        <strong data-metric-counter="webhook.internal_errors_total">{{ metrics.counters.get('webhook.internal_errors_total', 0) }}</strong>
-        <h3>Visibility</h3>
-      </a>
-      <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
-        <strong data-metric-counter="ai.reply_success">{{ metrics.counters.get('ai.reply_success', 0) }}</strong>
-        <h3>AI Replies</h3>
-      </a>
-    </section>
-  </div>
+<section class="panel panel-enter runtime-panel" id="process">
+  <header class="panel-head">
+    <h3>Runtime health</h3>
+    <a href="{{ url_for('dashboard.agents_page') }}">Agents</a>
+  </header>
+  <dl class="meta-grid">
+    <div><dt>Status</dt><dd class="status-line"><span class="dot {{ 'dot-green' if health.status == 'running' else 'dot-red' }}"></span><span>{{ health.status|title }}</span></dd></div>
+    <div><dt>Uptime</dt><dd data-health-uptime>{{ uptime_label }}</dd></div>
+    <div><dt>Active Agent</dt><dd>{{ active_agent_name }}</dd></div>
+    <div><dt>Last Error</dt><dd data-health-error>{{ health.last_error or 'None' }}</dd></div>
+  </dl>
 </section>
 
-<section class="hero-summary" id="system" aria-label="Agency snapshot">
-  <div class="hero-stats" aria-label="Platform summary">
-    <div class="hero-stat">
-      <strong>24/7</strong>
-      <span>Campaign and lead visibility</span>
-    </div>
-    <div class="hero-stat">
-      <strong>5</strong>
-      <span>Delivery systems in one stack</span>
-    </div>
-    <div class="hero-stat">
-      <strong>30s</strong>
-      <span>Live reporting refresh cadence</span>
-    </div>
-  </div>
-
-  <section class="panel runtime-panel" id="process">
-    <header class="panel-head">
-      <h3>Runtime health</h3>
-      <a href="{{ url_for('dashboard.agents_page') }}">Operator process</a>
-    </header>
-    <dl class="meta-grid">
-      <div><dt>Status</dt><dd class="status-line"><span class="dot {{ 'dot-green' if health.status == 'running' else 'dot-red' }}"></span><span>{{ health.status|title }}</span></dd></div>
-      <div><dt>Uptime</dt><dd data-health-uptime>{{ uptime_label }}</dd></div>
-      <div><dt>Active Agent</dt><dd>{{ active_agent_name }}</dd></div>
-      <div><dt>Last Error</dt><dd data-health-error>{{ health.last_error or 'None' }}</dd></div>
-    </dl>
+<section class="panel panel-enter" id="results" aria-label="Live webhook metrics">
+  <header class="panel-head">
+    <h3>Live webhook metrics</h3>
+    <a href="{{ url_for('dashboard.metrics_page') }}">Open metrics</a>
+  </header>
+  <section class="grid-metrics">
+    <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+      <strong data-metric-counter="webhook.processed_messages_total">{{ metrics.counters.get('webhook.processed_messages_total', 0) }}</strong>
+      <h3>Messages processed</h3>
+    </a>
+    <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+      <strong data-metric-duration="webhook.handle_message_seconds">
+        {% if metrics.durations.averages.get('webhook.handle_message_seconds') is not none %}
+          {{ "%.2fs"|format(metrics.durations.averages.get('webhook.handle_message_seconds', 0.0)) }}
+        {% else %}
+          No data
+        {% endif %}
+      </strong>
+      <h3>Avg handle time</h3>
+    </a>
+    <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+      <strong data-metric-counter="webhook.internal_errors_total">{{ metrics.counters.get('webhook.internal_errors_total', 0) }}</strong>
+      <h3>Internal errors</h3>
+    </a>
+    <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
+      <strong data-metric-counter="ai.reply_success">{{ metrics.counters.get('ai.reply_success', 0) }}</strong>
+      <h3>AI replies</h3>
+    </a>
   </section>
 </section>
 
@@ -381,7 +338,8 @@
 </section>
 
 <section
-  class="panel conversation-panel"
+  class="panel conversation-panel panel-enter"
+  id="conversations"
   data-conversation-history
   data-list-endpoint="{{ url_for('dashboard_api.list_conversations') }}"
   data-detail-endpoint-template="{{ url_for('dashboard_api.get_conversation_detail', conversation_id='__conversation_id__') }}"
@@ -390,9 +348,11 @@
     <h3>Conversations</h3>
     <span class="subtle-help" data-conversation-status>Loading...</span>
   </header>
+  <p class="subtle-help">Live chat threads from your connected channels. Use View thread to inspect messages.</p>
 
   <form class="conversation-toolbar" data-conversation-filters>
-    <input type="text" name="wa_id" placeholder="Search wa_id" autocomplete="off">
+    <label class="visually-hidden" for="conversation-wa-id">WhatsApp ID</label>
+    <input id="conversation-wa-id" type="text" name="wa_id" placeholder="Search wa_id" autocomplete="off">
     <input type="date" name="start_date" aria-label="Start date">
     <input type="date" name="end_date" aria-label="End date">
     <button type="submit" class="button-link">Apply filters</button>
@@ -433,34 +393,6 @@
   </article>
 </section>
 
-<section class="detail-grid">
-  <section class="panel" id="pricing">
-    <header class="panel-head">
-      <h3>Pricing</h3>
-    </header>
-    <p class="subtle-help">Engagements are structured around retained growth support, performance reporting, and implementation sprints.</p>
-    <ul class="check-grid">
-      <li class="ok"><span class="dot dot-green"></span><span>Strategy and delivery planning</span></li>
-      <li class="ok"><span class="dot dot-green"></span><span>Build, launch, and optimization cycles</span></li>
-    </ul>
-  </section>
-
-  <section class="panel" id="faq">
-    <header class="panel-head">
-      <h3>FAQ</h3>
-    </header>
-    <div class="faq-stack">
-      <article>
-        <h4>How quickly can we launch?</h4>
-        <p class="subtle-help">Most teams can move from setup to a live reporting loop within the first implementation sprint.</p>
-      </article>
-      <article>
-        <h4>What does the engagement cover?</h4>
-        <p class="subtle-help">Web presence, automation, SEO support, reporting, and ongoing system refinement.</p>
-      </article>
-    </div>
-  </section>
-</section>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -653,11 +585,19 @@
 
           messages.forEach(function (message) {
             var item = document.createElement('li');
-            item.innerHTML =
-              '<strong>' + String(message.sender || '-').toUpperCase() + '</strong>' +
-              '<span>' + (message.timestamp || '-') + '</span>' +
-              '<span>' + (message.text_body || '-') + '</span>' +
-              '<span class="subtle-help">Status: ' + (message.delivery_status || '-') + '</span>';
+            var sender = document.createElement('strong');
+            sender.textContent = String(message.sender || '-').toUpperCase();
+            var stamp = document.createElement('span');
+            stamp.textContent = message.timestamp || '-';
+            var body = document.createElement('span');
+            body.textContent = message.text_body || '-';
+            var status = document.createElement('span');
+            status.className = 'subtle-help';
+            status.textContent = 'Status: ' + (message.delivery_status || '-');
+            item.appendChild(sender);
+            item.appendChild(stamp);
+            item.appendChild(body);
+            item.appendChild(status);
             threadList.appendChild(item);
           });
 

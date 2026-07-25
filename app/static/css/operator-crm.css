@@ -534,6 +534,60 @@
   color: #c8f5dc;
 }
 
+.status-coming_soon .channel-status-badge {
+  background: rgba(157, 180, 195, 0.1);
+  border-color: rgba(157, 180, 195, 0.28);
+  color: #9db4c3;
+}
+
+.status-coming_soon {
+  opacity: 0.82;
+}
+
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 184, 109, 0.35);
+  background: linear-gradient(120deg, rgba(232, 184, 109, 0.12), rgba(17, 217, 202, 0.08));
+  color: #d5e8f2;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.demo-banner strong {
+  color: #ffe2b0;
+  font-weight: 700;
+}
+
+.demo-banner span {
+  flex: 1 1 220px;
+  color: var(--muted);
+}
+
+.demo-banner.sales-demo {
+  border-color: rgba(232, 184, 109, 0.45);
+}
+
+.leadgen-status-grid {
+  margin: 18px 0 8px;
+}
+
+.supported-channels-details {
+  margin-top: 18px;
+  color: var(--muted);
+}
+
+.supported-channels-details summary {
+  cursor: pointer;
+  color: #d5e8f2;
+  font-weight: 600;
+}
+
 .channel-actions {
   justify-self: end;
 }

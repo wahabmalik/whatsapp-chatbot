@@ -10,40 +10,45 @@
       <p class="sheet-sub">Won outcomes only. Open pipeline lives on the Leads Sheet.</p>
     </div>
     <div class="sheet-actions">
-      <button type="button" class="button-link button-sales" data-download-csv="sales-table" data-filename="closar-sales.csv">Download Sales CSV</button>
+      <a class="ghost-link" href="{{ url_for('dashboard.operator_dashboard') }}#conversations">View conversations</a>
+      <button type="button" class="button-link button-sales" data-download-csv="sales-table" data-filename="closar-sales-sample.csv">Download sample CSV</button>
     </div>
   </header>
+
+  {% if is_demo %}
+  <aside class="demo-banner sales-demo" role="note">
+    <strong>Sample data</strong>
+    <span>These closed deals are a UI preview. Stage changes and automatic moves are not live yet.</span>
+  </aside>
+  {% endif %}
 
   <div class="sale-type-rail" aria-label="Sale types">
     <span class="sale-chip sale-closed">Closed sale</span>
     <span class="sale-chip sale-build">Build what they want</span>
   </div>
 
-  <div class="filter-bar" role="tablist" aria-label="Sales filters">
+  <nav class="filter-bar" aria-label="Sales filters">
     <a
-      role="tab"
       class="filter-tab {% if sales_filter == 'all' %}is-active{% endif %}"
       href="{{ url_for('dashboard.sales_sheet', filter='all') }}"
-      {% if sales_filter == 'all' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+      {% if sales_filter == 'all' %}aria-current="page"{% endif %}
     >All closed</a>
     <a
-      role="tab"
       class="filter-tab {% if sales_filter == 'closed' %}is-active{% endif %}"
       href="{{ url_for('dashboard.sales_sheet', filter='closed') }}"
-      {% if sales_filter == 'closed' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+      {% if sales_filter == 'closed' %}aria-current="page"{% endif %}
     >Closed sales</a>
     <a
-      role="tab"
       class="filter-tab {% if sales_filter == 'build' %}is-active{% endif %}"
       href="{{ url_for('dashboard.sales_sheet', filter='build') }}"
-      {% if sales_filter == 'build' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+      {% if sales_filter == 'build' %}aria-current="page"{% endif %}
     >Build requests</a>
-  </div>
+  </nav>
 
   {% if empty %}
   <div class="empty-panel sales-empty" role="status">
-    <h2>No closed clients yet</h2>
-    <p>When a lead closes as a sale or a build request, it moves here automatically.</p>
+    <h2>No sample closed clients in this filter</h2>
+    <p>When live CRM persistence ships, closed sales and build requests will land here. Review open pipeline samples meanwhile.</p>
     <a class="button-link button-sales" href="{{ url_for('dashboard.leads_sheet') }}">Review open leads</a>
   </div>
   {% else %}
@@ -59,6 +64,7 @@
           <th scope="col">Sale type</th>
           <th scope="col" class="num">Messages</th>
           <th scope="col">Last message</th>
+          <th scope="col">Thread</th>
         </tr>
       </thead>
       <tbody>
@@ -74,6 +80,9 @@
           </td>
           <td class="num">{{ row.messages }}</td>
           <td class="clamp-cell">{{ row.last_message }}</td>
+          <td>
+            <a class="ghost-link" href="{{ url_for('dashboard.operator_dashboard') }}#conversations">View conversations</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

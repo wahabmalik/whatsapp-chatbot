@@ -760,17 +760,4 @@
     });
   });
 
-  var leadgenForm = document.querySelector("[data-leadgen-form]");
-  if (leadgenForm) {
-    leadgenForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      withBusy(leadgenForm.querySelector('button[type="submit"]'), function () {
-        return new Promise(function (resolve) {
-          window.setTimeout(resolve, 350);
-        }).then(function () {
-          showToast("Lead gen settings saved", false);
-        });
-      });
-    });
-  }
 })();

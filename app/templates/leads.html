@@ -10,9 +10,17 @@
       <p class="sheet-sub">Active prospects only. Closed clients live on the Sales Sheet.</p>
     </div>
     <div class="sheet-actions">
-      <button type="button" class="button-link" data-download-csv="leads-table" data-filename="closar-leads.csv">Download Leads CSV</button>
+      <a class="ghost-link" href="{{ url_for('dashboard.operator_dashboard') }}#conversations">View conversations</a>
+      <button type="button" class="button-link" data-download-csv="leads-table" data-filename="closar-leads-sample.csv">Download sample CSV</button>
     </div>
   </header>
+
+  {% if is_demo %}
+  <aside class="demo-banner" role="note">
+    <strong>Sample data</strong>
+    <span>These rows illustrate the pipeline UI. Live chats are on Overview → Conversations.</span>
+  </aside>
+  {% endif %}
 
   <div class="pipeline-rail" aria-label="Lead stages">
     <span class="stage-chip stage-discover">Discover</span>
@@ -24,26 +32,24 @@
     <span class="stage-chip stage-proposal">Proposal</span>
   </div>
 
-  <div class="filter-bar" role="tablist" aria-label="Lead filters">
+  <nav class="filter-bar" aria-label="Lead filters">
     <a
-      role="tab"
       class="filter-tab {% if lead_filter == 'all' %}is-active{% endif %}"
       href="{{ url_for('dashboard.leads_sheet', filter='all') }}"
-      {% if lead_filter == 'all' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+      {% if lead_filter == 'all' %}aria-current="page"{% endif %}
     >All active</a>
     <a
-      role="tab"
       class="filter-tab {% if lead_filter == 'follow-up' %}is-active{% endif %}"
       href="{{ url_for('dashboard.leads_sheet', filter='follow-up') }}"
-      {% if lead_filter == 'follow-up' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+      {% if lead_filter == 'follow-up' %}aria-current="page"{% endif %}
     >Follow-up only</a>
-  </div>
+  </nav>
 
   {% if empty %}
   <div class="empty-panel" role="status">
-    <h2>No generated leads yet</h2>
-    <p>When Closar qualifies a chat, it appears here with stage, channel, and the last message.</p>
-    <a class="button-link" href="{{ url_for('dashboard.channels_page') }}">Connect a channel</a>
+    <h2>No sample leads in this filter</h2>
+    <p>Live conversations appear on the Overview. Connect a channel to start receiving chats.</p>
+    <a class="button-link" href="{{ url_for('dashboard.channels_page') }}">Open channels</a>
   </div>
   {% else %}
   <div class="table-wrap sheet-table-wrap">
@@ -58,6 +64,7 @@
           <th scope="col">Stage</th>
           <th scope="col" class="num">Messages</th>
           <th scope="col">Last message</th>
+          <th scope="col">Thread</th>
         </tr>
       </thead>
       <tbody>
@@ -73,6 +80,9 @@
           </td>
           <td class="num">{{ row.messages }}</td>
           <td class="clamp-cell">{{ row.last_message }}</td>
+          <td>
+            <a class="ghost-link" href="{{ url_for('dashboard.operator_dashboard') }}#conversations">View conversations</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

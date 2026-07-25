@@ -99,8 +99,8 @@ Lead gen settings
 Active channel [select]
 Service offering [textarea]
 CRM export optional [OFF]
-[Save lead gen settings]
-—— Channel & webhook checklist (existing) ——
+[Connect WhatsApp] [View channel status]
+—— Channel & webhook checklist (live) ——
 ```
 
 ---
@@ -179,15 +179,15 @@ Static mockup frames (generated):
 
 ### Channels
 - **Title:** Channels
-- **Sub:** Discover need, chat, follow up, and close — on the platforms your buyers already use.
-- **Statuses:** Active outbound · Connected · Not connected
-- **Actions:** Connect · Configure
+- **Sub:** Statuses reflect environment configuration. WhatsApp onboarding is first-class.
+- **Statuses:** Active outbound · Configured · Not configured · Coming soon
+- **Actions:** Connect / Configure (real URLs) · Coming soon (disabled)
 
 ### Setup
 - **Title:** Setup
-- **Lead gen hint:** When on, Closar discovers need, qualifies chats, and writes to the Leads Sheet.
-- **CRM export hint:** Default off. Use the free built-in Leads and Sales sheets unless you need an external CRM webhook.
-- **CTA:** Save lead gen settings
+- **Lead gen:** Read-only orientation until persistence ships (shows `OUTBOUND_CHANNEL` + `CRM_EXPORT_ENABLED`)
+- **Webhook checklist:** Live keys, OpenAI save, verify ping
+- **CTA:** Connect WhatsApp · View channel status
 
 ---
 
@@ -211,7 +211,19 @@ flowchart LR
 3. Conversation advances Chat → Follow-up → Proposal (filters highlight due follow-ups).  
 4. Close as **Closed sale** or **Build what they want**.  
 5. Row leaves the open pipeline and appears only on **Sales Sheet**.  
-6. Operator downloads CSV from either sheet; optional CRM export stays off by default.
+6. Operator downloads sample CSV from either sheet; optional CRM export stays off by default (`CRM_EXPORT_ENABLED`).
+
+### Functionality alignment (current)
+
+| Surface | Reality |
+|---------|---------|
+| Leads / Sales sheets | Sample preview data + filters/CSV; not persisted CRM |
+| Conversations (Overview) | Live threads — primary place to read chats |
+| Channels | Config-backed status for supported adapters; others Coming soon |
+| Setup lead-gen block | Read-only env orientation |
+| Setup webhook checklist | Live |
+| Overview bot status | Driven by runtime health + `OUTBOUND_CHANNEL` |
+| Billing confirmation copy | Paddle |
 
 ---
 
