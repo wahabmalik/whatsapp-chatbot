@@ -4,23 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <meta name="description" content="{% block meta_description %}Sign in to Dealwire to manage WhatsApp automation, agents, and customer conversations.{% endblock %}">
-  <title>{% block title %}Dealwire{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Sign in to Closar to manage WhatsApp automation, agents, and customer conversations.{% endblock %}">
+  <title>{% block title %}Closar{% endblock %}</title>
   {% include 'partials/head_assets.html' %}
 </head>
 <body>
   <a class="skip-link" href="#auth-main">Skip to form</a>
   <div class="auth-shell">
-    <a class="auth-brand" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="Dealwire home">
-      <span class="brand-mark">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="4" cy="11" r="3" fill="currentColor"/>
-          <circle cx="18" cy="11" r="3" fill="currentColor"/>
-          <path d="M7 11 Q11 3 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-          <path d="M7 11 Q11 19 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
-        </svg>
-      </span>
-      <span class="brand-text">Dealwire</span>
+    <a class="auth-brand brand-light-logo" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="Closar home">
+      <img
+        class="brand-logo-img brand-logo-img-lg"
+        src="{{ url_for('static', filename='img/brand/closar-logo-light-nav.png') }}"
+        width="200"
+        height="116"
+        alt="Closar"
+      >
     </a>
 
     <main id="auth-main" class="auth-card panel panel-enter" tabindex="-1">

@@ -1,4 +1,4 @@
-"""Built-in free CRM demo data and helpers for the Dealwire operator dashboard."""
+"""Built-in free CRM demo data and helpers for the Closar operator dashboard."""
 
 from __future__ import annotations
 

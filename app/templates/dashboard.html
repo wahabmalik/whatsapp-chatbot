@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Overview{% endblock %}
-{% block meta_description %}Dealwire operator overview — bot status, today’s leads, follow-ups, and closed sales at a glance.{% endblock %}
+{% block meta_description %}Closar operator overview — bot status, today’s leads, follow-ups, and closed sales at a glance.{% endblock %}
 {% block content %}
 <section class="ops-hero panel-enter" aria-labelledby="ops-hero-title">
   <div class="ops-hero-copy">
-    <p class="brand-lockup" translate="no">Dealwire</p>
-    <h1 id="ops-hero-title">Leads in.<br><span class="accent-text">Deals out.</span></h1>
-    <p class="ops-hero-lead">Your AI sales desk across WhatsApp, Telegram, Instagram, and every channel you connect.</p>
+    <div class="hero-brand-row">
+      <img
+        class="brand-logo-img"
+        src="{{ url_for('static', filename='img/brand/closar-mark.svg') }}"
+        width="44"
+        height="44"
+        alt=""
+      >
+      <p class="brand-lockup" translate="no">Closar</p>
+    </div>
+    <h1 id="ops-hero-title">Built to close.</h1>
+    <p class="ops-hero-lead">Generate leads. Close deals.</p>
     <div class="hero-actions ops-cta-group" aria-label="Quick actions">
       <a class="button-link" href="{{ url_for('dashboard.leads_sheet') }}">Open Leads Sheet</a>
       <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Open Sales Sheet</a>

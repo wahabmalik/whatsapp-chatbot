@@ -1,11 +1,11 @@
-/* Dealwire operator CRM — dual-sheet sales desk */
+/* Closar operator CRM — dual-sheet sales desk (dark UI + light logo) */
 
 :root {
   --display: "Syne", "Space Grotesk", sans-serif;
   --warm: #e8b86d;
   --warm-strong: #d49a3c;
   --warm-soft: rgba(232, 184, 109, 0.14);
-  --leads-glow: rgba(17, 217, 202, 0.14);
+  --leads-glow: rgba(0, 229, 199, 0.14);
   --sales-glow: rgba(232, 184, 109, 0.16);
 }
 
@@ -19,12 +19,25 @@
   text-wrap: balance;
 }
 
+.hero-brand-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.hero-brand-row .brand-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
 .brand-lockup {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: clamp(1.4rem, 2vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--accent);
+  color: #fafafa;
 }
 
 .ops-tagline {

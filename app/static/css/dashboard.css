@@ -3,8 +3,8 @@
   --bg-soft: #071322;
   --ink: #e8eef3;
   --muted: #9db4c3;
-  --accent: #11d9ca;
-  --accent-strong: #02b8ad;
+  --accent: #00e5c7;
+  --accent-strong: #00c4aa;
   --border: rgba(17, 217, 202, 0.26);
   --card: rgba(7, 20, 35, 0.82);
   --danger: #ff6b6b;
@@ -206,15 +206,38 @@ textarea:focus-visible {
   color: var(--ink);
 }
 
+.brand-light-logo {
+  gap: 12px;
+}
+
+.brand-logo-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #fafafa;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.brand-logo-img-lg {
+  width: min(220px, 70vw);
+  height: auto;
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: #fafafa;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
 .brand-mark {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 229, 199, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--accent);
+  background: #fafafa;
   font-weight: 700;
 }
 
@@ -223,6 +246,7 @@ textarea:focus-visible {
   font-weight: 800;
   font-size: 1.35rem;
   letter-spacing: -0.02em;
+  color: #fafafa;
 }
 
 .top-nav {

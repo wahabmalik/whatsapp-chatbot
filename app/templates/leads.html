@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Leads Sheet{% endblock %}
-{% block meta_description %}Dealwire Leads Sheet — qualify prospects across channels in a free built-in CRM pipeline.{% endblock %}
+{% block meta_description %}Closar Leads Sheet — qualify prospects across channels in a free built-in CRM pipeline.{% endblock %}
 {% block content %}
 <section class="sheet-page leads-sheet panel-enter" data-sheet="leads" aria-labelledby="leads-title">
   <header class="sheet-header">
@@ -10,7 +10,7 @@
       <p class="sheet-sub">Active prospects only. Closed clients live on the Sales Sheet.</p>
     </div>
     <div class="sheet-actions">
-      <button type="button" class="button-link" data-download-csv="leads-table" data-filename="dealwire-leads.csv">Download Leads CSV</button>
+      <button type="button" class="button-link" data-download-csv="leads-table" data-filename="closar-leads.csv">Download Leads CSV</button>
     </div>
   </header>
 
@@ -42,7 +42,7 @@
   {% if empty %}
   <div class="empty-panel" role="status">
     <h2>No generated leads yet</h2>
-    <p>When Dealwire qualifies a chat, it appears here with stage, channel, and the last message.</p>
+    <p>When Closar qualifies a chat, it appears here with stage, channel, and the last message.</p>
     <a class="button-link" href="{{ url_for('dashboard.channels_page') }}">Connect a channel</a>
   </div>
   {% else %}

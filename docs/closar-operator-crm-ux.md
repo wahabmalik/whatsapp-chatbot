@@ -1,7 +1,9 @@
-# Dealwire Operator CRM — UI/UX Design
+# Closar Operator CRM — UI/UX Design
 
-**Brand:** Dealwire  
-**Tagline:** Leads in. Deals out.
+**Brand:** Closar  
+**Tagline:** Built to close.
+**Support:** Generate leads. Close deals.
+**UI:** Dark product shell · light logo (charcoal + electric teal)
 
 Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `web-design-guidelines`.
 
@@ -26,11 +28,11 @@ Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `we
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Dealwire   Overview  Leads  Sales  Channels  Setup            │
+│ Closar   Overview  Leads  Sales  Channels  Setup            │
 ├──────────────────────────────────────────────────────────────┤
-│ Dealwire                                                      │
-│ Leads in.                                                    │
-│ Deals out.                                                   │
+│ Closar                                                      │
+│ Built to close.                                                    │
+│                                                    │
 │ Short supporting line…                                       │
 │ [Open Leads] [Open Sales] [Channels] [Setup]   │ ● Online   │
 │                                                │ WhatsApp   │
@@ -45,8 +47,8 @@ Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `we
 
 ```
 ┌─────────────────────┐
-│ Dealwire             │
-│ Leads in. Deals out.│
+│ Closar             │
+│ Built to close.│
 │ [Leads] [Sales]     │
 │ [Channels] [Setup]  │
 │ ● Bot online        │
@@ -119,11 +121,11 @@ Static mockup frames (generated):
 
 | Asset | Path |
 |-------|------|
-| Overview desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-overview-desktop.png` |
-| Overview (Higgsfield) | `/opt/cursor/artifacts/dealwire-mockups/dealwire-overview-higgsfield.png` |
-| Leads mobile | `/opt/cursor/artifacts/dealwire-mockups/dealwire-leads-mobile.png` |
-| Sales desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-sales-desktop.png` |
-| Channels desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-channels-desktop.png` |
+| Overview desktop | `/opt/cursor/artifacts/closar-mockups/closar-overview-desktop.png` |
+| Overview (Higgsfield) | `/opt/cursor/artifacts/closar-mockups/closar-overview-higgsfield.png` |
+| Leads mobile | `/opt/cursor/artifacts/closar-mockups/closar-leads-mobile.png` |
+| Sales desktop | `/opt/cursor/artifacts/closar-mockups/closar-sales-desktop.png` |
+| Channels desktop | `/opt/cursor/artifacts/closar-mockups/closar-channels-desktop.png` |
 
 ---
 
@@ -132,7 +134,7 @@ Static mockup frames (generated):
 | Component | Usage |
 |-----------|--------|
 | **Top nav / bottom nav** | Operator IA: Overview, Leads, Sales, Channels, Setup |
-| **Brand lockup** | Hero-level Dealwire wordmark |
+| **Brand lockup** | Hero-level Closar wordmark |
 | **Status pill + pulse** | Bot online / active channel |
 | **Stat strip** | Today’s leads, follow-ups, closed, build |
 | **CTA group** | Primary Leads, warm Sales, ghost Channels/Setup |
@@ -154,8 +156,10 @@ Static mockup frames (generated):
 ## 4) UX copy
 
 ### Overview
-- **Brand:** Dealwire
-- **Headline / tagline:** Leads in. Deals out.
+- **Brand:** Closar
+- **Headline / tagline:** Built to close.
+- **Support line:** Generate leads. Close deals.
+- **Logo:** Light logo mark on dark UI
 - **Support:** Your AI sales desk across WhatsApp, Telegram, Instagram, and every channel you connect.
 - **CTAs:** Open Leads Sheet · Open Sales Sheet · Channels · Setup
 
@@ -163,7 +167,7 @@ Static mockup frames (generated):
 - **Title:** Leads Sheet
 - **Sub:** Active prospects only. Closed clients live on the Sales Sheet.
 - **Empty:** No generated leads yet
-- **Empty help:** When Dealwire qualifies a chat, it appears here with stage, channel, and the last message.
+- **Empty help:** When Closar qualifies a chat, it appears here with stage, channel, and the last message.
 - **CTA:** Download Leads CSV · Connect a channel
 
 ### Sales Sheet
@@ -181,7 +185,7 @@ Static mockup frames (generated):
 
 ### Setup
 - **Title:** Setup
-- **Lead gen hint:** When on, Dealwire discovers need, qualifies chats, and writes to the Leads Sheet.
+- **Lead gen hint:** When on, Closar discovers need, qualifies chats, and writes to the Leads Sheet.
 - **CRM export hint:** Default off. Use the free built-in Leads and Sales sheets unless you need an external CRM webhook.
 - **CTA:** Save lead gen settings
 

@@ -9,11 +9,19 @@ alwaysApply: false
 
 # UI/UX skill guidance
 
-When editing Dealwire frontend surfaces, follow the project skills in `.cursor/skills/`:
+When editing Closar frontend surfaces, follow the project skills in `.cursor/skills/`:
 
-1. **frontend-design** — distinctive visual direction; preserve the teal ops aesthetic already established
+1. **frontend-design** — distinctive visual direction; preserve the dark charcoal SaaS shell
 2. **effective-ui-design** — WCAG 2.1 AA, 8pt spacing, fluid type, form/button hierarchy, reduced motion
 3. **ui-design-brain** — component best practices and anti-patterns
 4. **web-design-guidelines** — audit against Vercel Web Interface Guidelines when reviewing UI
 
-Preserve the Dealwire brand: wordmark **Dealwire**, tagline **Leads in. Deals out.**, Syne + Space Grotesk, teal accent on deep navy, warm amber for Sales. Prefer refining hierarchy, accessibility, and interaction quality over redesigning from scratch.
+Preserve the Closar brand:
+- Wordmark **Closar**
+- Tagline **Built to close.**
+- Support **Generate leads. Close deals.**
+- **Dark UI + light logo** (charcoal mark on light chip / light logo asset)
+- Accent electric teal `#00E5C7`, warm amber for Sales sheet
+- Syne + Space Grotesk
+
+Prefer refining hierarchy, accessibility, and interaction quality over redesigning from scratch.
