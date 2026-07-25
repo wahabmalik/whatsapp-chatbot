@@ -809,18 +809,59 @@ def logs_page():
     )
 
 
+def _leads_view_filters(view: str) -> dict[str, Any]:
+    view_key = str(view or "active").strip().lower()
+    if view_key in {"final", "finals", "closed"}:
+        return {
+            "view": "final",
+            "view_label": "Final leads (closed sale + build request)",
+            "filters": {"final_only": True},
+        }
+    if view_key in {"follow_up", "follow-up", "followup"}:
+        return {
+            "view": "follow_up",
+            "view_label": "Follow-up needed",
+            "filters": {"follow_up_only": True},
+        }
+    if view_key in {"all", "everything"}:
+        return {
+            "view": "all",
+            "view_label": "All pipeline leads",
+            "filters": {},
+        }
+    if view_key in {"qualified", "1", "true", "yes"}:
+        return {
+            "view": "qualified",
+            "view_label": "Qualified leads",
+            "filters": {"qualified_only": True},
+        }
+    return {
+        "view": "active",
+        "view_label": "Active pipeline",
+        "filters": {"active_only": True},
+    }
+
+
 @dashboard_blueprint.route("/leads", methods=["GET"])
 def leads_page():
-    """Built-in free CRM inbox for captured leads."""
+    """Built-in free CRM sales pipeline inbox."""
     guarded = _require_operator_access()
     if guarded is not None:
         return guarded
 
-    from app.services.lead_generation import lead_gen_enabled, list_leads
+    from app.services.lead_generation import (
+        STAGE_BUILD_REQUEST,
+        STAGE_CLOSED_WON,
+        lead_gen_enabled,
+        list_leads,
+    )
 
-    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
-    qualified_only = qualified_raw in {"1", "true", "yes"}
-    leads = list_leads(current_app, limit=200, qualified_only=qualified_only)
+    view_raw = str(request.args.get("view") or request.args.get("qualified") or "active")
+    view_cfg = _leads_view_filters(view_raw)
+    leads = list_leads(current_app, limit=200, **view_cfg["filters"])
+    final_leads = list_leads(current_app, limit=200, final_only=True)
+    final_closed = [row for row in final_leads if str(row.get("stage")) == STAGE_CLOSED_WON]
+    final_build = [row for row in final_leads if str(row.get("stage")) == STAGE_BUILD_REQUEST]
 
     return render_template(
         "leads.html",
@@ -829,7 +870,10 @@ def leads_page():
         setup_complete=_is_setup_complete(),
         leads=leads,
         lead_gen_enabled=lead_gen_enabled(current_app),
-        qualified_filter="1" if qualified_only else "",
+        view=view_cfg["view"],
+        view_label=view_cfg["view_label"],
+        final_closed=final_closed,
+        final_build=final_build,
     )
 
 
@@ -845,19 +889,20 @@ def leads_export_csv():
 
     from app.services.lead_generation import leads_to_csv_rows, list_leads
 
-    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
-    qualified_only = qualified_raw in {"1", "true", "yes"}
-    leads = list_leads(current_app, limit=500, qualified_only=qualified_only)
+    view_raw = str(request.args.get("view") or request.args.get("qualified") or "all")
+    view_cfg = _leads_view_filters(view_raw)
+    leads = list_leads(current_app, limit=500, **view_cfg["filters"])
 
     buffer = StringIO()
     writer = csv.writer(buffer)
     writer.writerows(leads_to_csv_rows(leads))
 
+    filename = f"leads-{view_cfg['view']}.csv"
     return Response(
         buffer.getvalue(),
         mimetype="text/csv",
         headers={
-            "Content-Disposition": "attachment; filename=leads-export.csv",
+            "Content-Disposition": f"attachment; filename={filename}",
         },
     )
 
@@ -1499,29 +1544,69 @@ def list_leads_api():
     if guarded is not None:
         return guarded
 
-    from app.services.lead_generation import lead_gen_enabled, list_leads
+    from app.services.lead_generation import (
+        STAGE_BUILD_REQUEST,
+        STAGE_CLOSED_WON,
+        lead_gen_enabled,
+        list_leads,
+    )
 
     try:
         limit = int(request.args.get("limit", "50"))
     except ValueError:
         return jsonify({"ok": False, "message": "limit must be an integer."}), 400
 
-    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
-    qualified_only = qualified_raw in {"1", "true", "yes"}
+    view_raw = str(request.args.get("view") or request.args.get("qualified") or "all")
+    view_cfg = _leads_view_filters(view_raw)
+    leads = list_leads(current_app, limit=limit, **view_cfg["filters"])
+    final_leads = list_leads(current_app, limit=limit, final_only=True)
 
-    leads = list_leads(
-        current_app,
-        limit=limit,
-        qualified_only=qualified_only,
-    )
     return jsonify(
         {
             "ok": True,
             "lead_gen_enabled": lead_gen_enabled(current_app),
+            "view": view_cfg["view"],
             "count": len(leads),
             "leads": leads,
+            "final_leads": {
+                "closed_sales": [
+                    row for row in final_leads if str(row.get("stage")) == STAGE_CLOSED_WON
+                ],
+                "build_requests": [
+                    row for row in final_leads if str(row.get("stage")) == STAGE_BUILD_REQUEST
+                ],
+            },
         }
     ), 200
+
+
+@dashboard_api.route("/api/leads/mark-stage", methods=["POST"])
+def mark_lead_stage_api():
+    """Operator override: mark a lead as closed_won, build_request, follow_up, etc."""
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import mark_lead_stage
+
+    payload = request.get_json(silent=True) or {}
+    user_id = str(payload.get("user_id") or "").strip()
+    channel = str(payload.get("channel") or "whatsapp").strip().lower() or "whatsapp"
+    stage = str(payload.get("stage") or "").strip().lower()
+    if not user_id or not stage:
+        return jsonify({"ok": False, "message": "user_id and stage are required."}), 400
+
+    try:
+        lead = mark_lead_stage(
+            current_app,
+            user_id=user_id,
+            channel=channel,
+            stage=stage,
+        )
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    return jsonify({"ok": True, "lead": lead}), 200
 
 
 @dashboard_api.route("/api/conversations", methods=["GET"])
