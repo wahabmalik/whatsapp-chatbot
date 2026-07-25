@@ -19,9 +19,11 @@ STARTER_PACK_LABEL = "India D2C starter pack"
 STARTER_PACK_COHORT_SLICE = "sprint3-conditional"
 CATEGORY_EXPLAINER_URL = "https://developers.facebook.com/docs/whatsapp/pricing"
 ALLOWED_PROVIDER_STATES_FOR_SEND = {"approved", "active"}
+ALLOWED_CATEGORY_LABELS = frozenset({"MARKETING", "UTILITY", "AUTHENTICATION"})
 INDIA_PRICE_TABLE_SCOPE = "india_only"
 INDIA_PRICE_TABLE_VERSION = "v1"
 DEFAULT_ESTIMATE_CURRENCY = "INR"
+DEFAULT_MAX_RECIPIENT_COUNT = 100000
 
 _STARTER_CATALOGUE: tuple[dict[str, str], ...] = (
     {
@@ -301,7 +303,11 @@ def update_tenant_starter_draft(
     title: str,
     body: str,
     category_label: str,
-) -> dict[str, Any] | None:
+) -> tuple[dict[str, Any] | None, str | None]:
+    normalized_category = str(category_label or "").strip().upper()
+    if normalized_category not in ALLOWED_CATEGORY_LABELS:
+        return None, "invalid_category_label"
+
     sess = db.session()
     try:
         row = (
@@ -313,14 +319,14 @@ def update_tenant_starter_draft(
             .one_or_none()
         )
         if row is None:
-            return None
+            return None, "not_found"
 
         row.title = str(title or "").strip()
         row.body = str(body or "").strip()
-        row.category_label = str(category_label or "").strip().upper()
+        row.category_label = normalized_category
         sess.commit()
         sess.refresh(row)
-        return _serialize_draft(row)
+        return _serialize_draft(row), None
     except Exception:
         sess.rollback()
         raise
@@ -388,6 +394,11 @@ def _transition_draft_state(
     actor = str(actor_id or "operator")
     correlation_id = get_correlation_id() or "n/a"
 
+    reason: str | None = None
+    estimate_payload: dict[str, Any] | None = None
+    telemetry_payload: dict[str, Any] | None = None
+    serialized: dict[str, Any] | None = None
+
     sess = db.session()
     try:
         row = (
@@ -401,9 +412,7 @@ def _transition_draft_state(
         if row is None:
             return None, "not_found", None
 
-        reason: str | None = None
         outcome = "blocked"
-        estimate_payload: dict[str, Any] | None = None
 
         if target_action == "submit":
             if row.consent_state != "granted":
@@ -426,14 +435,16 @@ def _transition_draft_state(
             if estimate_error is not None:
                 reason = "estimation_failed"
                 outcome = "blocked"
+            elif preview_only:
+                # Preview is allowed before consent/approval/sendability gates so
+                # operators can see India projected spend while preparing drafts.
+                outcome = "preview"
             elif row.consent_state != "granted":
                 reason = "consent_required"
             elif row.provider_state not in ALLOWED_PROVIDER_STATES_FOR_SEND:
                 reason = "approval_required"
             elif row.sendability_state != "ready":
                 reason = "sendability_blocked"
-            elif preview_only:
-                outcome = "preview"
             elif bool(estimate_payload.get("threshold_exceeded")) and not operator_confirmed:
                 reason = "cost_confirmation_required"
                 outcome = "blocked"
@@ -450,27 +461,6 @@ def _transition_draft_state(
                 threshold_exceeded=bool(estimate_payload.get("threshold_exceeded")),
                 blocked_reason=reason,
             )
-        elif target_action == "activate":
-            estimate_payload = {
-                "price_table_scope": INDIA_PRICE_TABLE_SCOPE,
-                "price_table_version": INDIA_PRICE_TABLE_VERSION,
-                "country_code": str(app.config.get("INDIA_MESSAGE_COST_COUNTRY", "IN") or "IN").strip().upper(),
-                "currency": DEFAULT_ESTIMATE_CURRENCY,
-                "inputs": {
-                    "template_category": str(row.category_label or "").strip().upper(),
-                    "recipient_count": None,
-                },
-                "projected_spend_paisa": None,
-                "threshold_paisa": int(app.config.get("INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA", 0) or 0),
-                "threshold_exceeded": False,
-                "estimation_error": estimate_error if 'estimate_error' in locals() else None,
-                "operator_confirmation_decision": _operator_confirmation_decision(
-                    preview_only=preview_only,
-                    operator_confirmed=operator_confirmed,
-                    threshold_exceeded=False,
-                    blocked_reason=reason,
-                ),
-            }
 
         _append_audit(
             sess,
@@ -494,37 +484,38 @@ def _transition_draft_state(
                 "estimation_error": estimate_payload.get("estimation_error") if estimate_payload else None,
             },
         )
-        _record_starter_pack_telemetry(
-            app,
-            {
-                "event_type": f"starter_pack.{target_action}",
-                "tenant_id": tenant_key,
-                "pack_enabled": True,
-                "workflow_slug": slug,
-                "category_label": row.category_label,
-                "draft_created_at": _iso_or_none(row.created_at),
-                "outcome": outcome,
-                "blocked_reason": reason,
-                "correlation_id": correlation_id,
-                "recipient_count": estimate_payload.get("inputs", {}).get("recipient_count") if estimate_payload else None,
-                "projected_spend_paisa": estimate_payload.get("projected_spend_paisa") if estimate_payload else None,
-                "threshold_paisa": estimate_payload.get("threshold_paisa") if estimate_payload else None,
-                "threshold_exceeded": estimate_payload.get("threshold_exceeded") if estimate_payload else None,
-                "operator_confirmation_decision": estimate_payload.get("operator_confirmation_decision") if estimate_payload else None,
-                "price_table_scope": estimate_payload.get("price_table_scope") if estimate_payload else None,
-                "country_code": estimate_payload.get("country_code") if estimate_payload else None,
-                "estimation_error": estimate_payload.get("estimation_error") if estimate_payload else None,
-            },
-        )
+        telemetry_payload = {
+            "event_type": f"starter_pack.{target_action}",
+            "tenant_id": tenant_key,
+            "pack_enabled": True,
+            "workflow_slug": slug,
+            "category_label": row.category_label,
+            "draft_created_at": _iso_or_none(row.created_at),
+            "outcome": outcome,
+            "blocked_reason": reason,
+            "correlation_id": correlation_id,
+            "recipient_count": estimate_payload.get("inputs", {}).get("recipient_count") if estimate_payload else None,
+            "projected_spend_paisa": estimate_payload.get("projected_spend_paisa") if estimate_payload else None,
+            "threshold_paisa": estimate_payload.get("threshold_paisa") if estimate_payload else None,
+            "threshold_exceeded": estimate_payload.get("threshold_exceeded") if estimate_payload else None,
+            "operator_confirmation_decision": estimate_payload.get("operator_confirmation_decision") if estimate_payload else None,
+            "price_table_scope": estimate_payload.get("price_table_scope") if estimate_payload else None,
+            "country_code": estimate_payload.get("country_code") if estimate_payload else None,
+            "estimation_error": estimate_payload.get("estimation_error") if estimate_payload else None,
+        }
 
         sess.commit()
         sess.refresh(row)
-        return _serialize_draft(row), reason, estimate_payload
+        serialized = _serialize_draft(row)
     except Exception:
         sess.rollback()
         raise
     finally:
         sess.close()
+
+    if telemetry_payload is not None:
+        _record_starter_pack_telemetry(app, telemetry_payload)
+    return serialized, reason, estimate_payload
 
 
 def _build_cost_estimate(
@@ -533,27 +524,16 @@ def _build_cost_estimate(
     category_label: str,
     recipient_count: Any,
     correlation_id: str,
-) -> tuple[dict[str, Any] | None, str | None]:
+) -> tuple[dict[str, Any], str | None]:
     normalized_country = str(app.config.get("INDIA_MESSAGE_COST_COUNTRY", "IN") or "IN").strip().upper()
     normalized_category = str(category_label or "").strip().upper()
-    count, count_error = _parse_recipient_count(recipient_count)
-    if count_error is not None:
-        return None, count_error
-    if normalized_country != "IN":
-        return None, "Cost estimation is limited to India-only pricing configuration."
-
-    price_table = {
-        "MARKETING": int(app.config.get("INDIA_MESSAGE_COST_MARKETING_PAISA", 0) or 0),
-        "UTILITY": int(app.config.get("INDIA_MESSAGE_COST_UTILITY_PAISA", 0) or 0),
-        "AUTHENTICATION": int(app.config.get("INDIA_MESSAGE_COST_AUTHENTICATION_PAISA", 0) or 0),
-    }
-    unit_price = price_table.get(normalized_category)
-    if unit_price is None or unit_price <= 0:
-        return None, "Cost estimation requires a supported India template category and price table entry."
-
-    projected_spend_paisa = unit_price * count
+    max_recipients = int(
+        app.config.get("INDIA_MESSAGE_COST_MAX_RECIPIENT_COUNT", DEFAULT_MAX_RECIPIENT_COUNT)
+        or DEFAULT_MAX_RECIPIENT_COUNT
+    )
+    count, count_error = _parse_recipient_count(recipient_count, max_recipients=max_recipients)
     threshold_paisa = int(app.config.get("INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA", 0) or 0)
-    return {
+    base_payload: dict[str, Any] = {
         "price_table_scope": INDIA_PRICE_TABLE_SCOPE,
         "price_table_version": INDIA_PRICE_TABLE_VERSION,
         "country_code": normalized_country,
@@ -562,27 +542,75 @@ def _build_cost_estimate(
             "template_category": normalized_category,
             "recipient_count": count,
         },
-        "unit_price_paisa": unit_price,
-        "projected_spend_paisa": projected_spend_paisa,
-        "projected_spend_inr": _format_inr(projected_spend_paisa),
+        "projected_spend_paisa": None,
+        "projected_spend_inr": None,
         "threshold_paisa": threshold_paisa,
         "threshold_inr": _format_inr(threshold_paisa),
-        "threshold_exceeded": projected_spend_paisa > threshold_paisa,
+        "threshold_exceeded": False,
         "estimation_error": None,
         "correlation_id": correlation_id,
-    }, None
+    }
+    if count_error is not None:
+        base_payload["estimation_error"] = count_error
+        return base_payload, count_error
+    if normalized_country != "IN":
+        error = "Cost estimation is limited to India-only pricing configuration."
+        base_payload["estimation_error"] = error
+        return base_payload, error
+
+    price_table = {
+        "MARKETING": int(app.config.get("INDIA_MESSAGE_COST_MARKETING_PAISA", 0) or 0),
+        "UTILITY": int(app.config.get("INDIA_MESSAGE_COST_UTILITY_PAISA", 0) or 0),
+        "AUTHENTICATION": int(app.config.get("INDIA_MESSAGE_COST_AUTHENTICATION_PAISA", 0) or 0),
+    }
+    unit_price = price_table.get(normalized_category)
+    if unit_price is None or unit_price <= 0:
+        error = "Cost estimation requires a supported India template category and price table entry."
+        base_payload["estimation_error"] = error
+        return base_payload, error
+
+    try:
+        projected_spend_paisa = unit_price * count
+    except OverflowError:
+        error = "Recipient count is too large to estimate projected spend."
+        base_payload["estimation_error"] = error
+        return base_payload, error
+
+    base_payload.update(
+        {
+            "unit_price_paisa": unit_price,
+            "projected_spend_paisa": projected_spend_paisa,
+            "projected_spend_inr": _format_inr(projected_spend_paisa),
+            "threshold_exceeded": projected_spend_paisa >= threshold_paisa,
+            "estimation_error": None,
+        }
+    )
+    return base_payload, None
 
 
-def _parse_recipient_count(value: Any) -> tuple[int | None, str | None]:
-    text = str(value or "").strip()
+def _parse_recipient_count(value: Any, *, max_recipients: int) -> tuple[int | None, str | None]:
+    text = str(value if value is not None else "").strip()
     if not text:
         return None, "Recipient count is required before send confirmation."
+    lowered = text.lower()
+    if lowered in {"inf", "+inf", "-inf", "infinity", "+infinity", "-infinity", "nan"}:
+        return None, "Recipient count must be a positive integer."
     try:
-        parsed = int(Decimal(text))
-    except (InvalidOperation, ValueError):
+        decimal_value = Decimal(text)
+    except (InvalidOperation, ValueError, OverflowError):
+        return None, "Recipient count must be a positive integer."
+    if not decimal_value.is_finite():
+        return None, "Recipient count must be a positive integer."
+    if decimal_value != decimal_value.to_integral_value():
+        return None, "Recipient count must be a positive integer."
+    try:
+        parsed = int(decimal_value)
+    except (OverflowError, ValueError):
         return None, "Recipient count must be a positive integer."
     if parsed <= 0:
         return None, "Recipient count must be a positive integer."
+    if parsed > max_recipients:
+        return None, f"Recipient count must be at most {max_recipients}."
     return parsed, None
 
 
@@ -621,12 +649,19 @@ def _append_audit(sess, *, tenant_id: str, actor_id: str, action: str, payload: 
 
 
 def _record_starter_pack_telemetry(app, payload: dict[str, Any]) -> None:
-    store_path = Path(str(app.config.get("STARTER_PACK_TELEMETRY_PATH", "data/starter_pack_telemetry.jsonl")))
-    store_path.parent.mkdir(parents=True, exist_ok=True)
-
-    line = json.dumps(payload, ensure_ascii=True)
-    with store_path.open("a", encoding="utf-8") as handle:
-        handle.write(line + "\n")
+    try:
+        store_path = Path(str(app.config.get("STARTER_PACK_TELEMETRY_PATH", "data/starter_pack_telemetry.jsonl")))
+        store_path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(payload, ensure_ascii=True)
+        with store_path.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "STARTER_PACK_TELEMETRY_WRITE_FAILED event_type=%s tenant_id=%s correlation_id=%s",
+            payload.get("event_type"),
+            payload.get("tenant_id"),
+            payload.get("correlation_id"),
+        )
 
 
 def _iso_or_none(value: Any) -> str | None:

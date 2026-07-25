@@ -1234,6 +1234,85 @@ select {
   font-size: 0.86rem;
 }
 
+.starter-draft-card {
+  display: grid;
+  gap: 8px;
+}
+
+.starter-cost-guard {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #dfe3ea);
+}
+
+.starter-cost-note {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.starter-cost-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.starter-cost-field {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.starter-cost-field input,
+.starter-cost-field select {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--border, #dfe3ea);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+}
+
+.starter-estimate {
+  margin-top: 8px;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.starter-estimate.is-error {
+  color: #9b1c1c;
+}
+
+.starter-confirm-box {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(180, 110, 24, 0.35);
+  border-radius: 8px;
+  background: rgba(180, 110, 24, 0.08);
+}
+
+.starter-confirm-box[hidden] {
+  display: none !important;
+}
+
+.starter-confirm-copy {
+  margin: 6px 0 10px;
+  font-size: 0.86rem;
+}
+
+.activity-list .starter-draft-card {
+  grid-template-columns: 1fr;
+}
+
+.activity-list .starter-draft-card > span {
+  display: inline-block;
+  margin-right: 12px;
+  font-size: 0.9rem;
+}
+
 .error-card {
   display: none;
   margin-top: 10px;

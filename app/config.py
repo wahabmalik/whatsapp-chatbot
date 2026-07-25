@@ -442,6 +442,9 @@ def load_configurations(app):
     app.config["INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA"] = _as_int(
         "INDIA_MESSAGE_COST_WARNING_THRESHOLD_PAISA", default=100, minimum=0
     )
+    app.config["INDIA_MESSAGE_COST_MAX_RECIPIENT_COUNT"] = _as_int(
+        "INDIA_MESSAGE_COST_MAX_RECIPIENT_COUNT", default=100000, minimum=1
+    )
     app.config["USAGE_ALERT_THRESHOLD_PCTS"] = os.getenv(
         "USAGE_ALERT_THRESHOLD_PCTS", "80"
     )
