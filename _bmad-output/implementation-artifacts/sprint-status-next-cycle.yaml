@@ -1,6 +1,6 @@
 # Sprint Status - Next Cycle (Epics 9-12)
 # generated: 2026-05-18
-# last_updated: 2026-05-18
+# last_updated: 2026-07-25
 # project: python-whatsapp-bot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -25,7 +25,7 @@
 # Gate D: pull Epic 12 only when Gate B + Gate C are both green and full suite is green
 
 generated: 2026-05-18
-last_updated: 2026-05-18
+last_updated: 2026-07-25
 project: python-whatsapp-bot
 project_key: NOKEY
 tracking_system: file-system
@@ -57,4 +57,4 @@ development_status:
   next-cycle-12-6-compliance-and-sendability-control-surface: ready-for-dev
   epic-next-12-retrospective: optional
 
-# Last updated: 2026-05-18 - Stories 12.3 and 12.4 validated and marked done
+# Last updated: 2026-07-25 - Story 12.5 review patches remediated; returned to review for Quinn CR re-run

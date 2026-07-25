@@ -1,12 +1,12 @@
 ---
 story_id: "12.5"
 story_key: "next-cycle-12-5-messaging-cost-guardrails-v1"
-status: "done"
+status: "review"
 epic: next-12
 story: "5"
 sprint_status_file: _bmad-output/implementation-artifacts/sprint-status-next-cycle.yaml
 created: "2026-05-10"
-updated: "2026-05-15"
+updated: "2026-07-25"
 depends_on:
   - next-cycle-10-1-analytics-reporting-api
   - next-cycle-10-2-dashboard-analytics-v1
@@ -75,6 +75,25 @@ The approved market research shows that cost sensitivity in this ICP is driven b
 - [x] Prove quota and retry/fallback behavior remain unchanged by the new guardrail layer. (AC: 12.5.7)
 - [x] Add focused unit, integration, and contract tests for estimation, threshold branching, and blocked-send semantics. (AC: 12.5.1-12.5.7)
 
+### Review Findings
+
+- [x] [Review][Decision] Confirm v1 guardrail boundary — Resolved: v1 gates **starter-pack activate confirmation only**. General dashboard/outbound template dispatch (`views_dashboard.py`, `outbound_delivery.py`, `whatsapp_utils.py`) is out of scope for 12.5; covered flows are the dashboard and onboarding starter-pack activate confirmation surfaces.
+- [x] [Review][Decision] Confirm AC 12.5.5 analytics surface — Resolved: v1 analytics = **AuditLog + starter-pack telemetry**. Do not extend `conversation_analytics` in this story.
+- [x] [Review][Patch] Add operator-visible estimate + second-confirmation UX on starter-pack activate [app/templates/dashboard.html / app/templates/onboarding.html] — Added shared `starter_pack_cost_guardrails.js` + CSS; dashboard/onboarding draft cards show India-only estimate, recalculate on recipient/category change, and require explicit second confirmation at/above threshold (AC 12.5.1–12.5.3).
+- [x] [Review][Patch] Reject non-integer recipient counts instead of truncating [app/services/starter_pack.py:_parse_recipient_count] — Reject non-integral Decimal values (e.g. `2.9`) with fail-closed 422 (AC 12.5.4).
+- [x] [Review][Patch] Treat threshold equality as confirmation-required [app/services/starter_pack.py:_build_cost_estimate] — `threshold_exceeded` now uses `projected_spend_paisa >= threshold_paisa` (AC 12.5.3).
+- [x] [Review][Patch] Fail closed on non-finite recipient counts [app/services/starter_pack.py:_parse_recipient_count] — Reject `inf`/`nan` and catch `OverflowError` as estimation_failed 422 (AC 12.5.4).
+- [x] [Review][Patch] Persist submitted recipient_count on estimation_failed audit/telemetry [app/services/starter_pack.py:_transition_draft_state] — `_build_cost_estimate` always returns a payload; parsed recipient_count is retained on category/country failures (AC 12.5.5).
+- [x] [Review][Patch] Isolate telemetry IO from DB transaction [app/services/starter_pack.py:_record_starter_pack_telemetry] — Telemetry write is try/except-guarded and runs after activate/submit commit so IO failures cannot roll back audit/DB state.
+- [x] [Review][Patch] Allowlist category_label on draft update [app/onboarding/routes.py / app/services/starter_pack.py:update_tenant_starter_draft] — Only `MARKETING`/`UTILITY`/`AUTHENTICATION` accepted (AC 12.5.1/12.5.6).
+- [x] [Review][Patch] Allow cost estimate preview before sendability-ready gates [app/services/starter_pack.py:_transition_draft_state] — `preview_only` returns estimate before consent/approval/sendability checks; activate still enforces those gates (AC 12.5.1/12.5.2).
+- [x] [Review][Patch] Expand Story 12.5 tests for non-IN country, unknown category, threshold equality, non-integer recipient, and UI/API blocked-send contracts [tests/test_story_12_5_messaging_cost_guardrails_v1.py] — Expanded suite covers those edges plus UI surface and blocked-send contracts.
+- [x] [Review][Patch] Add recipient_count upper bound before estimate math [app/services/starter_pack.py:_parse_recipient_count] — Enforced via `INDIA_MESSAGE_COST_MAX_RECIPIENT_COUNT` (default 100000).
+- [x] [Review][Defer] replace_existing does not reset consent_state [app/services/starter_pack.py:enable_starter_pack] — deferred, pre-existing starter-pack/12.4 concern
+- [x] [Review][Defer] Concurrent activate race / no already-active idempotency guard [app/services/starter_pack.py:_transition_draft_state] — deferred, pre-existing
+- [x] [Review][Defer] starter_pack_enable ignores JSON replace_existing payload [app/onboarding/routes.py] — deferred, pre-existing API shape concern
+- [x] [Review][Defer] Unrelated secret-key/CRM/OAuth config churn in mega-commit [app/config.py] — deferred, outside Story 12.5 cost-guardrail scope
+
 ## Risks, Assumptions, and Mitigations
 
 - Risk: operators treat estimates as invoice truth and dispute normal provider variance.
@@ -115,13 +134,14 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Definition of Done Evidence Checklist
 
-- [x] Story status updated in `sprint-status-next-cycle.yaml` according to workflow.
+- [x] Story status updated in `sprint-status-next-cycle.yaml` according to workflow. (2026-07-25: review-patch remediation returned status to `review`)
 - [x] India-only price table and threshold defaults documented in completion notes.
 - [x] Targeted pytest output captured for unit, integration, and contract coverage.
-- [x] Audit/event evidence shows estimate inputs, operator confirmation decision, and correlation_id.
+- [x] Audit/event evidence shows estimate inputs, operator confirmation decision, and correlation_id. (including recipient_count on estimation_failed when parseable)
 - [x] Failure evidence shows estimate errors fail closed without dispatch.
 - [x] Regression evidence shows quota enforcement and retry/fallback behavior were not weakened.
 - [x] Rollout mode and fallback configuration documented.
+- [x] Operator-visible estimate + explicit second confirmation UX evidenced (AC 12.5.1–12.5.3).
 
 ## Effort Estimate
 
@@ -162,22 +182,35 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Completion State
 
-- Story status: `done`
-- Completed on: 2026-05-15
-- Acceptance criteria: AC 12.5.1 through AC 12.5.7 implemented and validated.
+- Story status: `review` (2026-07-25 review-patch remediation complete; ready for Quinn CR re-run)
+- Acceptance criteria: AC 12.5.1–12.5.7 evidenced for v1 starter-pack activate boundary (dashboard + onboarding confirmation UX; AuditLog + starter-pack telemetry; quota/retry untouched).
+- Deferred Review findings left unchanged.
 
 ## Validation Evidence
 
-- `python -m pytest tests/test_story_12_4_india_d2c_starter_template_pack.py tests/test_story_12_5_messaging_cost_guardrails_v1.py` -> 8 passed
-- `$env:DATABASE_URL='sqlite:///:memory:'; python -m pytest tests/test_retry_escalation_contract.py` -> 23 passed
-- `python validate_story_closure_evidence.py` -> PASS
-- `python validate_sprint_status_integrity.py` -> PASS WITH WARNINGS (existing stale timestamp warning on legacy sprint-status.yaml)
+- `python3 -m pytest tests/test_story_12_4_india_d2c_starter_template_pack.py tests/test_story_12_5_messaging_cost_guardrails_v1.py` -> 19 passed
+- `DATABASE_URL='sqlite:///:memory:' python3 -m pytest tests/test_retry_escalation_contract.py` -> 23 passed
+- AC 12.5.1: operator-visible India-only estimate on dashboard/onboarding starter-pack activate cards (`starter_pack_cost_guardrails.js` + UI test)
+- AC 12.5.2: estimate recalculates on recipient/category change (preview API + UI binding); preview allowed before sendability-ready
+- AC 12.5.3: threshold confirmation at `>=` warning threshold with explicit second confirmation UX/API
+- AC 12.5.4: fail-closed for missing/non-integer/non-finite/over-max recipient, unknown category, non-IN country
+- AC 12.5.5: AuditLog + starter-pack telemetry persist category, recipient_count (including estimation_failed when parseable), spend, threshold, confirmation, correlation_id
+- AC 12.5.6: India-only price table scope; category allowlist; UI copy labels India-only estimate
+- AC 12.5.7: retry/escalation contract suite remains green (23 passed); quota path untouched
+
+## Code Review Record (2026-07-25)
+
+- Reviewer: Quinn (bmad-code-review / agent-qa CR)
+- Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor — all completed
+- Outcome: **Issues remain** (initial review) — story returned to `in-progress`; sprint status synced to `in-progress`
+- Follow-up: 2026-07-25 remediation addressed all unchecked `[Review][Patch]` items and both `[Review][Decision]` defaults; status returned to `review` for Quinn CR re-run
+- Prior AC snapshot at initial review: 12.5.4 PASS, 12.5.6 PASS, 12.5.7 PASS; 12.5.2/12.5.3/12.5.5 PARTIAL; 12.5.1 FAIL
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-GPT-5.4
+GPT-5.4 / Composer
 
 ### Completion Notes List
 
@@ -188,12 +221,26 @@ GPT-5.4
 - Extended audit-log payloads and starter-pack telemetry with category label, recipient count, projected spend, threshold outcome, operator confirmation decision, estimation error, and correlation_id.
 - Kept quota and outbound retry/fallback paths untouched and validated the existing retry contract suite after the change.
 - Added focused Story 12.5 tests for estimate preview, recalculation, threshold confirmation, fail-closed behavior, and telemetry or audit tagging.
+- 2026-07-25 code review: not approved; see Review Findings. Status reconciled from premature `done` to `in-progress`.
+- 2026-07-25 review remediation: locked v1 boundary to starter-pack activate confirmation only; AC 12.5.5 = AuditLog + starter-pack telemetry (no conversation_analytics extension).
+- ✅ Resolved review finding: operator-visible estimate + second-confirmation UX on dashboard/onboarding starter-pack activate.
+- ✅ Resolved review finding: reject non-integer / non-finite recipient counts; add max recipient bound (`INDIA_MESSAGE_COST_MAX_RECIPIENT_COUNT`).
+- ✅ Resolved review finding: threshold confirmation at `>=` warning threshold.
+- ✅ Resolved review finding: persist recipient_count on estimation_failed audit/telemetry; isolate telemetry IO from DB transaction.
+- ✅ Resolved review finding: allowlist category_label; allow estimate preview before sendability-ready gates.
+- ✅ Resolved review finding: expanded Story 12.5 tests for non-IN, unknown category, threshold equality, non-integer recipient, UI/API blocked-send contracts.
+- India-only defaults: MARKETING 75 / UTILITY 20 / AUTHENTICATION 15 paisa; warning threshold 100 paisa; max recipients 100000 (tests override max to 1000).
 
 ### File List
 
 - app/config.py
 - app/onboarding/routes.py
 - app/services/starter_pack.py
+- app/static/css/dashboard.css
+- app/static/js/starter_pack_cost_guardrails.js
+- app/templates/base.html
+- app/templates/dashboard.html
+- app/templates/onboarding.html
 - tests/test_story_12_4_india_d2c_starter_template_pack.py
 - tests/test_story_12_5_messaging_cost_guardrails_v1.py
 - _bmad-output/implementation-artifacts/next-cycle-12-5-messaging-cost-guardrails-v1.md
@@ -204,3 +251,5 @@ GPT-5.4
 | Date | Change |
 | --- | --- |
 | 2026-05-15 | Implemented Story 12.5 messaging cost guardrails for starter-pack activation with India-only estimation, threshold confirmation, fail-closed handling, audit or telemetry tagging, and focused tests. |
+| 2026-07-25 | Code review (Quinn / bmad-code-review): not approved. Added Review Findings, reconciled status `done`→`in-progress`, synced sprint tracker. |
+| 2026-07-25 | Addressed code review findings - 12 patch/decision items resolved (Date: 2026-07-25). Operator UX + estimator fail-closed hardening + expanded tests; status returned to `review`. |

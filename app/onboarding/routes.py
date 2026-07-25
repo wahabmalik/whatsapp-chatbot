@@ -314,7 +314,7 @@ def starter_pack_update_draft(workflow_slug: str):
     if not title or not body or not category_label:
         return jsonify({"ok": False, "message": "title, body, and category_label are required."}), 400
 
-    draft = update_tenant_starter_draft(
+    draft, update_error = update_tenant_starter_draft(
         db,
         tenant_id=identity.tenant_id,
         workflow_slug=workflow_slug,
@@ -322,7 +322,13 @@ def starter_pack_update_draft(workflow_slug: str):
         body=body,
         category_label=category_label,
     )
-    if draft is None:
+    if update_error == "invalid_category_label":
+        return jsonify({
+            "ok": False,
+            "message": "category_label must be one of MARKETING, UTILITY, or AUTHENTICATION.",
+            "blocked_reason": update_error,
+        }), 400
+    if draft is None or update_error == "not_found":
         return jsonify({"ok": False, "message": "Draft not found."}), 404
 
     return jsonify({"ok": True, "draft": draft}), 200
@@ -417,7 +423,7 @@ def starter_pack_activate_draft(workflow_slug: str):
     if blocked_reason == "cost_confirmation_required":
         return jsonify({
             "ok": False,
-            "message": "Projected spend exceeds the warning threshold. Confirm the estimate to continue.",
+            "message": "Projected spend meets or exceeds the warning threshold. Confirm the estimate to continue.",
             "blocked_reason": blocked_reason,
             "confirmation_required": True,
             "draft": draft,

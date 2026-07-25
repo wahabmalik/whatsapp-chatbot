@@ -327,16 +327,15 @@
     }
 
     drafts.forEach(function (row) {
-      var item = document.createElement('li');
-      item.innerHTML =
-        '<strong>' + row.title + '</strong>' +
-        '<div class="starter-draft-meta">' +
-          'Workflow: <code>' + row.workflow_slug + '</code> · ' +
-          'Category: <strong>' + row.category_label + '</strong> · ' +
-          'Status: ' + row.draft_status +
-        '</div>' +
-        '<p class="starter-draft-body">' + row.body + '</p>';
-      listEl.appendChild(item);
+      listEl.insertAdjacentHTML(
+        'beforeend',
+        window.StarterPackCostGuardrails.renderDraftCardHtml(row, { compact: false })
+      );
+    });
+    window.StarterPackCostGuardrails.bindDraftControls(listEl, {
+      csrfToken: csrfToken,
+      statusEl: statusEl,
+      onDraftsChanged: refreshStatus
     });
   }
 

@@ -861,12 +861,15 @@
       replaceBtn.style.display = 'inline-flex';
 
       drafts.forEach(function (draft) {
-        var row = document.createElement('li');
-        row.innerHTML =
-          '<span>' + draft.workflow_slug + '</span>' +
-          '<span>' + draft.category_label + '</span>' +
-          '<span>' + String(draft.draft_status || '').toUpperCase() + '</span>';
-        draftsEl.appendChild(row);
+        draftsEl.insertAdjacentHTML(
+          'beforeend',
+          window.StarterPackCostGuardrails.renderDraftCardHtml(draft, { compact: true })
+        );
+      });
+      window.StarterPackCostGuardrails.bindDraftControls(draftsEl, {
+        csrfToken: csrfToken,
+        statusEl: statusEl,
+        onDraftsChanged: refresh
       });
     }
 
@@ -957,6 +960,8 @@
         replaceBtn.textContent = original;
       });
     });
+
+    refresh();
   })();
 
   (function () {
