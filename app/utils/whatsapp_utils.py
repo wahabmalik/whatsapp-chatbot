@@ -945,6 +945,27 @@ def process_whatsapp_message(body, request_id: str | None = None, inbound_messag
     if not wa_id or not message_body:
         raise ValueError("No inbound message payload found")
 
+    inbound_channel = str(inbound.get("channel") or "whatsapp").strip().lower() or "whatsapp"
+    try:
+        from app.services.lead_generation import process_inbound_for_leads
+
+        process_inbound_for_leads(
+            current_app,
+            message_text=message_body,
+            user_id=wa_id,
+            channel=inbound_channel,
+            profile_name=name,
+            tenant_id=tenant_id,
+            message_id=message_id,
+            request_id=request_id,
+        )
+    except Exception as lead_exc:  # noqa: BLE001
+        logging.warning(
+            "Lead capture skipped request_id=%s error_type=%s",
+            request_id,
+            type(lead_exc).__name__,
+        )
+
     faq_answer = find_faq_answer(current_app, wa_id, message_body)
     response_source = "agent"
     ai_result = None

@@ -486,6 +486,15 @@ def load_configurations(app):
     app.config["CRM_EXPORT_TIMEOUT_SECONDS"] = _as_float(
         "CRM_EXPORT_TIMEOUT_SECONDS", default=5.0, minimum=0.1
     )
+
+    # Lead generation mode — qualify prospects and capture contact fields.
+    app.config["LEAD_GEN_ENABLED"] = _as_bool("LEAD_GEN_ENABLED", default=False)
+    app.config["LEAD_GEN_EXPORT_TO_CRM"] = _as_bool("LEAD_GEN_EXPORT_TO_CRM", default=True)
+    app.config["LEAD_GEN_SYSTEM_PROMPT"] = os.getenv("LEAD_GEN_SYSTEM_PROMPT")
+    app.config["LEAD_STORE_PATH"] = os.getenv("LEAD_STORE_PATH", "data/leads.jsonl")
+    app.config["LEAD_STORE_MAX_LINES"] = _as_int(
+        "LEAD_STORE_MAX_LINES", default=5000, minimum=100
+    )
     app.config["STATE_STORE_BACKEND"] = os.getenv("STATE_STORE_BACKEND", "memory")
     sqlite_path = os.getenv("STATE_STORE_SQLITE_PATH", "data/runtime_state.db")
     app.config["STATE_STORE_SQLITE_PATH"] = sqlite_path

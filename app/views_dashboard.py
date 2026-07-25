@@ -1439,6 +1439,37 @@ def compliance_dispatch_eligibility_api():
     }), 200
 
 
+@dashboard_api.route("/api/leads", methods=["GET"])
+def list_leads_api():
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import lead_gen_enabled, list_leads
+
+    try:
+        limit = int(request.args.get("limit", "50"))
+    except ValueError:
+        return jsonify({"ok": False, "message": "limit must be an integer."}), 400
+
+    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
+    qualified_only = qualified_raw in {"1", "true", "yes"}
+
+    leads = list_leads(
+        current_app,
+        limit=limit,
+        qualified_only=qualified_only,
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "lead_gen_enabled": lead_gen_enabled(current_app),
+            "count": len(leads),
+            "leads": leads,
+        }
+    ), 200
+
+
 @dashboard_api.route("/api/conversations", methods=["GET"])
 def list_conversations():
     guarded = _require_operator_api_access()
