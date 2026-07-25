@@ -1,6 +1,79 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Overview{% endblock %}
+{% block meta_description %}Closar operator overview — bot status, today’s leads, follow-ups, and closed sales at a glance.{% endblock %}
 {% block content %}
+<section class="ops-hero panel-enter" aria-labelledby="ops-hero-title">
+  <div class="ops-hero-copy">
+    <div class="hero-brand-row">
+      <img
+        class="brand-logo-img"
+        src="{{ url_for('static', filename='img/brand/closar-mark.svg') }}"
+        width="44"
+        height="44"
+        alt=""
+      >
+      <p class="brand-lockup" translate="no">Closar</p>
+    </div>
+    <h1 id="ops-hero-title">Built to close.</h1>
+    <p class="ops-hero-lead">Generate leads. Close deals.</p>
+    <div class="hero-actions ops-cta-group" aria-label="Quick actions">
+      <a class="button-link" href="{{ url_for('dashboard.leads_sheet') }}">Open Leads Sheet</a>
+      <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Open Sales Sheet</a>
+      <a class="ghost-link" href="{{ url_for('dashboard.channels_page') }}">Channels</a>
+      <a class="ghost-link" href="{{ url_for('dashboard.setup') }}">Setup</a>
+    </div>
+  </div>
+
+  <aside class="ops-status-rail" aria-label="Bot status">
+    <div class="status-pill {% if crm.bot_online %}is-online{% else %}is-offline{% endif %}">
+      <span class="status-pulse" aria-hidden="true"></span>
+      <span>
+        <strong>{% if crm.bot_online %}Bot online{% else %}Bot offline{% endif %}</strong>
+        <small>Active channel · {{ crm.active_channel }}</small>
+      </span>
+    </div>
+    <p class="status-note">Lead generation is {% if crm.lead_generation_enabled %}<strong>ON</strong>{% else %}<strong>OFF</strong>{% endif %}. Built-in CRM is free — export stays optional.</p>
+  </aside>
+</section>
+
+<section class="stat-strip panel-enter" aria-label="Today’s pipeline">
+  <a class="stat-cell" href="{{ url_for('dashboard.leads_sheet') }}">
+    <span class="stat-label">Today’s new leads</span>
+    <strong class="stat-value">{{ crm.new_leads_today }}</strong>
+  </a>
+  <a class="stat-cell" href="{{ url_for('dashboard.leads_sheet', filter='follow-up') }}">
+    <span class="stat-label">Follow-ups due</span>
+    <strong class="stat-value">{{ crm.follow_ups_due }}</strong>
+  </a>
+  <a class="stat-cell sales-tone" href="{{ url_for('dashboard.sales_sheet', filter='closed') }}">
+    <span class="stat-label">Closed sales</span>
+    <strong class="stat-value">{{ crm.closed_sales }}</strong>
+  </a>
+  <a class="stat-cell sales-tone" href="{{ url_for('dashboard.sales_sheet', filter='build') }}">
+    <span class="stat-label">Build requests</span>
+    <strong class="stat-value">{{ crm.build_requests }}</strong>
+  </a>
+</section>
+
+<section class="sheet-preview-grid panel-enter" aria-label="Sheet separation">
+  <article class="sheet-preview leads-tone">
+    <header>
+      <p class="sheet-kicker">Sheet 1 · Lead generation</p>
+      <h2>Leads Sheet</h2>
+    </header>
+    <p>Qualify and advance prospects through Discover → Chat → Follow-up → Proposal. Separate from closed clients.</p>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_sheet') }}">Open pipeline</a>
+  </article>
+  <article class="sheet-preview sales-tone">
+    <header>
+      <p class="sheet-kicker">Sheet 2 · Closed clients</p>
+      <h2>Sales Sheet</h2>
+    </header>
+    <p>Won deals and “build what they want” requests land here — never mixed with open leads.</p>
+    <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Open closed book</a>
+  </article>
+</section>
+
 <section class="panel panel-enter signal-banner {{ 'signal-stop' if escalation.has_stop_signal else 'signal-clear' }}" aria-live="polite">
   {% if escalation.has_stop_signal %}
     <h2>Automation stop signal active</h2>
@@ -25,9 +98,11 @@
     <span class="subtle-help">Fast path for daily operator tasks</span>
   </header>
   <div class="action-row">
-    <a class="button-link" href="{{ url_for('dashboard.setup') }}">Setup</a>
+    <a class="button-link" href="{{ url_for('dashboard.leads_sheet') }}">Leads Sheet</a>
+    <a class="button-link button-sales" href="{{ url_for('dashboard.sales_sheet') }}">Sales Sheet</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.channels_page') }}">Channels</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.setup') }}">Setup</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.agents_page') }}">Agents</a>
-    <a class="button-link button-secondary" href="{{ url_for('dashboard.metrics_page') }}">Metrics</a>
     <a class="button-link button-secondary" href="{{ url_for('dashboard.logs_page') }}">Logs</a>
   </div>
 </section>

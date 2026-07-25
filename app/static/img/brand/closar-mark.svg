@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+  <!-- Closar closing-aperture mark  light-logo geometry, teal accent -->
+  <rect width="64" height="64" rx="14" fill="#FAFAFA"/>
+  <path d="M38 14 L18 32 L38 50" stroke="#111111" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M44 20 L30 32 L44 44" stroke="#00E5C7" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

@@ -1,0 +1,27 @@
+---
+description: Apply installed UI/UX Cursor skills when changing frontend templates, CSS, or dashboard UX.
+globs:
+  - app/templates/**/*
+  - app/static/css/**/*
+  - app/static/js/**/*
+alwaysApply: false
+---
+
+# UI/UX skill guidance
+
+When editing Closar frontend surfaces, follow the project skills in `.cursor/skills/`:
+
+1. **frontend-design** — distinctive visual direction; preserve the dark charcoal SaaS shell
+2. **effective-ui-design** — WCAG 2.1 AA, 8pt spacing, fluid type, form/button hierarchy, reduced motion
+3. **ui-design-brain** — component best practices and anti-patterns
+4. **web-design-guidelines** — audit against Vercel Web Interface Guidelines when reviewing UI
+
+Preserve the Closar brand:
+- Wordmark **Closar**
+- Tagline **Built to close.**
+- Support **Generate leads. Close deals.**
+- **Dark UI + light logo** (charcoal mark on light chip / light logo asset)
+- Accent electric teal `#00E5C7`, warm amber for Sales sheet
+- Syne + Space Grotesk
+
+Prefer refining hierarchy, accessibility, and interaction quality over redesigning from scratch.

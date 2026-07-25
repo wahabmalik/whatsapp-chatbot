@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="description" content="{% block meta_description %}Sign in to Closar to manage WhatsApp automation, agents, and customer conversations.{% endblock %}">
+  <title>{% block title %}Closar{% endblock %}</title>
+  {% include 'partials/head_assets.html' %}
+</head>
+<body>
+  <a class="skip-link" href="#auth-main">Skip to form</a>
+  <div class="auth-shell">
+    <a class="auth-brand brand-light-logo" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="Closar home">
+      <img
+        class="brand-logo-img brand-logo-img-lg"
+        src="{{ url_for('static', filename='img/brand/closar-logo-light-nav.png') }}"
+        width="200"
+        height="116"
+        alt="Closar"
+      >
+    </a>
+
+    <main id="auth-main" class="auth-card panel panel-enter" tabindex="-1">
+      {% block auth_content %}{% endblock %}
+    </main>
+
+    {% block auth_footer %}{% endblock %}
+  </div>
+</body>
+</html>
