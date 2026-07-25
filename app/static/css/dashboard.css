@@ -1554,8 +1554,8 @@ select {
   }
 
   .brand-text {
-    font-size: 1rem;
-    letter-spacing: 0.08em;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
   }
 
   .brand-mark {
@@ -1584,8 +1584,8 @@ select {
   }
 
   .brand-text {
-    font-size: 0.94rem;
-    letter-spacing: 0.08em;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
   }
 
   .topbar {
