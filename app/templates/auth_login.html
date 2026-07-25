@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Sign in – MALIXIS</title>
+  <title>Sign in – Dealwire</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
   <div class="auth-shell">
-    <a class="auth-brand" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="MALIXIS home">
+    <a class="auth-brand" href="{{ url_for('dashboard.dashboard_home') }}" aria-label="Dealwire home">
       <span class="brand-mark">
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <circle cx="4" cy="11" r="3" fill="currentColor"/>
@@ -18,12 +18,15 @@
           <path d="M7 11 Q11 19 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
         </svg>
       </span>
-      <span class="brand-text">MALIXIS</span>
+      <span class="brand-lockup">
+        <span class="brand-text">Dealwire</span>
+        <span class="brand-tagline">Leads in. Deals out.</span>
+      </span>
     </a>
 
     <div class="auth-card panel">
       <h1>Sign in</h1>
-      <p class="auth-sub">Welcome back to your workspace.</p>
+      <p class="auth-sub">Welcome back to Dealwire.</p>
 
       {% if error %}
         <p class="auth-error" role="alert">{{ error }}</p>

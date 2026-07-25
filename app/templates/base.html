@@ -11,7 +11,7 @@
   {% set current_nav_mode = nav_mode|default('operator') %}
   <div class="app-shell">
     <header class="topbar" aria-label="Primary header">
-      <a class="brand" href="{{ url_for('dashboard.dashboard_home') if current_nav_mode == 'user' else url_for('dashboard.operator_dashboard') }}" aria-label="MALIXIS home">
+      <a class="brand" href="{{ url_for('dashboard.dashboard_home') if current_nav_mode == 'user' else url_for('dashboard.operator_dashboard') }}" aria-label="Dealwire home">
         <span class="brand-mark">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <!-- Left node: business -->
@@ -24,7 +24,10 @@
             <path d="M7 11 Q11 19 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
           </svg>
         </span>
-        <span class="brand-text">MALIXIS</span>
+        <span class="brand-lockup">
+          <span class="brand-text">Dealwire</span>
+          <span class="brand-tagline">Leads in. Deals out.</span>
+        </span>
       </a>
 
       <nav class="top-nav" aria-label="Primary">
