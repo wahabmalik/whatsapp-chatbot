@@ -1,13 +1,14 @@
-"""Bridge-style outbound adapters for social channels.
+"""Bridge-style outbound adapters for social and chat channels.
 
 These adapters make the bot integratable with Instagram, Facebook Messenger,
-and TikTok by sending a normalized outbound payload to a configured relay URL.
-The relay can be a direct platform endpoint or an internal bridge service.
+TikTok, Discord, Slack, Microsoft Teams, SMS, Line, and Viber by sending a
+normalized outbound payload to a configured relay URL. The relay can be a
+direct platform endpoint or an internal bridge service.
 
 Current boundary:
     - Instagram and Messenger also have inbound normalization in whatsapp_utils.
-    - TikTok remains outbound-only in this repo until a verified inbound webhook
-        contract is available.
+    - TikTok and the newer bridge channels remain outbound-only in this repo
+      until verified inbound webhook contracts are available.
 
 Contract notes:
   - Same OutboundChannel result shape as WhatsApp and Telegram.
@@ -355,6 +356,102 @@ class TikTokChannel(SocialBridgeChannel):
             default_recipient_id=app.config.get("TIKTOK_DEFAULT_RECIPIENT_ID"),
             access_token=app.config.get("TIKTOK_ACCESS_TOKEN"),
             send_timeout=float(app.config.get("TIKTOK_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class DiscordChannel(SocialBridgeChannel):
+    channel_key = "discord"
+    recipient_context_key = "discord_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "DiscordChannel":
+        return cls(
+            outbound_url=app.config.get("DISCORD_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("DISCORD_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("DISCORD_BOT_TOKEN"),
+            send_timeout=float(app.config.get("DISCORD_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class SlackChannel(SocialBridgeChannel):
+    channel_key = "slack"
+    recipient_context_key = "slack_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "SlackChannel":
+        return cls(
+            outbound_url=app.config.get("SLACK_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("SLACK_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("SLACK_BOT_TOKEN"),
+            send_timeout=float(app.config.get("SLACK_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class TeamsChannel(SocialBridgeChannel):
+    channel_key = "teams"
+    recipient_context_key = "teams_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "TeamsChannel":
+        return cls(
+            outbound_url=app.config.get("TEAMS_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("TEAMS_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("TEAMS_ACCESS_TOKEN"),
+            send_timeout=float(app.config.get("TEAMS_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class SmsChannel(SocialBridgeChannel):
+    channel_key = "sms"
+    recipient_context_key = "sms_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "SmsChannel":
+        return cls(
+            outbound_url=app.config.get("SMS_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("SMS_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("SMS_API_KEY"),
+            send_timeout=float(app.config.get("SMS_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class LineChannel(SocialBridgeChannel):
+    channel_key = "line"
+    recipient_context_key = "line_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "LineChannel":
+        return cls(
+            outbound_url=app.config.get("LINE_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("LINE_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("LINE_CHANNEL_ACCESS_TOKEN"),
+            send_timeout=float(app.config.get("LINE_SEND_TIMEOUT_SECONDS", 10.0)),
+            fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
+            fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
+        )
+
+
+class ViberChannel(SocialBridgeChannel):
+    channel_key = "viber"
+    recipient_context_key = "viber_recipient_id"
+
+    @classmethod
+    def from_app(cls, app) -> "ViberChannel":
+        return cls(
+            outbound_url=app.config.get("VIBER_OUTBOUND_URL"),
+            default_recipient_id=app.config.get("VIBER_DEFAULT_RECIPIENT_ID"),
+            access_token=app.config.get("VIBER_AUTH_TOKEN"),
+            send_timeout=float(app.config.get("VIBER_SEND_TIMEOUT_SECONDS", 10.0)),
             fallback_text=app.config.get("OUTBOUND_FALLBACK_TEXT", _DEFAULT_FALLBACK_TEXT),
             fallback_max_retries=int(app.config.get("WHATSAPP_FALLBACK_MAX_RETRIES", 2)),
         )

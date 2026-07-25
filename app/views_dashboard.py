@@ -478,9 +478,28 @@ def _dashboard_runtime_context() -> dict[str, Any]:
                 return raw, True
         return url_for("dashboard.operator_access", next=url_for("dashboard.setup")), False
 
-    instagram_url, instagram_external = _resolve_connect_url("INSTAGRAM_CONNECT_URL")
-    messenger_url, messenger_external = _resolve_connect_url("MESSENGER_CONNECT_URL")
-    tiktok_url, tiktok_external = _resolve_connect_url("TIKTOK_CONNECT_URL")
+    connect_specs = (
+        ("Instagram", "INSTAGRAM_CONNECT_URL"),
+        ("Facebook Messenger", "MESSENGER_CONNECT_URL"),
+        ("TikTok", "TIKTOK_CONNECT_URL"),
+        ("Discord", "DISCORD_CONNECT_URL"),
+        ("Slack", "SLACK_CONNECT_URL"),
+        ("Microsoft Teams", "TEAMS_CONNECT_URL"),
+        ("SMS", "SMS_CONNECT_URL"),
+        ("Line", "LINE_CONNECT_URL"),
+        ("Viber", "VIBER_CONNECT_URL"),
+    )
+    customer_connect_actions = []
+    for label, config_key in connect_specs:
+        url, external = _resolve_connect_url(config_key)
+        customer_connect_actions.append(
+            {
+                "label": label,
+                "url": url,
+                "external": external,
+                "configured": bool(current_app.config.get(config_key)),
+            }
+        )
 
     return {
         "metrics": metrics,
@@ -488,26 +507,7 @@ def _dashboard_runtime_context() -> dict[str, Any]:
         "uptime_label": _format_uptime(int(health.get("uptime_seconds", 0))),
         "recent_logs": logs,
         "active_agent_name": active_agent_name,
-        "customer_connect_actions": [
-            {
-                "label": "Instagram",
-                "url": instagram_url,
-                "external": instagram_external,
-                "configured": bool(current_app.config.get("INSTAGRAM_CONNECT_URL")),
-            },
-            {
-                "label": "Facebook Messenger",
-                "url": messenger_url,
-                "external": messenger_external,
-                "configured": bool(current_app.config.get("MESSENGER_CONNECT_URL")),
-            },
-            {
-                "label": "TikTok",
-                "url": tiktok_url,
-                "external": tiktok_external,
-                "configured": bool(current_app.config.get("TIKTOK_CONNECT_URL")),
-            },
-        ],
+        "customer_connect_actions": customer_connect_actions,
     }
 
 
