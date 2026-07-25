@@ -844,24 +844,25 @@ def _leads_view_filters(view: str) -> dict[str, Any]:
 
 @dashboard_blueprint.route("/leads", methods=["GET"])
 def leads_page():
-    """Built-in free CRM sales pipeline inbox."""
+    """Sheet 1: lead-generation prospects only."""
     guarded = _require_operator_access()
     if guarded is not None:
         return guarded
 
-    from app.services.lead_generation import (
-        STAGE_BUILD_REQUEST,
-        STAGE_CLOSED_WON,
-        lead_gen_enabled,
-        list_leads,
-    )
+    from app.services.lead_generation import lead_gen_enabled, list_leads
 
-    view_raw = str(request.args.get("view") or request.args.get("qualified") or "active")
+    view_raw = str(request.args.get("view") or "active")
     view_cfg = _leads_view_filters(view_raw)
-    leads = list_leads(current_app, limit=200, **view_cfg["filters"])
-    final_leads = list_leads(current_app, limit=200, final_only=True)
-    final_closed = [row for row in final_leads if str(row.get("stage")) == STAGE_CLOSED_WON]
-    final_build = [row for row in final_leads if str(row.get("stage")) == STAGE_BUILD_REQUEST]
+    # Lead sheet never mixes closed sales; keep to active/follow-up views.
+    filters = dict(view_cfg["filters"])
+    if view_cfg["view"] in {"final", "all", "qualified"}:
+        filters = {"active_only": True}
+        view_cfg = {
+            "view": "active",
+            "view_label": "Active lead-generation prospects",
+            "filters": filters,
+        }
+    leads = list_leads(current_app, limit=200, **filters)
 
     return render_template(
         "leads.html",
@@ -872,14 +873,12 @@ def leads_page():
         lead_gen_enabled=lead_gen_enabled(current_app),
         view=view_cfg["view"],
         view_label=view_cfg["view_label"],
-        final_closed=final_closed,
-        final_build=final_build,
     )
 
 
 @dashboard_blueprint.route("/leads/export.csv", methods=["GET"])
 def leads_export_csv():
-    """CSV export for free CRM / spreadsheet tools."""
+    """CSV for Sheet 1 — lead generation only."""
     guarded = _require_operator_access()
     if guarded is not None:
         return guarded
@@ -887,17 +886,76 @@ def leads_export_csv():
     import csv
     from io import StringIO
 
-    from app.services.lead_generation import leads_to_csv_rows, list_leads
+    from app.services.lead_generation import leads_sheet_rows, leads_to_csv_rows
 
-    view_raw = str(request.args.get("view") or request.args.get("qualified") or "all")
-    view_cfg = _leads_view_filters(view_raw)
-    leads = list_leads(current_app, limit=500, **view_cfg["filters"])
+    leads = leads_sheet_rows(current_app, limit=500)
 
     buffer = StringIO()
     writer = csv.writer(buffer)
     writer.writerows(leads_to_csv_rows(leads))
 
-    filename = f"leads-{view_cfg['view']}.csv"
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sheet1-leads.csv",
+        },
+    )
+
+
+@dashboard_blueprint.route("/sales", methods=["GET"])
+def sales_page():
+    """Sheet 2: closed sales / build clients (separate from leads)."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import list_sales
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=200, sale_type=sale_type)
+    if sale_type == "closed_sale":
+        view_label = "Closed sales only"
+    elif sale_type == "build_request":
+        view_label = "Build requests only"
+    else:
+        view_label = "All closed clients"
+
+    return render_template(
+        "sales.html",
+        page_key="sales",
+        nav_mode="operator",
+        setup_complete=_is_setup_complete(),
+        sales=sales,
+        sale_type_filter=sale_type or "",
+        view_label=view_label,
+    )
+
+
+@dashboard_blueprint.route("/sales/export.csv", methods=["GET"])
+def sales_export_csv():
+    """CSV for Sheet 2 — closed sales / build clients only."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    import csv
+    from io import StringIO
+
+    from app.services.lead_generation import list_sales, sales_to_csv_rows
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=500, sale_type=sale_type)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerows(sales_to_csv_rows(sales))
+    filename = f"sheet2-sales{('-' + sale_type) if sale_type else ''}.csv"
+
     return Response(
         buffer.getvalue(),
         mimetype="text/csv",
@@ -1544,38 +1602,52 @@ def list_leads_api():
     if guarded is not None:
         return guarded
 
-    from app.services.lead_generation import (
-        STAGE_BUILD_REQUEST,
-        STAGE_CLOSED_WON,
-        lead_gen_enabled,
-        list_leads,
-    )
+    from app.services.lead_generation import lead_gen_enabled, leads_sheet_rows, list_sales
 
     try:
         limit = int(request.args.get("limit", "50"))
     except ValueError:
         return jsonify({"ok": False, "message": "limit must be an integer."}), 400
 
-    view_raw = str(request.args.get("view") or request.args.get("qualified") or "all")
-    view_cfg = _leads_view_filters(view_raw)
-    leads = list_leads(current_app, limit=limit, **view_cfg["filters"])
-    final_leads = list_leads(current_app, limit=limit, final_only=True)
+    leads = leads_sheet_rows(current_app, limit=limit)
+    sales = list_sales(current_app, limit=limit)
 
     return jsonify(
         {
             "ok": True,
             "lead_gen_enabled": lead_gen_enabled(current_app),
-            "view": view_cfg["view"],
+            "sheet": "leads",
             "count": len(leads),
             "leads": leads,
-            "final_leads": {
-                "closed_sales": [
-                    row for row in final_leads if str(row.get("stage")) == STAGE_CLOSED_WON
-                ],
-                "build_requests": [
-                    row for row in final_leads if str(row.get("stage")) == STAGE_BUILD_REQUEST
-                ],
-            },
+            "sales_sheet_count": len(sales),
+        }
+    ), 200
+
+
+@dashboard_api.route("/api/sales", methods=["GET"])
+def list_sales_api():
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import list_sales
+
+    try:
+        limit = int(request.args.get("limit", "50"))
+    except ValueError:
+        return jsonify({"ok": False, "message": "limit must be an integer."}), 400
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=limit, sale_type=sale_type)
+    return jsonify(
+        {
+            "ok": True,
+            "sheet": "sales",
+            "sale_type": sale_type,
+            "count": len(sales),
+            "sales": sales,
         }
     ), 200
 

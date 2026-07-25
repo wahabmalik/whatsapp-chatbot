@@ -492,6 +492,8 @@ def load_configurations(app):
     app.config["LEAD_GEN_EXPORT_TO_CRM"] = _as_bool("LEAD_GEN_EXPORT_TO_CRM", default=True)
     app.config["LEAD_GEN_SYSTEM_PROMPT"] = os.getenv("LEAD_GEN_SYSTEM_PROMPT")
     app.config["LEAD_STORE_PATH"] = os.getenv("LEAD_STORE_PATH", "data/leads.jsonl")
+    # Separate sheet/store for closed sales / build clients.
+    app.config["SALES_STORE_PATH"] = os.getenv("SALES_STORE_PATH", "data/sales_closed.jsonl")
     app.config["LEAD_STORE_MAX_LINES"] = _as_int(
         "LEAD_STORE_MAX_LINES", default=5000, minimum=100
     )

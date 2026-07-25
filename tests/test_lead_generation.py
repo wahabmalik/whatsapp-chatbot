@@ -14,6 +14,7 @@ from app.services.lead_generation import (
     is_final_lead,
     is_lead_qualified,
     list_leads,
+    list_sales,
     mark_lead_stage,
     process_inbound_for_leads,
     upsert_lead,
@@ -51,11 +52,13 @@ def test_detect_sales_signals_for_follow_up_close_and_build():
 
 def test_pipeline_moves_to_final_closed_sale(tmp_path: Path):
     store = tmp_path / "leads.jsonl"
+    sales_store = tmp_path / "sales_closed.jsonl"
     app = MagicMock()
     app.config = {
         "LEAD_GEN_ENABLED": True,
         "LEAD_GEN_EXPORT_TO_CRM": False,
         "LEAD_STORE_PATH": str(store),
+        "SALES_STORE_PATH": str(sales_store),
         "LEAD_STORE_MAX_LINES": 1000,
     }
 
@@ -78,15 +81,22 @@ def test_pipeline_moves_to_final_closed_sale(tmp_path: Path):
     assert final["stage"] == STAGE_CLOSED_WON
     assert final["outcome"] == "closed_sale"
     assert is_final_lead(final) is True
+    sales = list_sales(app, sale_type="closed_sale")
+    assert len(sales) == 1
+    assert sales[0]["email"] == "client@example.com"
+    # Separate sheets: active leads sheet should not include the closed client.
+    assert list_leads(app, active_only=True) == []
 
 
 def test_pipeline_moves_to_build_request_final(tmp_path: Path):
     store = tmp_path / "leads.jsonl"
+    sales_store = tmp_path / "sales_closed.jsonl"
     app = MagicMock()
     app.config = {
         "LEAD_GEN_ENABLED": True,
         "LEAD_GEN_EXPORT_TO_CRM": False,
         "LEAD_STORE_PATH": str(store),
+        "SALES_STORE_PATH": str(sales_store),
         "LEAD_STORE_MAX_LINES": 1000,
     }
 
@@ -104,6 +114,10 @@ def test_pipeline_moves_to_build_request_final(tmp_path: Path):
     finals = list_leads(app, final_only=True)
     assert len(finals) == 1
     assert finals[0]["user_id"] == "user-build"
+    sales = list_sales(app)
+    assert len(sales) == 1
+    assert sales[0]["sale_type"] == "build_request"
+    assert sales_store.exists()
 
 
 def test_follow_up_stage_detected(tmp_path: Path):
@@ -181,10 +195,12 @@ def test_list_leads_returns_newest_first(tmp_path: Path):
 
 def test_mark_lead_stage_operator_override(tmp_path: Path):
     store = tmp_path / "leads.jsonl"
+    sales_store = tmp_path / "sales_closed.jsonl"
     app = MagicMock()
     app.config = {
         "LEAD_GEN_ENABLED": True,
         "LEAD_STORE_PATH": str(store),
+        "SALES_STORE_PATH": str(sales_store),
         "LEAD_STORE_MAX_LINES": 1000,
         "LEAD_GEN_EXPORT_TO_CRM": False,
     }
@@ -193,6 +209,7 @@ def test_mark_lead_stage_operator_override(tmp_path: Path):
     assert lead is not None
     assert lead["stage"] == STAGE_CLOSED_WON
     assert lead["is_final"] is True
+    assert list_sales(app)[0]["sale_type"] == "closed_sale"
 
 
 def test_process_inbound_disabled_returns_none(tmp_path: Path):
@@ -210,7 +227,7 @@ def test_process_inbound_disabled_returns_none(tmp_path: Path):
 
 
 def test_leads_to_csv_rows_includes_header_and_values():
-    from app.services.lead_generation import leads_to_csv_rows
+    from app.services.lead_generation import leads_to_csv_rows, sales_to_csv_rows
 
     rows = leads_to_csv_rows(
         [
@@ -222,14 +239,12 @@ def test_leads_to_csv_rows_includes_header_and_values():
                 "need_summary": "web app",
                 "interest": "web app",
                 "channel": "whatsapp",
-                "stage": "closed_won",
-                "outcome": "closed_sale",
+                "stage": "chat",
+                "outcome": "in_progress",
                 "qualified": True,
-                "is_final": True,
                 "message_count": 3,
                 "created_at": "2026-01-01T00:00:00+00:00",
                 "updated_at": "2026-01-01T00:00:00+00:00",
-                "finalized_at": "2026-01-01T00:00:00+00:00",
                 "last_message": "Need a web app",
             }
         ]
@@ -237,5 +252,26 @@ def test_leads_to_csv_rows_includes_header_and_values():
     assert rows[0][0] == "lead_id"
     assert rows[1][1] == "Sam"
     assert rows[1][2] == "sam@example.com"
-    assert rows[1][7] == "closed_won"
-    assert rows[1][8] == "closed_sale"
+    assert rows[1][-1] == "leads"
+
+    sales_rows = sales_to_csv_rows(
+        [
+            {
+                "sale_id": "whatsapp:1",
+                "name": "Sam",
+                "email": "sam@example.com",
+                "phone": "",
+                "need_summary": "web app",
+                "channel": "whatsapp",
+                "sale_type": "closed_sale",
+                "stage": "closed_won",
+                "outcome": "closed_sale",
+                "message_count": 3,
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "closed_at": "2026-01-02T00:00:00+00:00",
+                "last_message": "Let's proceed",
+            }
+        ]
+    )
+    assert sales_rows[0][0] == "sale_id"
+    assert sales_rows[1][6] == "closed_sale"

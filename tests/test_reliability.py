@@ -1164,6 +1164,7 @@ class OperatorMobileNavTests(unittest.TestCase):
         self.assertIn('/setup', body)
         self.assertIn('/agents', body)
         self.assertIn('/leads', body)
+        self.assertIn('/sales', body)
         self.assertIn('/metrics', body)
         self.assertIn('/logs', body)
 
@@ -1187,12 +1188,18 @@ class OperatorMobileNavTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self._assert_bottom_nav_links(response)
 
+    def test_sales_page_has_bottom_nav(self):
+        response = self.client.get("/sales")
+        self.assertEqual(response.status_code, 200)
+        self._assert_bottom_nav_links(response)
+
     def test_mobile_nav_present_for_all_operator_page_keys(self):
         page_routes = {
             "dashboard": "/operator",
             "metrics": "/operator/metrics",
             "logs": "/logs",
             "leads": "/leads",
+            "sales": "/sales",
             "agents": "/agents",
             "setup": "/setup",
         }

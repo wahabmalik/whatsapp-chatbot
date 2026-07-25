@@ -23,6 +23,7 @@ from app.services.crm_export import crm_export_enabled, export_analytics_event_t
 logger = logging.getLogger(__name__)
 
 DEFAULT_LEAD_STORE_PATH = "data/leads.jsonl"
+DEFAULT_SALES_STORE_PATH = "data/sales_closed.jsonl"
 DEFAULT_LEAD_STORE_MAX_LINES = 5000
 
 STAGE_DISCOVER = "discover"
@@ -259,6 +260,14 @@ def _store_path(app) -> Path:
     return path
 
 
+def _sales_store_path(app) -> Path:
+    raw = str(app.config.get("SALES_STORE_PATH") or DEFAULT_SALES_STORE_PATH).strip()
+    path = Path(raw)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path
+
+
 def _max_lines(app) -> int:
     try:
         value = int(app.config.get("LEAD_STORE_MAX_LINES", DEFAULT_LEAD_STORE_MAX_LINES))
@@ -415,7 +424,120 @@ def upsert_lead(app, *, user_id: str, channel: str, fields: dict[str, Any]) -> d
             rows.append(merged)
         _rewrite_store(path, rows, _max_lines(app))
 
+    # Closed clients live on a separate sales sheet/store.
+    if is_final_lead(merged):
+        _sync_closed_sale(app, merged)
+
     return deepcopy(merged)
+
+
+def _sync_closed_sale(app, lead: dict[str, Any]) -> dict[str, Any]:
+    """Write/update a closed client row on the separate sales sheet."""
+    sale = {
+        "sale_id": str(lead.get("lead_id") or ""),
+        "lead_id": str(lead.get("lead_id") or ""),
+        "user_id": lead.get("user_id"),
+        "channel": lead.get("channel"),
+        "name": lead.get("name"),
+        "email": lead.get("email"),
+        "phone": lead.get("phone"),
+        "need_summary": lead.get("need_summary") or lead.get("interest"),
+        "sale_type": (
+            "closed_sale"
+            if str(lead.get("stage")) == STAGE_CLOSED_WON
+            else "build_request"
+        ),
+        "stage": lead.get("stage"),
+        "outcome": lead.get("outcome"),
+        "message_count": lead.get("message_count"),
+        "created_at": lead.get("created_at"),
+        "closed_at": lead.get("finalized_at") or lead.get("updated_at") or _utc_timestamp(),
+        "updated_at": lead.get("updated_at") or _utc_timestamp(),
+        "last_message": lead.get("last_message"),
+        "source_sheet": "leads",
+    }
+    path = _sales_store_path(app)
+    with _persist_lock:
+        rows = _load_all_leads(path)
+        replaced = False
+        for idx, row in enumerate(rows):
+            if str(row.get("sale_id") or row.get("lead_id") or "") == sale["sale_id"]:
+                rows[idx] = sale
+                replaced = True
+                break
+        if not replaced:
+            rows.append(sale)
+        _rewrite_store(path, rows, _max_lines(app))
+    return deepcopy(sale)
+
+
+def list_sales(
+    app,
+    *,
+    limit: int = 50,
+    sale_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List closed clients from the separate sales sheet."""
+    path = _sales_store_path(app)
+    rows = _load_all_leads(path)
+    indexed = list(enumerate(rows))
+    indexed.sort(
+        key=lambda item: (
+            str(item[1].get("closed_at") or item[1].get("updated_at") or ""),
+            item[0],
+        ),
+        reverse=True,
+    )
+    rows = [item[1] for item in indexed]
+    if sale_type:
+        wanted = str(sale_type).strip().lower()
+        rows = [row for row in rows if str(row.get("sale_type") or "") == wanted]
+    limit = max(1, min(int(limit), 500))
+    return [deepcopy(row) for row in rows[:limit]]
+
+
+def sales_to_csv_rows(sales: list[dict[str, Any]]) -> list[list[str]]:
+    """CSV rows for the closed-clients sales sheet."""
+    header = [
+        "sale_id",
+        "name",
+        "email",
+        "phone",
+        "need_summary",
+        "channel",
+        "sale_type",
+        "stage",
+        "outcome",
+        "message_count",
+        "created_at",
+        "closed_at",
+        "last_message",
+    ]
+    rows = [header]
+    for sale in sales:
+        rows.append(
+            [
+                str(sale.get("sale_id") or ""),
+                str(sale.get("name") or ""),
+                str(sale.get("email") or ""),
+                str(sale.get("phone") or ""),
+                str(sale.get("need_summary") or ""),
+                str(sale.get("channel") or ""),
+                str(sale.get("sale_type") or ""),
+                str(sale.get("stage") or ""),
+                str(sale.get("outcome") or ""),
+                str(sale.get("message_count") or 0),
+                str(sale.get("created_at") or ""),
+                str(sale.get("closed_at") or ""),
+                str(sale.get("last_message") or "").replace("\n", " ")[:300],
+            ]
+        )
+    return rows
+
+
+def leads_sheet_rows(app, *, limit: int = 500) -> list[dict[str, Any]]:
+    """Lead-generation sheet only (prospects not yet closed as sales)."""
+    return list_leads(app, limit=limit, active_only=True)
 
 
 def list_leads(
@@ -451,7 +573,7 @@ def list_leads(
 
 
 def leads_to_csv_rows(leads: list[dict[str, Any]]) -> list[list[str]]:
-    """Return CSV rows (header first) for free CRM export / spreadsheet import."""
+    """CSV rows for the lead-generation sheet (prospects)."""
     header = [
         "lead_id",
         "name",
@@ -463,12 +585,11 @@ def leads_to_csv_rows(leads: list[dict[str, Any]]) -> list[list[str]]:
         "stage",
         "outcome",
         "qualified",
-        "is_final",
         "message_count",
         "created_at",
         "updated_at",
-        "finalized_at",
         "last_message",
+        "sheet",
     ]
     rows = [header]
     for lead in leads:
@@ -484,12 +605,11 @@ def leads_to_csv_rows(leads: list[dict[str, Any]]) -> list[list[str]]:
                 str(lead.get("stage") or ""),
                 str(lead.get("outcome") or ""),
                 "yes" if lead.get("qualified") else "no",
-                "yes" if lead.get("is_final") else "no",
                 str(lead.get("message_count") or 0),
                 str(lead.get("created_at") or ""),
                 str(lead.get("updated_at") or ""),
-                str(lead.get("finalized_at") or ""),
                 str(lead.get("last_message") or "").replace("\n", " ")[:300],
+                "leads",
             ]
         )
     return rows
