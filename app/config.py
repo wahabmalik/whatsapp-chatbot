@@ -239,6 +239,18 @@ def validate_config(app) -> list[str]:
         "MESSENGER_PAGE_ACCESS_TOKEN",
         "TIKTOK_OUTBOUND_URL",
         "TIKTOK_ACCESS_TOKEN",
+        "DISCORD_OUTBOUND_URL",
+        "DISCORD_BOT_TOKEN",
+        "SLACK_OUTBOUND_URL",
+        "SLACK_BOT_TOKEN",
+        "TEAMS_OUTBOUND_URL",
+        "TEAMS_ACCESS_TOKEN",
+        "SMS_OUTBOUND_URL",
+        "SMS_API_KEY",
+        "LINE_OUTBOUND_URL",
+        "LINE_CHANNEL_ACCESS_TOKEN",
+        "VIBER_OUTBOUND_URL",
+        "VIBER_AUTH_TOKEN",
     )
     for key in placeholder_sensitive_keys:
         value = app.config.get(key)
@@ -261,12 +273,27 @@ def validate_config(app) -> list[str]:
         "instagram": "INSTAGRAM_OUTBOUND_URL",
         "messenger": "MESSENGER_OUTBOUND_URL",
         "tiktok": "TIKTOK_OUTBOUND_URL",
+        "discord": "DISCORD_OUTBOUND_URL",
+        "slack": "SLACK_OUTBOUND_URL",
+        "teams": "TEAMS_OUTBOUND_URL",
+        "sms": "SMS_OUTBOUND_URL",
+        "line": "LINE_OUTBOUND_URL",
+        "viber": "VIBER_OUTBOUND_URL",
     }
     channel_url_key = channel_url_keys.get(outbound_channel)
     if channel_url_key:
         channel_url = str(app.config.get(channel_url_key, "")).strip()
         if channel_url and not re.match(r"^https?://", channel_url):
             errors.append(f"{channel_url_key} must start with http:// or https://")
+
+    if outbound_channel == "email":
+        if not str(app.config.get("SMTP_HOST") or "").strip():
+            # Soft guidance only: adapter enters disabled state without SMTP_HOST.
+            # Keep validation non-blocking for local/dev boot like other bridge channels.
+            pass
+        email_recipient = str(app.config.get("EMAIL_DEFAULT_RECIPIENT") or "").strip()
+        if email_recipient and "@" not in email_recipient:
+            errors.append("EMAIL_DEFAULT_RECIPIENT must be a valid email address")
 
     crm_export_enabled = bool(app.config.get("CRM_EXPORT_ENABLED", False))
     crm_export_url = str(app.config.get("CRM_EXPORT_WEBHOOK_URL", "")).strip()
@@ -394,11 +421,81 @@ def load_configurations(app):
         "TIKTOK_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
     )
     app.config["TIKTOK_CONNECT_URL"] = os.getenv("TIKTOK_CONNECT_URL")
+
+    # Additional bridge channels (Discord / Slack / Teams / SMS / Line / Viber).
+    # Same contract as Instagram/Messenger/TikTok: missing URL/recipient disables
+    # the adapter at runtime without blocking app startup.
+    app.config["DISCORD_OUTBOUND_URL"] = os.getenv("DISCORD_OUTBOUND_URL")
+    app.config["DISCORD_BOT_TOKEN"] = os.getenv("DISCORD_BOT_TOKEN")
+    app.config["DISCORD_DEFAULT_RECIPIENT_ID"] = os.getenv("DISCORD_DEFAULT_RECIPIENT_ID")
+    app.config["DISCORD_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "DISCORD_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["DISCORD_CONNECT_URL"] = os.getenv("DISCORD_CONNECT_URL")
+
+    app.config["SLACK_OUTBOUND_URL"] = os.getenv("SLACK_OUTBOUND_URL")
+    app.config["SLACK_BOT_TOKEN"] = os.getenv("SLACK_BOT_TOKEN")
+    app.config["SLACK_DEFAULT_RECIPIENT_ID"] = os.getenv("SLACK_DEFAULT_RECIPIENT_ID")
+    app.config["SLACK_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "SLACK_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["SLACK_CONNECT_URL"] = os.getenv("SLACK_CONNECT_URL")
+
+    app.config["TEAMS_OUTBOUND_URL"] = os.getenv("TEAMS_OUTBOUND_URL")
+    app.config["TEAMS_ACCESS_TOKEN"] = os.getenv("TEAMS_ACCESS_TOKEN")
+    app.config["TEAMS_DEFAULT_RECIPIENT_ID"] = os.getenv("TEAMS_DEFAULT_RECIPIENT_ID")
+    app.config["TEAMS_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "TEAMS_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["TEAMS_CONNECT_URL"] = os.getenv("TEAMS_CONNECT_URL")
+
+    app.config["SMS_OUTBOUND_URL"] = os.getenv("SMS_OUTBOUND_URL")
+    app.config["SMS_API_KEY"] = os.getenv("SMS_API_KEY")
+    app.config["SMS_DEFAULT_RECIPIENT_ID"] = os.getenv("SMS_DEFAULT_RECIPIENT_ID")
+    app.config["SMS_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "SMS_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["SMS_CONNECT_URL"] = os.getenv("SMS_CONNECT_URL")
+
+    app.config["LINE_OUTBOUND_URL"] = os.getenv("LINE_OUTBOUND_URL")
+    app.config["LINE_CHANNEL_ACCESS_TOKEN"] = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+    app.config["LINE_DEFAULT_RECIPIENT_ID"] = os.getenv("LINE_DEFAULT_RECIPIENT_ID")
+    app.config["LINE_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "LINE_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["LINE_CONNECT_URL"] = os.getenv("LINE_CONNECT_URL")
+
+    app.config["VIBER_OUTBOUND_URL"] = os.getenv("VIBER_OUTBOUND_URL")
+    app.config["VIBER_AUTH_TOKEN"] = os.getenv("VIBER_AUTH_TOKEN")
+    app.config["VIBER_DEFAULT_RECIPIENT_ID"] = os.getenv("VIBER_DEFAULT_RECIPIENT_ID")
+    app.config["VIBER_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "VIBER_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+    app.config["VIBER_CONNECT_URL"] = os.getenv("VIBER_CONNECT_URL")
+
+    # Email / Gmail support-inbox outbound channel (SMTP).
+    app.config["EMAIL_DEFAULT_RECIPIENT"] = os.getenv("EMAIL_DEFAULT_RECIPIENT")
+    app.config["EMAIL_SUBJECT_PREFIX"] = os.getenv("EMAIL_SUBJECT_PREFIX", "Support")
+    app.config["EMAIL_SEND_TIMEOUT_SECONDS"] = _as_float(
+        "EMAIL_SEND_TIMEOUT_SECONDS", default=10.0, minimum=0.1
+    )
+
     app.config["CRM_EXPORT_ENABLED"] = _as_bool("CRM_EXPORT_ENABLED", default=False)
     app.config["CRM_EXPORT_WEBHOOK_URL"] = os.getenv("CRM_EXPORT_WEBHOOK_URL")
     app.config["CRM_EXPORT_API_KEY"] = os.getenv("CRM_EXPORT_API_KEY")
     app.config["CRM_EXPORT_TIMEOUT_SECONDS"] = _as_float(
         "CRM_EXPORT_TIMEOUT_SECONDS", default=5.0, minimum=0.1
+    )
+
+    # Lead generation mode — qualify prospects and capture contact fields.
+    app.config["LEAD_GEN_ENABLED"] = _as_bool("LEAD_GEN_ENABLED", default=False)
+    app.config["LEAD_GEN_EXPORT_TO_CRM"] = _as_bool("LEAD_GEN_EXPORT_TO_CRM", default=True)
+    app.config["LEAD_GEN_SYSTEM_PROMPT"] = os.getenv("LEAD_GEN_SYSTEM_PROMPT")
+    app.config["LEAD_STORE_PATH"] = os.getenv("LEAD_STORE_PATH", "data/leads.jsonl")
+    # Separate sheet/store for closed sales / build clients.
+    app.config["SALES_STORE_PATH"] = os.getenv("SALES_STORE_PATH", "data/sales_closed.jsonl")
+    app.config["LEAD_STORE_MAX_LINES"] = _as_int(
+        "LEAD_STORE_MAX_LINES", default=5000, minimum=100
     )
     app.config["STATE_STORE_BACKEND"] = os.getenv("STATE_STORE_BACKEND", "memory")
     sqlite_path = os.getenv("STATE_STORE_SQLITE_PATH", "data/runtime_state.db")

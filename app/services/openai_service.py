@@ -407,6 +407,18 @@ def generate_response(message_body, wa_id, name, agent_context: dict | None = No
     logging.info("Generating chat completion wa_id=%s model=%s", wa_id, OPENAI_MODEL)
     system_prompt = OPENAI_SYSTEM_PROMPT
 
+    # Lead-generation mode overrides the base prompt when enabled.
+    try:
+        from flask import has_app_context, current_app
+        from app.services.lead_generation import lead_gen_enabled, lead_gen_system_prompt
+
+        if has_app_context() and lead_gen_enabled(current_app):
+            system_prompt = lead_gen_system_prompt(current_app)
+            logging.info("Lead-gen system prompt active wa_id=%s", wa_id)
+    except Exception:  # noqa: BLE001
+        # Keep reply generation resilient if lead-gen helpers are unavailable.
+        pass
+
     # Inject agent persona into system prompt if context provided
     if agent_context and isinstance(agent_context, dict):
         persona_parts = []
@@ -417,8 +429,8 @@ def generate_response(message_body, wa_id, name, agent_context: dict | None = No
 
         if persona_parts:
             system_prompt = (
-                f"{OPENAI_SYSTEM_PROMPT}\n"
-                f"Active support agent persona: {' | '.join(persona_parts)}. "
+                f"{system_prompt}\n"
+                f"Active agent persona: {' | '.join(persona_parts)}. "
                 "Answer in a style that matches this persona while staying accurate and concise."
             )
             logging.info(

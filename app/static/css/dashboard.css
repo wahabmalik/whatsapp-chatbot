@@ -147,10 +147,24 @@ select:focus-visible {
   font-weight: 700;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 2px;
+}
+
 .brand-text {
   font-weight: 700;
-  font-size: 1.52rem;
-  letter-spacing: 0.12em;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+}
+
+.brand-tagline {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
 .top-nav {
@@ -929,10 +943,24 @@ select {
   font-weight: 700;
 }
 
+.auth-brand .brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 2px;
+}
+
 .auth-brand .brand-text {
   font-weight: 700;
-  font-size: 1.52rem;
-  letter-spacing: 0.12em;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+}
+
+.auth-brand .brand-tagline {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
 .auth-card {
@@ -1384,7 +1412,11 @@ select {
 
   .brand-text {
     font-size: 1rem;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
+  }
+
+  .brand-tagline {
+    font-size: 0.64rem;
   }
 
   .brand-mark {

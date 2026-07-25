@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Sales Closed Sheet{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Sheet 2 — Sales / Closed Clients</h2>
+    <span class="subtle-help">Dealwire: Leads in. Deals out. Closed clients land on this separate sheet.</span>
+  </header>
+
+  <p class="subtle-help">
+    When the bot closes a client from a lead, that client is written here on a separate sheet/file
+    (<code>sales_closed.jsonl</code>), not mixed into the leads sheet.
+  </p>
+
+  <div class="action-row" style="margin-bottom: 1rem;">
+    <a class="button-link" href="{{ url_for('dashboard.sales_export_csv', sale_type=sale_type_filter) }}">Download Sales CSV</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.sales_page') }}">All closed</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.sales_page', sale_type='closed_sale') }}">Closed sales</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.sales_page', sale_type='build_request') }}">Build requests</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_page') }}">Open Leads Sheet</a>
+  </div>
+
+  <p class="subtle-help">
+    Showing <strong>{{ view_label }}</strong> — {{ sales|length }} closed client{% if sales|length != 1 %}s{% endif %}.
+  </p>
+
+  <div class="table-wrap">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Closed at</th>
+          <th>Client</th>
+          <th>Contact</th>
+          <th>What they want</th>
+          <th>Channel</th>
+          <th>Sale type</th>
+          <th>Msgs</th>
+          <th>Last message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if sales %}
+          {% for sale in sales %}
+          <tr>
+            <td>{{ sale.closed_at or sale.updated_at or '-' }}</td>
+            <td>{{ sale.name or '-' }}</td>
+            <td>
+              {% if sale.email %}{{ sale.email }}{% endif %}
+              {% if sale.email and sale.phone %}<br>{% endif %}
+              {% if sale.phone %}{{ sale.phone }}{% endif %}
+              {% if not sale.email and not sale.phone %}-{% endif %}
+            </td>
+            <td>{{ sale.need_summary or '-' }}</td>
+            <td>{{ sale.channel or '-' }}</td>
+            <td>
+              {% if sale.sale_type == 'closed_sale' %}
+                Closed sale
+              {% elif sale.sale_type == 'build_request' %}
+                Build what they want
+              {% else %}
+                {{ sale.sale_type or '-' }}
+              {% endif %}
+            </td>
+            <td>{{ sale.message_count or 1 }}</td>
+            <td>{{ sale.last_message or '-' }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8">No closed clients yet. When a lead becomes a closed sale or build request, it appears on this sheet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h3>Two separate sheets</h3>
+  </header>
+  <ul class="activity-list">
+    <li><span><strong>Leads sheet</strong> (`/leads`, `leads.jsonl`, Leads CSV) — bot generates prospects</span></li>
+    <li><span><strong>Sales sheet</strong> (`/sales`, `sales_closed.jsonl`, Sales CSV) — bot closes clients from those leads</span></li>
+  </ul>
+</section>
+{% endblock %}

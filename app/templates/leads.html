@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Lead Generation Sheet{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Sheet 1 — Lead Generation</h2>
+    <span class="subtle-help">Dealwire: Leads in. Deals out. Prospects stay here until closed.</span>
+  </header>
+
+  <p class="subtle-help">
+    Lead gen status:
+    <strong>{{ 'ON' if lead_gen_enabled else 'OFF' }}</strong>.
+    This sheet is only for generated leads (discover / chat / follow-up / proposal).
+  </p>
+
+  <div class="action-row" style="margin-bottom: 1rem;">
+    <a class="button-link" href="{{ url_for('dashboard.leads_export_csv') }}">Download Leads CSV</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.sales_page') }}">Open Sales Sheet</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_page', view='follow_up') }}">Follow-up only</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_page', view='active') }}">All active leads</a>
+  </div>
+
+  <p class="subtle-help">{{ leads|length }} lead{% if leads|length != 1 %}s{% endif %} on this sheet.</p>
+
+  <div class="table-wrap">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Updated</th>
+          <th>Name</th>
+          <th>Contact</th>
+          <th>Need</th>
+          <th>Channel</th>
+          <th>Stage</th>
+          <th>Msgs</th>
+          <th>Last message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if leads %}
+          {% for lead in leads %}
+          <tr>
+            <td>{{ lead.updated_at or '-' }}</td>
+            <td>{{ lead.name or '-' }}</td>
+            <td>
+              {% if lead.email %}{{ lead.email }}{% endif %}
+              {% if lead.email and lead.phone %}<br>{% endif %}
+              {% if lead.phone %}{{ lead.phone }}{% endif %}
+              {% if not lead.email and not lead.phone %}-{% endif %}
+            </td>
+            <td>{{ lead.need_summary or lead.interest or '-' }}</td>
+            <td>{{ lead.channel or '-' }}</td>
+            <td>{{ lead.stage or '-' }}</td>
+            <td>{{ lead.message_count or 1 }}</td>
+            <td>{{ lead.last_message or '-' }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8">No generated leads yet. When the bot finds prospects, they appear here first.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

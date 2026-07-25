@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 from flask import (
     Blueprint,
+    Response,
     current_app,
     has_request_context,
     jsonify,
@@ -478,9 +479,28 @@ def _dashboard_runtime_context() -> dict[str, Any]:
                 return raw, True
         return url_for("dashboard.operator_access", next=url_for("dashboard.setup")), False
 
-    instagram_url, instagram_external = _resolve_connect_url("INSTAGRAM_CONNECT_URL")
-    messenger_url, messenger_external = _resolve_connect_url("MESSENGER_CONNECT_URL")
-    tiktok_url, tiktok_external = _resolve_connect_url("TIKTOK_CONNECT_URL")
+    connect_specs = (
+        ("Instagram", "INSTAGRAM_CONNECT_URL"),
+        ("Facebook Messenger", "MESSENGER_CONNECT_URL"),
+        ("TikTok", "TIKTOK_CONNECT_URL"),
+        ("Discord", "DISCORD_CONNECT_URL"),
+        ("Slack", "SLACK_CONNECT_URL"),
+        ("Microsoft Teams", "TEAMS_CONNECT_URL"),
+        ("SMS", "SMS_CONNECT_URL"),
+        ("Line", "LINE_CONNECT_URL"),
+        ("Viber", "VIBER_CONNECT_URL"),
+    )
+    customer_connect_actions = []
+    for label, config_key in connect_specs:
+        url, external = _resolve_connect_url(config_key)
+        customer_connect_actions.append(
+            {
+                "label": label,
+                "url": url,
+                "external": external,
+                "configured": bool(current_app.config.get(config_key)),
+            }
+        )
 
     return {
         "metrics": metrics,
@@ -488,26 +508,7 @@ def _dashboard_runtime_context() -> dict[str, Any]:
         "uptime_label": _format_uptime(int(health.get("uptime_seconds", 0))),
         "recent_logs": logs,
         "active_agent_name": active_agent_name,
-        "customer_connect_actions": [
-            {
-                "label": "Instagram",
-                "url": instagram_url,
-                "external": instagram_external,
-                "configured": bool(current_app.config.get("INSTAGRAM_CONNECT_URL")),
-            },
-            {
-                "label": "Facebook Messenger",
-                "url": messenger_url,
-                "external": messenger_external,
-                "configured": bool(current_app.config.get("MESSENGER_CONNECT_URL")),
-            },
-            {
-                "label": "TikTok",
-                "url": tiktok_url,
-                "external": tiktok_external,
-                "configured": bool(current_app.config.get("TIKTOK_CONNECT_URL")),
-            },
-        ],
+        "customer_connect_actions": customer_connect_actions,
     }
 
 
@@ -805,6 +806,162 @@ def logs_page():
         setup_complete=_is_setup_complete(),
         entries=entries,
         status_filter=status_filter,
+    )
+
+
+def _leads_view_filters(view: str) -> dict[str, Any]:
+    view_key = str(view or "active").strip().lower()
+    if view_key in {"final", "finals", "closed"}:
+        return {
+            "view": "final",
+            "view_label": "Final leads (closed sale + build request)",
+            "filters": {"final_only": True},
+        }
+    if view_key in {"follow_up", "follow-up", "followup"}:
+        return {
+            "view": "follow_up",
+            "view_label": "Follow-up needed",
+            "filters": {"follow_up_only": True},
+        }
+    if view_key in {"all", "everything"}:
+        return {
+            "view": "all",
+            "view_label": "All pipeline leads",
+            "filters": {},
+        }
+    if view_key in {"qualified", "1", "true", "yes"}:
+        return {
+            "view": "qualified",
+            "view_label": "Qualified leads",
+            "filters": {"qualified_only": True},
+        }
+    return {
+        "view": "active",
+        "view_label": "Active pipeline",
+        "filters": {"active_only": True},
+    }
+
+
+@dashboard_blueprint.route("/leads", methods=["GET"])
+def leads_page():
+    """Sheet 1: lead-generation prospects only."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import lead_gen_enabled, list_leads
+
+    view_raw = str(request.args.get("view") or "active")
+    view_cfg = _leads_view_filters(view_raw)
+    # Lead sheet never mixes closed sales; keep to active/follow-up views.
+    filters = dict(view_cfg["filters"])
+    if view_cfg["view"] in {"final", "all", "qualified"}:
+        filters = {"active_only": True}
+        view_cfg = {
+            "view": "active",
+            "view_label": "Active lead-generation prospects",
+            "filters": filters,
+        }
+    leads = list_leads(current_app, limit=200, **filters)
+
+    return render_template(
+        "leads.html",
+        page_key="leads",
+        nav_mode="operator",
+        setup_complete=_is_setup_complete(),
+        leads=leads,
+        lead_gen_enabled=lead_gen_enabled(current_app),
+        view=view_cfg["view"],
+        view_label=view_cfg["view_label"],
+    )
+
+
+@dashboard_blueprint.route("/leads/export.csv", methods=["GET"])
+def leads_export_csv():
+    """CSV for Sheet 1 — lead generation only."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    import csv
+    from io import StringIO
+
+    from app.services.lead_generation import leads_sheet_rows, leads_to_csv_rows
+
+    leads = leads_sheet_rows(current_app, limit=500)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerows(leads_to_csv_rows(leads))
+
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=sheet1-leads.csv",
+        },
+    )
+
+
+@dashboard_blueprint.route("/sales", methods=["GET"])
+def sales_page():
+    """Sheet 2: closed sales / build clients (separate from leads)."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import list_sales
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=200, sale_type=sale_type)
+    if sale_type == "closed_sale":
+        view_label = "Closed sales only"
+    elif sale_type == "build_request":
+        view_label = "Build requests only"
+    else:
+        view_label = "All closed clients"
+
+    return render_template(
+        "sales.html",
+        page_key="sales",
+        nav_mode="operator",
+        setup_complete=_is_setup_complete(),
+        sales=sales,
+        sale_type_filter=sale_type or "",
+        view_label=view_label,
+    )
+
+
+@dashboard_blueprint.route("/sales/export.csv", methods=["GET"])
+def sales_export_csv():
+    """CSV for Sheet 2 — closed sales / build clients only."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    import csv
+    from io import StringIO
+
+    from app.services.lead_generation import list_sales, sales_to_csv_rows
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=500, sale_type=sale_type)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerows(sales_to_csv_rows(sales))
+    filename = f"sheet2-sales{('-' + sale_type) if sale_type else ''}.csv"
+
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+        },
     )
 
 
@@ -1437,6 +1594,91 @@ def compliance_dispatch_eligibility_api():
         "is_stale": eligibility["is_stale"],
         "correlation_id": correlation_id,
     }), 200
+
+
+@dashboard_api.route("/api/leads", methods=["GET"])
+def list_leads_api():
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import lead_gen_enabled, leads_sheet_rows, list_sales
+
+    try:
+        limit = int(request.args.get("limit", "50"))
+    except ValueError:
+        return jsonify({"ok": False, "message": "limit must be an integer."}), 400
+
+    leads = leads_sheet_rows(current_app, limit=limit)
+    sales = list_sales(current_app, limit=limit)
+
+    return jsonify(
+        {
+            "ok": True,
+            "lead_gen_enabled": lead_gen_enabled(current_app),
+            "sheet": "leads",
+            "count": len(leads),
+            "leads": leads,
+            "sales_sheet_count": len(sales),
+        }
+    ), 200
+
+
+@dashboard_api.route("/api/sales", methods=["GET"])
+def list_sales_api():
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import list_sales
+
+    try:
+        limit = int(request.args.get("limit", "50"))
+    except ValueError:
+        return jsonify({"ok": False, "message": "limit must be an integer."}), 400
+
+    sale_type = str(request.args.get("sale_type") or "").strip().lower() or None
+    if sale_type not in {None, "closed_sale", "build_request"}:
+        sale_type = None
+    sales = list_sales(current_app, limit=limit, sale_type=sale_type)
+    return jsonify(
+        {
+            "ok": True,
+            "sheet": "sales",
+            "sale_type": sale_type,
+            "count": len(sales),
+            "sales": sales,
+        }
+    ), 200
+
+
+@dashboard_api.route("/api/leads/mark-stage", methods=["POST"])
+def mark_lead_stage_api():
+    """Operator override: mark a lead as closed_won, build_request, follow_up, etc."""
+    guarded = _require_operator_api_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import mark_lead_stage
+
+    payload = request.get_json(silent=True) or {}
+    user_id = str(payload.get("user_id") or "").strip()
+    channel = str(payload.get("channel") or "whatsapp").strip().lower() or "whatsapp"
+    stage = str(payload.get("stage") or "").strip().lower()
+    if not user_id or not stage:
+        return jsonify({"ok": False, "message": "user_id and stage are required."}), 400
+
+    try:
+        lead = mark_lead_stage(
+            current_app,
+            user_id=user_id,
+            channel=channel,
+            stage=stage,
+        )
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    return jsonify({"ok": True, "lead": lead}), 200
 
 
 @dashboard_api.route("/api/conversations", methods=["GET"])

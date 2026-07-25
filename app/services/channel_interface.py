@@ -3,9 +3,12 @@ Channel-agnostic outbound delivery interface.
 
 Active adapters:
   - whatsapp (default) — delegates to send_message() in whatsapp_utils.
-  - telegram           — Story 9.2; uses Telegram Bot API.
+  - telegram           — uses Telegram Bot API.
+  - instagram / messenger / tiktok — social HTTP bridge adapters.
+  - discord / slack / teams / sms / line / viber — chat/SMS HTTP bridge adapters.
+  - email              — SMTP support-inbox replies (Gmail SMTP supported).
 
-Extension guide (future SMS / Messenger integration):
+Extension guide (future channel integration):
   1. Implement a class that inherits from OutboundChannel and overrides send().
   2. Register it in _CHANNEL_REGISTRY under a unique key string (or handle it
      in get_outbound_channel() for adapters that require constructor args).
@@ -24,6 +27,13 @@ CHANNEL_TELEGRAM = "telegram"
 CHANNEL_INSTAGRAM = "instagram"
 CHANNEL_MESSENGER = "messenger"
 CHANNEL_TIKTOK = "tiktok"
+CHANNEL_DISCORD = "discord"
+CHANNEL_SLACK = "slack"
+CHANNEL_TEAMS = "teams"
+CHANNEL_SMS = "sms"
+CHANNEL_LINE = "line"
+CHANNEL_VIBER = "viber"
+CHANNEL_EMAIL = "email"
 
 # Extend this tuple when new adapters are activated.
 SUPPORTED_CHANNELS: tuple[str, ...] = (
@@ -32,6 +42,27 @@ SUPPORTED_CHANNELS: tuple[str, ...] = (
     CHANNEL_INSTAGRAM,
     CHANNEL_MESSENGER,
     CHANNEL_TIKTOK,
+    CHANNEL_DISCORD,
+    CHANNEL_SLACK,
+    CHANNEL_TEAMS,
+    CHANNEL_SMS,
+    CHANNEL_LINE,
+    CHANNEL_VIBER,
+    CHANNEL_EMAIL,
+)
+
+_SOCIAL_BRIDGE_CHANNELS = frozenset(
+    {
+        CHANNEL_INSTAGRAM,
+        CHANNEL_MESSENGER,
+        CHANNEL_TIKTOK,
+        CHANNEL_DISCORD,
+        CHANNEL_SLACK,
+        CHANNEL_TEAMS,
+        CHANNEL_SMS,
+        CHANNEL_LINE,
+        CHANNEL_VIBER,
+    }
 )
 
 
@@ -105,6 +136,13 @@ _PROBE_LABELS = {
     CHANNEL_INSTAGRAM: "InstagramChannel",
     CHANNEL_MESSENGER: "MessengerChannel",
     CHANNEL_TIKTOK: "TikTokChannel",
+    CHANNEL_DISCORD: "DiscordChannel",
+    CHANNEL_SLACK: "SlackChannel",
+    CHANNEL_TEAMS: "TeamsChannel",
+    CHANNEL_SMS: "SmsChannel",
+    CHANNEL_LINE: "LineChannel",
+    CHANNEL_VIBER: "ViberChannel",
+    CHANNEL_EMAIL: "EmailChannel",
 }
 
 
@@ -130,19 +168,36 @@ def get_outbound_channel(app) -> OutboundChannel:
 
         return TelegramChannel.from_app(app)
 
-    if channel_name in {CHANNEL_INSTAGRAM, CHANNEL_MESSENGER, CHANNEL_TIKTOK}:
+    if channel_name in _SOCIAL_BRIDGE_CHANNELS:
         from app.services.social_bridge_channel import (  # noqa: PLC0415
+            DiscordChannel,
             InstagramChannel,
+            LineChannel,
             MessengerChannel,
+            SlackChannel,
+            SmsChannel,
+            TeamsChannel,
             TikTokChannel,
+            ViberChannel,
         )
 
         social_channels = {
             CHANNEL_INSTAGRAM: InstagramChannel,
             CHANNEL_MESSENGER: MessengerChannel,
             CHANNEL_TIKTOK: TikTokChannel,
+            CHANNEL_DISCORD: DiscordChannel,
+            CHANNEL_SLACK: SlackChannel,
+            CHANNEL_TEAMS: TeamsChannel,
+            CHANNEL_SMS: SmsChannel,
+            CHANNEL_LINE: LineChannel,
+            CHANNEL_VIBER: ViberChannel,
         }
         return social_channels[channel_name].from_app(app)
+
+    if channel_name == CHANNEL_EMAIL:
+        from app.services.email_channel import EmailChannel  # noqa: PLC0415
+
+        return EmailChannel.from_app(app)
 
     cls = _CHANNEL_REGISTRY.get(channel_name)
     if cls is None:

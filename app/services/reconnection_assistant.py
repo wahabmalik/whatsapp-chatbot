@@ -12,10 +12,17 @@ from app.config import get_required_config_keys, normalize_provider
 from app.models import AuditLog, ConnectionState, TenantNotification
 from app.onboarding import get_connection_state, sync_connection_status
 from app.services.channel_interface import (
+    CHANNEL_DISCORD,
+    CHANNEL_EMAIL,
     CHANNEL_INSTAGRAM,
+    CHANNEL_LINE,
     CHANNEL_MESSENGER,
+    CHANNEL_SLACK,
+    CHANNEL_SMS,
+    CHANNEL_TEAMS,
     CHANNEL_TELEGRAM,
     CHANNEL_TIKTOK,
+    CHANNEL_VIBER,
     CHANNEL_WHATSAPP,
     get_outbound_channel,
 )
@@ -27,7 +34,28 @@ _CHANNEL_LABELS = {
     CHANNEL_INSTAGRAM: "Instagram",
     CHANNEL_MESSENGER: "Messenger",
     CHANNEL_TIKTOK: "TikTok",
+    CHANNEL_DISCORD: "Discord",
+    CHANNEL_SLACK: "Slack",
+    CHANNEL_TEAMS: "Microsoft Teams",
+    CHANNEL_SMS: "SMS",
+    CHANNEL_LINE: "Line",
+    CHANNEL_VIBER: "Viber",
+    CHANNEL_EMAIL: "Email",
 }
+
+_BRIDGE_CHANNELS = frozenset(
+    {
+        CHANNEL_INSTAGRAM,
+        CHANNEL_MESSENGER,
+        CHANNEL_TIKTOK,
+        CHANNEL_DISCORD,
+        CHANNEL_SLACK,
+        CHANNEL_TEAMS,
+        CHANNEL_SMS,
+        CHANNEL_LINE,
+        CHANNEL_VIBER,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -98,16 +126,34 @@ def _probe_social_provider(app, channel: str) -> tuple[bool, str]:
         CHANNEL_INSTAGRAM: "INSTAGRAM_CONNECT_URL",
         CHANNEL_MESSENGER: "MESSENGER_CONNECT_URL",
         CHANNEL_TIKTOK: "TIKTOK_CONNECT_URL",
+        CHANNEL_DISCORD: "DISCORD_CONNECT_URL",
+        CHANNEL_SLACK: "SLACK_CONNECT_URL",
+        CHANNEL_TEAMS: "TEAMS_CONNECT_URL",
+        CHANNEL_SMS: "SMS_CONNECT_URL",
+        CHANNEL_LINE: "LINE_CONNECT_URL",
+        CHANNEL_VIBER: "VIBER_CONNECT_URL",
     }
     outbound_key_map = {
         CHANNEL_INSTAGRAM: "INSTAGRAM_OUTBOUND_URL",
         CHANNEL_MESSENGER: "MESSENGER_OUTBOUND_URL",
         CHANNEL_TIKTOK: "TIKTOK_OUTBOUND_URL",
+        CHANNEL_DISCORD: "DISCORD_OUTBOUND_URL",
+        CHANNEL_SLACK: "SLACK_OUTBOUND_URL",
+        CHANNEL_TEAMS: "TEAMS_OUTBOUND_URL",
+        CHANNEL_SMS: "SMS_OUTBOUND_URL",
+        CHANNEL_LINE: "LINE_OUTBOUND_URL",
+        CHANNEL_VIBER: "VIBER_OUTBOUND_URL",
     }
     timeout_key_map = {
         CHANNEL_INSTAGRAM: ("INSTAGRAM_PROBE_TIMEOUT_SECONDS", "INSTAGRAM_SEND_TIMEOUT_SECONDS"),
         CHANNEL_MESSENGER: ("MESSENGER_PROBE_TIMEOUT_SECONDS", "MESSENGER_SEND_TIMEOUT_SECONDS"),
         CHANNEL_TIKTOK: ("TIKTOK_PROBE_TIMEOUT_SECONDS", "TIKTOK_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_DISCORD: ("DISCORD_PROBE_TIMEOUT_SECONDS", "DISCORD_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_SLACK: ("SLACK_PROBE_TIMEOUT_SECONDS", "SLACK_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_TEAMS: ("TEAMS_PROBE_TIMEOUT_SECONDS", "TEAMS_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_SMS: ("SMS_PROBE_TIMEOUT_SECONDS", "SMS_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_LINE: ("LINE_PROBE_TIMEOUT_SECONDS", "LINE_SEND_TIMEOUT_SECONDS"),
+        CHANNEL_VIBER: ("VIBER_PROBE_TIMEOUT_SECONDS", "VIBER_SEND_TIMEOUT_SECONDS"),
     }
 
     # Prefer outbound/health endpoint before connect URL fallback
@@ -148,8 +194,13 @@ def _resolve_connection_snapshot_with_app(app, db, tenant_id: str, channel: str)
 
     if channel == CHANNEL_TELEGRAM:
         ok, detail = _probe_telegram_provider(app)
-    elif channel in {CHANNEL_INSTAGRAM, CHANNEL_MESSENGER, CHANNEL_TIKTOK}:
+    elif channel in _BRIDGE_CHANNELS:
         ok, detail = _probe_social_provider(app, channel)
+    elif channel == CHANNEL_EMAIL:
+        host = str(app.config.get("SMTP_HOST") or "").strip()
+        recipient = str(app.config.get("EMAIL_DEFAULT_RECIPIENT") or "").strip()
+        ok = bool(host and recipient and "@" in recipient)
+        detail = "email_smtp_ready" if ok else "email_smtp_not_configured"
     else:
         ok, detail = True, "provider_probe_not_required"
 
@@ -527,6 +578,13 @@ def _token_check(app, channel: str) -> tuple[bool, str]:
         CHANNEL_INSTAGRAM: ["INSTAGRAM_ACCESS_TOKEN"],
         CHANNEL_MESSENGER: ["MESSENGER_PAGE_ACCESS_TOKEN"],
         CHANNEL_TIKTOK: ["TIKTOK_ACCESS_TOKEN"],
+        CHANNEL_DISCORD: ["DISCORD_BOT_TOKEN"],
+        CHANNEL_SLACK: ["SLACK_BOT_TOKEN"],
+        CHANNEL_TEAMS: ["TEAMS_ACCESS_TOKEN"],
+        CHANNEL_SMS: ["SMS_API_KEY"],
+        CHANNEL_LINE: ["LINE_CHANNEL_ACCESS_TOKEN"],
+        CHANNEL_VIBER: ["VIBER_AUTH_TOKEN"],
+        CHANNEL_EMAIL: ["SMTP_HOST", "EMAIL_DEFAULT_RECIPIENT"],
     }
     required = key_map.get(channel, [])
     missing = [key for key in required if not app.config.get(key)]
@@ -541,7 +599,19 @@ def _network_check(app, channel: str) -> tuple[bool, str]:
         CHANNEL_INSTAGRAM: "INSTAGRAM_OUTBOUND_URL",
         CHANNEL_MESSENGER: "MESSENGER_OUTBOUND_URL",
         CHANNEL_TIKTOK: "TIKTOK_OUTBOUND_URL",
+        CHANNEL_DISCORD: "DISCORD_OUTBOUND_URL",
+        CHANNEL_SLACK: "SLACK_OUTBOUND_URL",
+        CHANNEL_TEAMS: "TEAMS_OUTBOUND_URL",
+        CHANNEL_SMS: "SMS_OUTBOUND_URL",
+        CHANNEL_LINE: "LINE_OUTBOUND_URL",
+        CHANNEL_VIBER: "VIBER_OUTBOUND_URL",
     }
+    if channel == CHANNEL_EMAIL:
+        host = str(app.config.get("SMTP_HOST") or "").strip()
+        if not host:
+            return False, "SMTP_HOST is missing."
+        return True, "SMTP_HOST is configured."
+
     key = url_map.get(channel)
     if key is None:
         return True, "No network endpoint check required for this channel."

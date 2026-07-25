@@ -6,6 +6,7 @@ non-WhatsApp adapters across core outbound contract scenarios.
 from __future__ import annotations
 
 import json
+import smtplib
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -13,15 +14,35 @@ import pytest
 import requests
 
 from app.services.channel_interface import WhatsAppChannel
+from app.services.email_channel import EmailChannel
 from app.services.social_bridge_channel import (
+    DiscordChannel,
     InstagramChannel,
+    LineChannel,
     MessengerChannel,
+    SlackChannel,
+    SmsChannel,
+    TeamsChannel,
     TikTokChannel,
+    ViberChannel,
 )
 from app.services.telegram_channel import TelegramChannel
 
 
-ALL_ADAPTERS = ["whatsapp", "telegram", "instagram", "messenger", "tiktok"]
+ALL_ADAPTERS = [
+    "whatsapp",
+    "telegram",
+    "instagram",
+    "messenger",
+    "tiktok",
+    "discord",
+    "slack",
+    "teams",
+    "sms",
+    "line",
+    "viber",
+    "email",
+]
 
 
 def _required_contract_keys() -> set[str]:
@@ -50,11 +71,27 @@ def _telegram_payload(text: str = "hello parity") -> str:
 def _make_http_adapter(adapter_name: str):
     if adapter_name == "telegram":
         return TelegramChannel(bot_token="token", default_chat_id="chat")
+    if adapter_name == "email":
+        return EmailChannel(
+            smtp_host="smtp.example.com",
+            smtp_port=587,
+            smtp_username="bot@example.com",
+            smtp_password="secret",
+            from_address="bot@example.com",
+            default_recipient="customer@example.com",
+            use_tls=True,
+        )
 
     social_adapters = {
         "instagram": InstagramChannel,
         "messenger": MessengerChannel,
         "tiktok": TikTokChannel,
+        "discord": DiscordChannel,
+        "slack": SlackChannel,
+        "teams": TeamsChannel,
+        "sms": SmsChannel,
+        "line": LineChannel,
+        "viber": ViberChannel,
     }
     return social_adapters[adapter_name](
         outbound_url=f"https://example.com/{adapter_name}",
@@ -80,6 +117,10 @@ def test_success_path_contract_parity(adapter_name: str):
         }
         with patch("app.utils.whatsapp_utils.send_message", return_value=expected):
             result = adapter.send("{}", request_id="req-parity-success")
+    elif adapter_name == "email":
+        adapter = _make_http_adapter(adapter_name)
+        with patch.object(EmailChannel, "_smtp_send", return_value=None):
+            result = adapter.send(_telegram_payload(), request_id="req-parity-success")
     else:
         adapter = _make_http_adapter(adapter_name)
         with patch("requests.post", return_value=_mock_ok_response()):
@@ -108,9 +149,22 @@ def test_retry_path_parity(adapter_name: str):
         }
         with patch("app.utils.whatsapp_utils.send_message", return_value=retried):
             result = adapter.send("{}", request_id="req-parity-retry")
-    else:
+    elif adapter_name == "email":
         adapter = _make_http_adapter(adapter_name)
         calls: dict[str, int] = {"n": 0}
+
+        def once_fail_then_ok(*args: Any, **kwargs: Any):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise smtplib.SMTPException("transient")
+            return None
+
+        with patch.object(EmailChannel, "_smtp_send", side_effect=once_fail_then_ok):
+            with patch("time.sleep"):
+                result = adapter.send(_telegram_payload(), request_id="req-parity-retry")
+    else:
+        adapter = _make_http_adapter(adapter_name)
+        calls = {"n": 0}
 
         def post_once_then_ok(*args: Any, **kwargs: Any):
             calls["n"] += 1
@@ -144,9 +198,22 @@ def test_retry_exhaustion_fallback_parity(adapter_name: str):
         }
         with patch("app.utils.whatsapp_utils.send_message", return_value=exhausted):
             result = adapter.send("{}", request_id="req-parity-exhausted")
-    else:
+    elif adapter_name == "email":
         adapter = _make_http_adapter(adapter_name)
         calls: dict[str, int] = {"n": 0}
+
+        def fail_then_fallback_ok(*args: Any, **kwargs: Any):
+            calls["n"] += 1
+            if calls["n"] <= 4:
+                raise smtplib.SMTPException("primary failure")
+            return None
+
+        with patch.object(EmailChannel, "_smtp_send", side_effect=fail_then_fallback_ok):
+            with patch("time.sleep"):
+                result = adapter.send(_telegram_payload(), request_id="req-parity-exhausted")
+    else:
+        adapter = _make_http_adapter(adapter_name)
+        calls = {"n": 0}
 
         def fail_then_fallback_ok(*args: Any, **kwargs: Any):
             calls["n"] += 1
@@ -200,6 +267,19 @@ def test_correlation_and_observability_parity(adapter_name: str):
             " ".join(str(arg) for arg in call.args[1:]) for call in log_info.call_args_list
         )
         assert "provider=telegram" in emitted
+        assert "correlation_id=%s" in emitted
+        assert "corr-parity" in emitted_args
+    elif adapter_name == "email":
+        adapter = _make_http_adapter(adapter_name)
+        with patch("app.services.email_channel.get_correlation_id", return_value="corr-parity"):
+            with patch.object(EmailChannel, "_smtp_send", return_value=None):
+                with patch("app.services.email_channel.logger.info") as log_info:
+                    result = adapter.send(_telegram_payload(), request_id=request_id)
+        emitted = " ".join(str(call.args[0]) for call in log_info.call_args_list)
+        emitted_args = " ".join(
+            " ".join(str(arg) for arg in call.args[1:]) for call in log_info.call_args_list
+        )
+        assert "provider=email" in emitted
         assert "correlation_id=%s" in emitted
         assert "corr-parity" in emitted_args
     else:

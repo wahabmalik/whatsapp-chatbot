@@ -6,9 +6,15 @@ import pytest
 
 from app.services.channel_interface import get_outbound_channel
 from app.services.social_bridge_channel import (
+    DiscordChannel,
     InstagramChannel,
+    LineChannel,
     MessengerChannel,
+    SlackChannel,
+    SmsChannel,
+    TeamsChannel,
     TikTokChannel,
+    ViberChannel,
 )
 
 
@@ -55,6 +61,72 @@ def _mock_ok_response(status_code: int = 200) -> MagicMock:
                 "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
             },
         ),
+        (
+            "discord",
+            DiscordChannel,
+            {
+                "DISCORD_OUTBOUND_URL": "https://example.com/discord",
+                "DISCORD_BOT_TOKEN": "token-discord",
+                "DISCORD_DEFAULT_RECIPIENT_ID": "discord-channel-1",
+                "DISCORD_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
+        (
+            "slack",
+            SlackChannel,
+            {
+                "SLACK_OUTBOUND_URL": "https://example.com/slack",
+                "SLACK_BOT_TOKEN": "token-slack",
+                "SLACK_DEFAULT_RECIPIENT_ID": "C012345",
+                "SLACK_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
+        (
+            "teams",
+            TeamsChannel,
+            {
+                "TEAMS_OUTBOUND_URL": "https://example.com/teams",
+                "TEAMS_ACCESS_TOKEN": "token-teams",
+                "TEAMS_DEFAULT_RECIPIENT_ID": "teams-user-1",
+                "TEAMS_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
+        (
+            "sms",
+            SmsChannel,
+            {
+                "SMS_OUTBOUND_URL": "https://example.com/sms",
+                "SMS_API_KEY": "token-sms",
+                "SMS_DEFAULT_RECIPIENT_ID": "+15551234567",
+                "SMS_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
+        (
+            "line",
+            LineChannel,
+            {
+                "LINE_OUTBOUND_URL": "https://example.com/line",
+                "LINE_CHANNEL_ACCESS_TOKEN": "token-line",
+                "LINE_DEFAULT_RECIPIENT_ID": "line-user-1",
+                "LINE_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
+        (
+            "viber",
+            ViberChannel,
+            {
+                "VIBER_OUTBOUND_URL": "https://example.com/viber",
+                "VIBER_AUTH_TOKEN": "token-viber",
+                "VIBER_DEFAULT_RECIPIENT_ID": "viber-user-1",
+                "VIBER_SEND_TIMEOUT_SECONDS": 10.0,
+                "WHATSAPP_FALLBACK_MAX_RETRIES": 2,
+            },
+        ),
     ],
 )
 def test_get_outbound_channel_returns_expected_social_adapter(
@@ -88,6 +160,21 @@ def test_get_outbound_channel_returns_expected_social_adapter(
             {"outbound_url": None, "default_recipient_id": None, "access_token": "token"},
             "tiktok_adapter_disabled",
         ),
+        (
+            DiscordChannel,
+            {"outbound_url": None, "default_recipient_id": "discord-1", "access_token": "token"},
+            "discord_adapter_disabled",
+        ),
+        (
+            SlackChannel,
+            {"outbound_url": "https://example.com/slack", "default_recipient_id": None, "access_token": "token"},
+            "slack_adapter_disabled",
+        ),
+        (
+            SmsChannel,
+            {"outbound_url": None, "default_recipient_id": None, "access_token": "token"},
+            "sms_adapter_disabled",
+        ),
     ],
 )
 def test_disabled_social_adapter_returns_contract_error(channel_cls, kwargs, expected_error: str):
@@ -117,6 +204,36 @@ def test_disabled_social_adapter_returns_contract_error(channel_cls, kwargs, exp
             TikTokChannel,
             {"outbound_url": "https://example.com/tiktok", "default_recipient_id": "tt-default", "access_token": "token"},
             "tiktok_recipient_id",
+        ),
+        (
+            DiscordChannel,
+            {"outbound_url": "https://example.com/discord", "default_recipient_id": "discord-default", "access_token": "token"},
+            "discord_recipient_id",
+        ),
+        (
+            SlackChannel,
+            {"outbound_url": "https://example.com/slack", "default_recipient_id": "slack-default", "access_token": "token"},
+            "slack_recipient_id",
+        ),
+        (
+            TeamsChannel,
+            {"outbound_url": "https://example.com/teams", "default_recipient_id": "teams-default", "access_token": "token"},
+            "teams_recipient_id",
+        ),
+        (
+            SmsChannel,
+            {"outbound_url": "https://example.com/sms", "default_recipient_id": "sms-default", "access_token": "token"},
+            "sms_recipient_id",
+        ),
+        (
+            LineChannel,
+            {"outbound_url": "https://example.com/line", "default_recipient_id": "line-default", "access_token": "token"},
+            "line_recipient_id",
+        ),
+        (
+            ViberChannel,
+            {"outbound_url": "https://example.com/viber", "default_recipient_id": "viber-default", "access_token": "token"},
+            "viber_recipient_id",
         ),
     ],
 )
