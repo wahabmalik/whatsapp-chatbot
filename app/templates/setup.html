@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Setup{% endblock %}
-{% block meta_description %}MALIXIS lead generation settings and channel setup for your AI sales bot.{% endblock %}
+{% block meta_description %}Dealwire lead generation settings and channel setup for your AI sales bot.{% endblock %}
 {% block content %}
 <section class="panel panel-enter leadgen-settings" aria-labelledby="leadgen-title">
   <header class="panel-head">
@@ -9,7 +9,7 @@
       <h1 id="leadgen-title">Setup</h1>
     </div>
   </header>
-  <p class="subtle-help">Turn lead generation on, pick the active outbound channel, and tell MALIXIS what you sell. Built-in CRM is free; export is optional.</p>
+  <p class="subtle-help">Turn lead generation on, pick the active outbound channel, and tell Dealwire what you sell. Built-in CRM is free; export is optional.</p>
 
   <form class="leadgen-form" method="post" action="{{ url_for('dashboard.setup') }}" data-leadgen-form>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -17,7 +17,7 @@
     <div class="toggle-field">
       <div>
         <label for="leadgen-toggle">Lead generation</label>
-        <p class="field-hint">When on, MALIXIS discovers need, qualifies chats, and writes to the Leads Sheet.</p>
+        <p class="field-hint">When on, Dealwire discovers need, qualifies chats, and writes to the Leads Sheet.</p>
       </div>
       <label class="toggle">
         <input id="leadgen-toggle" type="checkbox" name="lead_generation" {% if crm.lead_generation_enabled %}checked{% endif %}>

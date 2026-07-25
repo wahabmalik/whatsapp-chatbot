@@ -1,4 +1,7 @@
-# MALIXIS Operator CRM — UI/UX Design
+# Dealwire Operator CRM — UI/UX Design
+
+**Brand:** Dealwire  
+**Tagline:** Leads in. Deals out.
 
 Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `web-design-guidelines`.
 
@@ -23,11 +26,11 @@ Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `we
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ MALIXIS   Overview  Leads  Sales  Channels  Setup            │
+│ Dealwire   Overview  Leads  Sales  Channels  Setup            │
 ├──────────────────────────────────────────────────────────────┤
-│ MALIXIS                                                      │
-│ Close more chats.                                            │
-│ Miss fewer follow-ups.                                       │
+│ Dealwire                                                      │
+│ Leads in.                                                    │
+│ Deals out.                                                   │
 │ Short supporting line…                                       │
 │ [Open Leads] [Open Sales] [Channels] [Setup]   │ ● Online   │
 │                                                │ WhatsApp   │
@@ -42,8 +45,8 @@ Skills applied: `frontend-design`, `effective-ui-design`, `ui-design-brain`, `we
 
 ```
 ┌─────────────────────┐
-│ MALIXIS             │
-│ Close more chats…   │
+│ Dealwire             │
+│ Leads in. Deals out.│
 │ [Leads] [Sales]     │
 │ [Channels] [Setup]  │
 │ ● Bot online        │
@@ -116,11 +119,11 @@ Static mockup frames (generated):
 
 | Asset | Path |
 |-------|------|
-| Overview desktop | `/opt/cursor/artifacts/malixis-mockups/malixis-overview-desktop.png` |
-| Overview (Higgsfield) | `/opt/cursor/artifacts/malixis-mockups/malixis-overview-higgsfield.png` |
-| Leads mobile | `/opt/cursor/artifacts/malixis-mockups/malixis-leads-mobile.png` |
-| Sales desktop | `/opt/cursor/artifacts/malixis-mockups/malixis-sales-desktop.png` |
-| Channels desktop | `/opt/cursor/artifacts/malixis-mockups/malixis-channels-desktop.png` |
+| Overview desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-overview-desktop.png` |
+| Overview (Higgsfield) | `/opt/cursor/artifacts/dealwire-mockups/dealwire-overview-higgsfield.png` |
+| Leads mobile | `/opt/cursor/artifacts/dealwire-mockups/dealwire-leads-mobile.png` |
+| Sales desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-sales-desktop.png` |
+| Channels desktop | `/opt/cursor/artifacts/dealwire-mockups/dealwire-channels-desktop.png` |
 
 ---
 
@@ -129,7 +132,7 @@ Static mockup frames (generated):
 | Component | Usage |
 |-----------|--------|
 | **Top nav / bottom nav** | Operator IA: Overview, Leads, Sales, Channels, Setup |
-| **Brand lockup** | Hero-level MALIXIS wordmark |
+| **Brand lockup** | Hero-level Dealwire wordmark |
 | **Status pill + pulse** | Bot online / active channel |
 | **Stat strip** | Today’s leads, follow-ups, closed, build |
 | **CTA group** | Primary Leads, warm Sales, ghost Channels/Setup |
@@ -151,7 +154,8 @@ Static mockup frames (generated):
 ## 4) UX copy
 
 ### Overview
-- **Headline:** Close more chats. Miss fewer follow-ups.
+- **Brand:** Dealwire
+- **Headline / tagline:** Leads in. Deals out.
 - **Support:** Your AI sales desk across WhatsApp, Telegram, Instagram, and every channel you connect.
 - **CTAs:** Open Leads Sheet · Open Sales Sheet · Channels · Setup
 
@@ -159,7 +163,7 @@ Static mockup frames (generated):
 - **Title:** Leads Sheet
 - **Sub:** Active prospects only. Closed clients live on the Sales Sheet.
 - **Empty:** No generated leads yet
-- **Empty help:** When MALIXIS qualifies a chat, it appears here with stage, channel, and the last message.
+- **Empty help:** When Dealwire qualifies a chat, it appears here with stage, channel, and the last message.
 - **CTA:** Download Leads CSV · Connect a channel
 
 ### Sales Sheet
@@ -177,7 +181,7 @@ Static mockup frames (generated):
 
 ### Setup
 - **Title:** Setup
-- **Lead gen hint:** When on, MALIXIS discovers need, qualifies chats, and writes to the Leads Sheet.
+- **Lead gen hint:** When on, Dealwire discovers need, qualifies chats, and writes to the Leads Sheet.
 - **CRM export hint:** Default off. Use the free built-in Leads and Sales sheets unless you need an external CRM webhook.
 - **CTA:** Save lead gen settings
 

@@ -219,9 +219,10 @@ textarea:focus-visible {
 }
 
 .brand-text {
-  font-weight: 700;
-  font-size: 1.52rem;
-  letter-spacing: 0.12em;
+  font-family: "Syne", "Space Grotesk", sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
 }
 
 .top-nav {
@@ -1059,9 +1060,10 @@ select {
 }
 
 .auth-brand .brand-text {
-  font-weight: 700;
-  font-size: 1.52rem;
-  letter-spacing: 0.12em;
+  font-family: "Syne", "Space Grotesk", sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
 }
 
 .auth-card {

@@ -733,7 +733,7 @@
   document.querySelectorAll("[data-download-csv]").forEach(function (button) {
     button.addEventListener("click", function () {
       var tableId = button.getAttribute("data-download-csv");
-      var filename = button.getAttribute("data-filename") || "malixis-export.csv";
+      var filename = button.getAttribute("data-filename") || "dealwire-export.csv";
       var table = document.getElementById(tableId);
       if (!table) {
         showToast("Nothing to download yet", true);

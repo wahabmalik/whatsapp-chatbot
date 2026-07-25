@@ -1,4 +1,4 @@
-"""Built-in free CRM demo data and helpers for the MALIXIS operator dashboard."""
+"""Built-in free CRM demo data and helpers for the Dealwire operator dashboard."""
 
 from __future__ import annotations
 
