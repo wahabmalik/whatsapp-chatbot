@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "effective-ui-design": {
+      "source": "sebastian-software/effective-ui-design-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "23389322c8e546fa77d88f7b9c1864a85fb2d07ce7e1d0299581e693c2bd5e65"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "4eabc66183767153e404b39d1b839b1c37f2d82d86f0a0d7e880a579d8d62336"
+    },
+    "ui-design-brain": {
+      "source": "carmahhawwari/ui-design-brain",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "2f879ee8afd07785c241b5fa31bcc96bb8efc2379cff1fff3167edd08ebe2790"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

@@ -14,11 +14,17 @@
     node.setAttribute("role", isError ? "alert" : "status");
     node.textContent = message;
     region.appendChild(node);
-    window.setTimeout(function () {
-      if (node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
-    }, 3000);
+    var reduceMotion =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      function () {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      },
+      reduceMotion ? 4000 : 3200
+    );
   }
 
   function withBusy(button, callback) {

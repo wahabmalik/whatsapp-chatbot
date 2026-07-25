@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{% block title %}Operator Dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <meta name="description" content="{% block meta_description %}MALIXIS operator workspace for WhatsApp automation, agents, metrics, and conversation review.{% endblock %}">
+  <title>{% block title %}Operator Dashboard{% endblock %} · MALIXIS</title>
+  {% include 'partials/head_assets.html' %}
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   {% set current_nav_mode = nav_mode|default('operator') %}
   <div class="app-shell">
     <header class="topbar" aria-label="Primary header">
@@ -52,7 +54,7 @@
 
         {% if auth_logged_in and auth_logout_url %}
         <div class="account-chip" aria-label="Signed in account">
-          <span class="account-email">{{ auth_user_email or 'Signed in user' }}</span>
+          <span class="account-email" title="{{ auth_user_email or 'Signed in user' }}">{{ auth_user_email or 'Signed in user' }}</span>
           <form method="post" action="{{ auth_logout_url }}" class="account-logout-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="account-logout-button">Log out</button>
@@ -64,7 +66,7 @@
       </div>
     </header>
 
-    <main class="main-pane">
+    <main class="main-pane" id="main-content" tabindex="-1">
       {% block content %}{% endblock %}
     </main>
 
