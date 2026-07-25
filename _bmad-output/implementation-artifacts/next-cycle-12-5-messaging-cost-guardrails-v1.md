@@ -140,7 +140,7 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Definition of Done Evidence Checklist
 
-- [x] Story status updated in `sprint-status-next-cycle.yaml` according to workflow. (2026-07-25: review-patch remediation returned status to `review`)
+- [x] Story status updated in `sprint-status-next-cycle.yaml` according to workflow. (2026-07-25: CR re-run approved → `done`)
 - [x] India-only price table and threshold defaults documented in completion notes.
 - [x] Targeted pytest output captured for unit, integration, and contract coverage.
 - [x] Audit/event evidence shows estimate inputs, operator confirmation decision, and correlation_id. (including recipient_count on estimation_failed when parseable)
@@ -238,6 +238,7 @@ GPT-5.4 / Composer
 - ✅ Resolved review finding: allowlist category_label; allow estimate preview before sendability-ready gates.
 - ✅ Resolved review finding: expanded Story 12.5 tests for non-IN, unknown category, threshold equality, non-integer recipient, UI/API blocked-send contracts.
 - India-only defaults: MARKETING 75 / UTILITY 20 / AUTHENTICATION 15 paisa; warning threshold 100 paisa; max recipients 100000 (tests override max to 1000).
+- 2026-07-25 CR re-run: approved. Prior patches verified in code/tests; ACs 12.5.1–12.5.7 PASS; residual polish deferred; story/sprint marked `done`.
 
 ### File List
 
