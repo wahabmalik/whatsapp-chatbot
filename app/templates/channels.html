@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Channels{% endblock %}
+{% block meta_description %}Connect and monitor MALIXIS outbound channels across messaging, social, and workplace platforms.{% endblock %}
+{% block content %}
+<section class="channels-page panel-enter" aria-labelledby="channels-title">
+  <header class="sheet-header">
+    <div>
+      <p class="sheet-kicker">Multi-channel sales</p>
+      <h1 id="channels-title">Channels</h1>
+      <p class="sheet-sub">Discover need, chat, follow up, and close — on the platforms your buyers already use.</p>
+    </div>
+    <div class="ops-status-rail compact">
+      <div class="status-pill {% if bot_online %}is-online{% else %}is-offline{% endif %}">
+        <span class="status-pulse" aria-hidden="true"></span>
+        <span>
+          <strong>Active outbound · {{ active_channel }}</strong>
+          <small>{% if bot_online %}Ready to send{% else %}Offline{% endif %}</small>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <div class="channel-grid" role="list">
+    {% for channel in channels %}
+    <article class="channel-row status-{{ channel.status }}" role="listitem">
+      <div class="channel-identity">
+        <span class="channel-glyph" aria-hidden="true">{{ channel.label[:1] }}</span>
+        <div>
+          <h2>{{ channel.label }}</h2>
+          <p>{{ channel.category }}</p>
+        </div>
+      </div>
+      <span class="channel-status-badge">{{ channel.status_label }}</span>
+      <div class="channel-actions">
+        {% if channel.status == 'not_connected' %}
+        <a class="button-link button-secondary" href="{{ url_for('dashboard.setup') }}">Connect</a>
+        {% else %}
+        <a class="ghost-link" href="{{ url_for('dashboard.setup') }}">Configure</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

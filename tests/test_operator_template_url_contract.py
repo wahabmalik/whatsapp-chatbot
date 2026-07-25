@@ -13,6 +13,9 @@ _OPERATOR_TEMPLATES = (
     _PROJECT_ROOT / "app" / "templates" / "metrics.html",
     _PROJECT_ROOT / "app" / "templates" / "logs.html",
     _PROJECT_ROOT / "app" / "templates" / "dashboard.html",
+    _PROJECT_ROOT / "app" / "templates" / "leads.html",
+    _PROJECT_ROOT / "app" / "templates" / "sales.html",
+    _PROJECT_ROOT / "app" / "templates" / "channels.html",
     _PROJECT_ROOT / "app" / "templates" / "agents.html",
     _PROJECT_ROOT / "app" / "templates" / "agents-enhanced.html",
 )

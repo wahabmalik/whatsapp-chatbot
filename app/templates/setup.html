@@ -1,9 +1,72 @@
 {% extends "base.html" %}
 {% block title %}Setup{% endblock %}
+{% block meta_description %}MALIXIS lead generation settings and channel setup for your AI sales bot.{% endblock %}
 {% block content %}
-<section class="panel wizard">
-  <h2>Setup wizard</h2>
-  <p>Use this operator-only checklist to move from missing environment values to a verified webhook without leaving the dashboard.</p>
+<section class="panel panel-enter leadgen-settings" aria-labelledby="leadgen-title">
+  <header class="panel-head">
+    <div>
+      <p class="sheet-kicker">Lead gen settings</p>
+      <h1 id="leadgen-title">Setup</h1>
+    </div>
+  </header>
+  <p class="subtle-help">Turn lead generation on, pick the active outbound channel, and tell MALIXIS what you sell. Built-in CRM is free; export is optional.</p>
+
+  <form class="leadgen-form" method="post" action="{{ url_for('dashboard.setup') }}" data-leadgen-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="toggle-field">
+      <div>
+        <label for="leadgen-toggle">Lead generation</label>
+        <p class="field-hint">When on, MALIXIS discovers need, qualifies chats, and writes to the Leads Sheet.</p>
+      </div>
+      <label class="toggle">
+        <input id="leadgen-toggle" type="checkbox" name="lead_generation" {% if crm.lead_generation_enabled %}checked{% endif %}>
+        <span class="toggle-ui" aria-hidden="true"></span>
+        <span class="visually-hidden">Lead generation on or off</span>
+      </label>
+    </div>
+
+    <div class="auth-field">
+      <label for="active-channel">Active channel</label>
+      <p class="field-hint">Primary outbound channel for new conversations.</p>
+      <select id="active-channel" name="active_channel" autocomplete="off">
+        {% for channel in channel_options %}
+        <option value="{{ channel.id }}" {% if channel.label == crm.active_channel or channel.status == 'active_outbound' %}selected{% endif %}>
+          {{ channel.label }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="auth-field">
+      <label for="service-offering">Service offering</label>
+      <p class="field-hint">Software services and offers the bot should sell or qualify against.</p>
+      <textarea id="service-offering" name="service_offering" rows="4" autocomplete="off">{{ crm.service_offering }}</textarea>
+    </div>
+
+    <div class="toggle-field">
+      <div>
+        <label for="crm-export-toggle">CRM export <span class="optional-mark">(optional)</span></label>
+        <p class="field-hint">Default off. Use the free built-in Leads and Sales sheets unless you need an external CRM webhook.</p>
+      </div>
+      <label class="toggle">
+        <input id="crm-export-toggle" type="checkbox" name="crm_export" {% if crm.crm_export_enabled %}checked{% endif %}>
+        <span class="toggle-ui" aria-hidden="true"></span>
+        <span class="visually-hidden">CRM export on or off</span>
+      </label>
+    </div>
+
+    <div class="action-row">
+      <button type="submit" class="button-link" data-loading-label="Saving...">Save lead gen settings</button>
+      <a class="ghost-link" href="{{ url_for('dashboard.leads_sheet') }}">Open Leads Sheet</a>
+    </div>
+    <p class="subtle-help">Settings save locally in this demo UI. Wire them to your tenant config when ready for production.</p>
+  </form>
+</section>
+
+<section class="panel wizard panel-enter">
+  <h2>Channel &amp; webhook checklist</h2>
+  <p>Use this operator checklist to move from missing environment values to a verified webhook without leaving the dashboard.</p>
 
   <div class="copy-row" data-setup-status-url="{{ setup_status_url }}">
     <h3>Guided completion signals</h3>
@@ -36,7 +99,7 @@
       id="openai-key-input"
       type="password"
       name="openai_api_key"
-      placeholder="Paste OpenAI key"
+      placeholder="Paste OpenAI key..."
       autocomplete="off"
       required
     >
@@ -70,8 +133,8 @@
   </div>
 
   {% if setup_complete %}
-    <p class="ok-text">Setup is complete. You can move into the operator dashboard and start validating live traffic.</p>
-    <a class="button-link" href="{{ url_for('dashboard.operator_dashboard') }}">Go to Dashboard</a>
+    <p class="ok-text">Setup is complete. You can open the Leads Sheet and start qualifying live traffic.</p>
+    <a class="button-link" href="{{ url_for('dashboard.operator_dashboard') }}">Go to Overview</a>
   {% else %}
     <p class="warning-text">Complete all five required keys before you run the verification step.</p>
     {% if setup_missing_keys %}

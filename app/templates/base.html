@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <meta name="description" content="{% block meta_description %}MALIXIS operator workspace for WhatsApp automation, agents, metrics, and conversation review.{% endblock %}">
+  <meta name="description" content="{% block meta_description %}MALIXIS operator workspace for AI sales, lead generation, and multi-channel closing.{% endblock %}">
   <title>{% block title %}Operator Dashboard{% endblock %} · MALIXIS</title>
   {% include 'partials/head_assets.html' %}
 </head>
@@ -16,13 +16,9 @@
       <a class="brand" href="{{ url_for('dashboard.dashboard_home') if current_nav_mode == 'user' else url_for('dashboard.operator_dashboard') }}" aria-label="MALIXIS home">
         <span class="brand-mark">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- Left node: business -->
             <circle cx="4" cy="11" r="3" fill="currentColor"/>
-            <!-- Right node: customer -->
             <circle cx="18" cy="11" r="3" fill="currentColor"/>
-            <!-- Upper bridge arc -->
             <path d="M7 11 Q11 3 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-            <!-- Lower bridge arc -->
             <path d="M7 11 Q11 19 15 11" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
           </svg>
         </span>
@@ -39,17 +35,17 @@
         <a href="{{ url_for('dashboard.operator_access', next=url_for('dashboard.operator_dashboard')) }}">Operator</a>
         {% else %}
         <a href="{{ url_for('dashboard.operator_dashboard') }}" class="{% if page_key == 'dashboard' %}active{% endif %}" {% if page_key == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
+        <a href="{{ url_for('dashboard.leads_sheet') }}" class="nav-leads {% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
+        <a href="{{ url_for('dashboard.sales_sheet') }}" class="nav-sales {% if page_key == 'sales' %}active{% endif %}" {% if page_key == 'sales' %}aria-current="page"{% endif %}>Sales</a>
+        <a href="{{ url_for('dashboard.channels_page') }}" class="{% if page_key == 'channels' %}active{% endif %}" {% if page_key == 'channels' %}aria-current="page"{% endif %}>Channels</a>
         <a href="{{ url_for('dashboard.setup') }}" class="{% if page_key == 'setup' %}active{% endif %}" {% if page_key == 'setup' %}aria-current="page"{% endif %}>Setup</a>
-        <a href="{{ url_for('dashboard.agents_page') }}" class="{% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>Agents</a>
-        <a href="{{ url_for('dashboard.metrics_page') }}" class="{% if page_key == 'metrics' %}active{% endif %}" {% if page_key == 'metrics' %}aria-current="page"{% endif %}>Metrics</a>
-        <a href="{{ url_for('dashboard.logs_page') }}" class="{% if page_key == 'logs' %}active{% endif %}" {% if page_key == 'logs' %}aria-current="page"{% endif %}>Logs</a>
         <a href="{{ url_for('dashboard.operator_leave', next=url_for('dashboard.dashboard_home')) }}">End User</a>
         {% endif %}
       </nav>
 
       <div class="topbar-actions">
         <a href="{{ url_for('dashboard.setup') if current_nav_mode == 'operator' else url_for('dashboard.dashboard_home') }}#help" class="cta-link">
-          {{ 'Open Setup' if current_nav_mode == 'operator' else 'Get Help' }}
+          {{ 'Lead Gen Settings' if current_nav_mode == 'operator' else 'Get Help' }}
         </a>
 
         {% if auth_logged_in and auth_logout_url %}
@@ -79,11 +75,12 @@
       <a href="{{ url_for('dashboard.dashboard_home') }}#help">Help</a>
     </nav>
     {% else %}
-    <nav class="bottom-nav" aria-label="Bottom Navigation">
+    <nav class="bottom-nav bottom-nav-operator" aria-label="Bottom Navigation">
       <a href="{{ url_for('dashboard.operator_dashboard') }}" class="{% if page_key == 'dashboard' %}active{% endif %}" {% if page_key == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
-      <a href="{{ url_for('dashboard.agents_page') }}" class="{% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>Agents</a>
-      <a href="{{ url_for('dashboard.metrics_page') }}" class="{% if page_key == 'metrics' %}active{% endif %}" {% if page_key == 'metrics' %}aria-current="page"{% endif %}>Metrics</a>
-      <a href="{{ url_for('dashboard.logs_page') }}" class="{% if page_key == 'logs' %}active{% endif %}" {% if page_key == 'logs' %}aria-current="page"{% endif %}>Logs</a>
+      <a href="{{ url_for('dashboard.leads_sheet') }}" class="nav-leads {% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
+      <a href="{{ url_for('dashboard.sales_sheet') }}" class="nav-sales {% if page_key == 'sales' %}active{% endif %}" {% if page_key == 'sales' %}aria-current="page"{% endif %}>Sales</a>
+      <a href="{{ url_for('dashboard.channels_page') }}" class="{% if page_key == 'channels' %}active{% endif %}" {% if page_key == 'channels' %}aria-current="page"{% endif %}>Channels</a>
+      <a href="{{ url_for('dashboard.setup') }}" class="{% if page_key == 'setup' %}active{% endif %}" {% if page_key == 'setup' %}aria-current="page"{% endif %}>Setup</a>
     </nav>
     {% endif %}
   </div>

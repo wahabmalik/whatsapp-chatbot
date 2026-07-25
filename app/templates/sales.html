@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Sales Sheet{% endblock %}
+{% block meta_description %}MALIXIS Sales Sheet — closed sales and build requests in a separate won ledger.{% endblock %}
+{% block content %}
+<section class="sheet-page sales-sheet panel-enter" data-sheet="sales" aria-labelledby="sales-title">
+  <header class="sheet-header">
+    <div>
+      <p class="sheet-kicker">Sheet 2 · Closed clients</p>
+      <h1 id="sales-title">Sales Sheet</h1>
+      <p class="sheet-sub">Won outcomes only. Open pipeline lives on the Leads Sheet.</p>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="button-link button-sales" data-download-csv="sales-table" data-filename="malixis-sales.csv">Download Sales CSV</button>
+    </div>
+  </header>
+
+  <div class="sale-type-rail" aria-label="Sale types">
+    <span class="sale-chip sale-closed">Closed sale</span>
+    <span class="sale-chip sale-build">Build what they want</span>
+  </div>
+
+  <div class="filter-bar" role="tablist" aria-label="Sales filters">
+    <a
+      role="tab"
+      class="filter-tab {% if sales_filter == 'all' %}is-active{% endif %}"
+      href="{{ url_for('dashboard.sales_sheet', filter='all') }}"
+      {% if sales_filter == 'all' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+    >All closed</a>
+    <a
+      role="tab"
+      class="filter-tab {% if sales_filter == 'closed' %}is-active{% endif %}"
+      href="{{ url_for('dashboard.sales_sheet', filter='closed') }}"
+      {% if sales_filter == 'closed' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+    >Closed sales</a>
+    <a
+      role="tab"
+      class="filter-tab {% if sales_filter == 'build' %}is-active{% endif %}"
+      href="{{ url_for('dashboard.sales_sheet', filter='build') }}"
+      {% if sales_filter == 'build' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+    >Build requests</a>
+  </div>
+
+  {% if empty %}
+  <div class="empty-panel sales-empty" role="status">
+    <h2>No closed clients yet</h2>
+    <p>When a lead closes as a sale or a build request, it moves here automatically.</p>
+    <a class="button-link button-sales" href="{{ url_for('dashboard.leads_sheet') }}">Review open leads</a>
+  </div>
+  {% else %}
+  <div class="table-wrap sheet-table-wrap">
+    <table class="data-table sales-table" id="sales-table">
+      <thead>
+        <tr>
+          <th scope="col">Closed at</th>
+          <th scope="col">Client</th>
+          <th scope="col">Contact</th>
+          <th scope="col">What they want</th>
+          <th scope="col">Channel</th>
+          <th scope="col">Sale type</th>
+          <th scope="col" class="num">Messages</th>
+          <th scope="col">Last message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sales %}
+        <tr>
+          <td><time datetime="{{ row.closed_at }}">{{ row.closed_at }}</time></td>
+          <td><strong>{{ row.client }}</strong></td>
+          <td class="mono-ish">{{ row.contact }}</td>
+          <td>{{ row.what_they_want }}</td>
+          <td><span class="channel-tag">{{ row.channel }}</span></td>
+          <td>
+            <span class="sale-badge {% if row.sale_type == 'Closed sale' %}sale-closed{% else %}sale-build{% endif %}">{{ row.sale_type }}</span>
+          </td>
+          <td class="num">{{ row.messages }}</td>
+          <td class="clamp-cell">{{ row.last_message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Leads Sheet{% endblock %}
+{% block meta_description %}MALIXIS Leads Sheet — qualify prospects across channels in a free built-in CRM pipeline.{% endblock %}
+{% block content %}
+<section class="sheet-page leads-sheet panel-enter" data-sheet="leads" aria-labelledby="leads-title">
+  <header class="sheet-header">
+    <div>
+      <p class="sheet-kicker">Sheet 1 · Lead generation</p>
+      <h1 id="leads-title">Leads Sheet</h1>
+      <p class="sheet-sub">Active prospects only. Closed clients live on the Sales Sheet.</p>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="button-link" data-download-csv="leads-table" data-filename="malixis-leads.csv">Download Leads CSV</button>
+    </div>
+  </header>
+
+  <div class="pipeline-rail" aria-label="Lead stages">
+    <span class="stage-chip stage-discover">Discover</span>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <span class="stage-chip stage-chat">Chat</span>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <span class="stage-chip stage-followup">Follow-up</span>
+    <span class="pipeline-arrow" aria-hidden="true"></span>
+    <span class="stage-chip stage-proposal">Proposal</span>
+  </div>
+
+  <div class="filter-bar" role="tablist" aria-label="Lead filters">
+    <a
+      role="tab"
+      class="filter-tab {% if lead_filter == 'all' %}is-active{% endif %}"
+      href="{{ url_for('dashboard.leads_sheet', filter='all') }}"
+      {% if lead_filter == 'all' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+    >All active</a>
+    <a
+      role="tab"
+      class="filter-tab {% if lead_filter == 'follow-up' %}is-active{% endif %}"
+      href="{{ url_for('dashboard.leads_sheet', filter='follow-up') }}"
+      {% if lead_filter == 'follow-up' %}aria-selected="true"{% else %}aria-selected="false"{% endif %}
+    >Follow-up only</a>
+  </div>
+
+  {% if empty %}
+  <div class="empty-panel" role="status">
+    <h2>No generated leads yet</h2>
+    <p>When MALIXIS qualifies a chat, it appears here with stage, channel, and the last message.</p>
+    <a class="button-link" href="{{ url_for('dashboard.channels_page') }}">Connect a channel</a>
+  </div>
+  {% else %}
+  <div class="table-wrap sheet-table-wrap">
+    <table class="data-table leads-table" id="leads-table">
+      <thead>
+        <tr>
+          <th scope="col">Updated</th>
+          <th scope="col">Name</th>
+          <th scope="col">Contact</th>
+          <th scope="col">Need</th>
+          <th scope="col">Channel</th>
+          <th scope="col">Stage</th>
+          <th scope="col" class="num">Messages</th>
+          <th scope="col">Last message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in leads %}
+        <tr>
+          <td><time datetime="{{ row.updated }}">{{ row.updated }}</time></td>
+          <td><strong>{{ row.name }}</strong></td>
+          <td class="mono-ish">{{ row.contact }}</td>
+          <td>{{ row.need }}</td>
+          <td><span class="channel-tag">{{ row.channel }}</span></td>
+          <td>
+            <span class="stage-badge stage-{{ row.stage|lower|replace(' ', '')|replace('-', '') }}">{{ row.stage }}</span>
+          </td>
+          <td class="num">{{ row.messages }}</td>
+          <td class="clamp-cell">{{ row.last_message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
