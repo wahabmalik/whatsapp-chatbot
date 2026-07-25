@@ -73,3 +73,10 @@
 	- Owner: Developer + QA
 	- Mitigation: Standardize done-story artifact sections (`Completion State`, `Dev Agent Record`) and enforce with CI test.
 	- Success criteria: `tests/test_story_artifact_completion_contract.py` passes and blocks regressions for done Epic 8 story files.
+
+## Deferred from: code review of next-cycle-12-5-messaging-cost-guardrails-v1.md (2026-07-25)
+
+- **replace_existing does not reset consent_state** — `enable_starter_pack` replace path resets draft/provider/sendability but leaves prior `consent_state=granted`, allowing submit without a fresh consent grant. Pre-existing starter-pack/12.4 concern.
+- **Concurrent activate race / no already-active idempotency guard** — `_transition_draft_state` has no row lock/version check before setting `draft_status=active`; duplicate activate commits/audit possible under race.
+- **starter_pack_enable ignores JSON replace_existing payload** — enable route reads `request.form` only, so JSON clients cannot set `replace_existing=true`.
+- **Unrelated secret-key/CRM/OAuth config churn in mega-commit** — `app/config.py` changes beyond India cost table are outside Story 12.5 cost-guardrail scope; track separately if needed.
