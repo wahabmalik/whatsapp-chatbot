@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 from flask import (
     Blueprint,
+    Response,
     current_app,
     has_request_context,
     jsonify,
@@ -805,6 +806,59 @@ def logs_page():
         setup_complete=_is_setup_complete(),
         entries=entries,
         status_filter=status_filter,
+    )
+
+
+@dashboard_blueprint.route("/leads", methods=["GET"])
+def leads_page():
+    """Built-in free CRM inbox for captured leads."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    from app.services.lead_generation import lead_gen_enabled, list_leads
+
+    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
+    qualified_only = qualified_raw in {"1", "true", "yes"}
+    leads = list_leads(current_app, limit=200, qualified_only=qualified_only)
+
+    return render_template(
+        "leads.html",
+        page_key="leads",
+        nav_mode="operator",
+        setup_complete=_is_setup_complete(),
+        leads=leads,
+        lead_gen_enabled=lead_gen_enabled(current_app),
+        qualified_filter="1" if qualified_only else "",
+    )
+
+
+@dashboard_blueprint.route("/leads/export.csv", methods=["GET"])
+def leads_export_csv():
+    """CSV export for free CRM / spreadsheet tools."""
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    import csv
+    from io import StringIO
+
+    from app.services.lead_generation import leads_to_csv_rows, list_leads
+
+    qualified_raw = str(request.args.get("qualified", "")).strip().lower()
+    qualified_only = qualified_raw in {"1", "true", "yes"}
+    leads = list_leads(current_app, limit=500, qualified_only=qualified_only)
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerows(leads_to_csv_rows(leads))
+
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=leads-export.csv",
+        },
     )
 
 

@@ -100,3 +100,28 @@ def test_process_inbound_disabled_returns_none(tmp_path: Path):
         user_id="user-1",
         channel="email",
     ) is None
+
+
+def test_leads_to_csv_rows_includes_header_and_values():
+    from app.services.lead_generation import leads_to_csv_rows
+
+    rows = leads_to_csv_rows(
+        [
+            {
+                "lead_id": "whatsapp:1",
+                "name": "Sam",
+                "email": "sam@example.com",
+                "phone": "",
+                "interest": "web app",
+                "channel": "whatsapp",
+                "qualified": True,
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "updated_at": "2026-01-01T00:00:00+00:00",
+                "last_message": "Need a web app",
+            }
+        ]
+    )
+    assert rows[0][0] == "lead_id"
+    assert rows[1][1] == "Sam"
+    assert rows[1][2] == "sam@example.com"
+    assert rows[1][6] == "yes"

@@ -237,6 +237,39 @@ def list_leads(app, *, limit: int = 50, qualified_only: bool = False) -> list[di
     return [deepcopy(row) for row in rows[:limit]]
 
 
+def leads_to_csv_rows(leads: list[dict[str, Any]]) -> list[list[str]]:
+    """Return CSV rows (header first) for free CRM export / spreadsheet import."""
+    header = [
+        "lead_id",
+        "name",
+        "email",
+        "phone",
+        "interest",
+        "channel",
+        "qualified",
+        "created_at",
+        "updated_at",
+        "last_message",
+    ]
+    rows = [header]
+    for lead in leads:
+        rows.append(
+            [
+                str(lead.get("lead_id") or ""),
+                str(lead.get("name") or ""),
+                str(lead.get("email") or ""),
+                str(lead.get("phone") or ""),
+                str(lead.get("interest") or ""),
+                str(lead.get("channel") or ""),
+                "yes" if lead.get("qualified") else "no",
+                str(lead.get("created_at") or ""),
+                str(lead.get("updated_at") or ""),
+                str(lead.get("last_message") or "").replace("\n", " ")[:300],
+            ]
+        )
+    return rows
+
+
 def export_lead_to_crm(app, lead: dict[str, Any]) -> bool:
     if not crm_export_enabled(app):
         return False

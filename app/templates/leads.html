@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Free CRM — Leads{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Free CRM — Leads</h2>
+    <span class="subtle-help">Built-in lead inbox. No paid CRM required.</span>
+  </header>
+
+  <p class="subtle-help">
+    Lead gen status:
+    <strong>{{ 'ON' if lead_gen_enabled else 'OFF' }}</strong>.
+    {% if not lead_gen_enabled %}
+      Set <code>LEAD_GEN_ENABLED=true</code> in your environment to capture leads from chats.
+    {% else %}
+      New prospects are captured from your active channel and listed here.
+    {% endif %}
+  </p>
+
+  <div class="action-row" style="margin-bottom: 1rem;">
+    <a class="button-link" href="{{ url_for('dashboard.leads_export_csv', qualified=qualified_filter) }}">Download CSV</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_page') }}">All leads</a>
+    <a class="button-link button-secondary" href="{{ url_for('dashboard.leads_page', qualified='1') }}">Qualified only</a>
+  </div>
+
+  <p class="subtle-help">{{ leads|length }} lead{% if leads|length != 1 %}s{% endif %} shown. Import the CSV into Google Sheets, HubSpot Free, or Zoho Free anytime.</p>
+
+  <div class="table-wrap">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Updated</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Interest</th>
+          <th>Channel</th>
+          <th>Status</th>
+          <th>Last message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if leads %}
+          {% for lead in leads %}
+          <tr>
+            <td>{{ lead.updated_at or '-' }}</td>
+            <td>{{ lead.name or '-' }}</td>
+            <td>{{ lead.email or '-' }}</td>
+            <td>{{ lead.phone or '-' }}</td>
+            <td>{{ lead.interest or '-' }}</td>
+            <td>{{ lead.channel or '-' }}</td>
+            <td>{{ 'Qualified' if lead.qualified else 'Partial' }}</td>
+            <td>{{ lead.last_message or '-' }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8">No leads yet. When someone asks about pricing/demo and shares email or phone, they appear here.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h3>Optional free external CRMs</h3>
+  </header>
+  <ul class="activity-list">
+    <li><span><strong>Built-in (this page)</strong> — free forever, already working</span></li>
+    <li><span><strong>HubSpot Free</strong> — export CSV or set <code>CRM_EXPORT_WEBHOOK_URL</code> to a HubSpot workflow webhook</span></li>
+    <li><span><strong>Zoho CRM Free</strong> — import the CSV download</span></li>
+    <li><span><strong>Google Sheets</strong> — import CSV, or use a free Zapier/Make webhook into Sheets</span></li>
+  </ul>
+</section>
+{% endblock %}
