@@ -1,7 +1,7 @@
 ---
 story_id: "12.5"
 story_key: "next-cycle-12-5-messaging-cost-guardrails-v1"
-status: "review"
+status: "done"
 epic: next-12
 story: "5"
 sprint_status_file: _bmad-output/implementation-artifacts/sprint-status-next-cycle.yaml
@@ -93,6 +93,12 @@ The approved market research shows that cost sensitivity in this ICP is driven b
 - [x] [Review][Defer] Concurrent activate race / no already-active idempotency guard [app/services/starter_pack.py:_transition_draft_state] — deferred, pre-existing
 - [x] [Review][Defer] starter_pack_enable ignores JSON replace_existing payload [app/onboarding/routes.py] — deferred, pre-existing API shape concern
 - [x] [Review][Defer] Unrelated secret-key/CRM/OAuth config churn in mega-commit [app/config.py] — deferred, outside Story 12.5 cost-guardrail scope
+- [x] [Review][Defer] Confirm box not cleared on non-cost activate failures [app/static/js/starter_pack_cost_guardrails.js:167-172] — deferred, UX polish; server still blocks activation; does not weaken threshold/fail-closed gates
+- [x] [Review][Defer] Below-threshold Activate is not hard-gated on a completed preview [app/static/js/starter_pack_cost_guardrails.js:239-242] — deferred, v1 presents estimate UI + auto-preview on input; server always estimates before commit
+- [x] [Review][Defer] Over-max/non-positive recipient parse discards integer from estimation_failed payload [app/services/starter_pack.py:610-613] — deferred, prior patch scoped persistence to category/country failures; fail-closed still holds
+- [x] [Review][Defer] In-flight preview can apply stale recipient estimate [app/static/js/starter_pack_cost_guardrails.js:111-128] — deferred, classic async race; Activate still sends current input to server
+- [x] [Review][Defer] Operator UI test is script/string presence, not DOM interaction [tests/test_story_12_5_messaging_cost_guardrails_v1.py:424-449] — deferred, API/contract coverage is strong; browser interaction test can land later
+- [x] [Review][Defer] postForm assumes JSON body on every response [app/static/js/starter_pack_cost_guardrails.js:50-54] — deferred, pre-existing fetch pattern; CSRF/HTML errors already fall to catch path
 
 ## Risks, Assumptions, and Mitigations
 
@@ -182,29 +188,31 @@ Mitigation: confirm the boundary in implementation against `app/views_dashboard.
 
 ## Completion State
 
-- Story status: `review` (2026-07-25 review-patch remediation complete; ready for Quinn CR re-run)
-- Acceptance criteria: AC 12.5.1–12.5.7 evidenced for v1 starter-pack activate boundary (dashboard + onboarding confirmation UX; AuditLog + starter-pack telemetry; quota/retry untouched).
-- Deferred Review findings left unchanged.
+- Story status: `done`
+- Completed on: 2026-07-25 (Quinn CR re-run approved after review-patch remediation)
+- Acceptance criteria: AC 12.5.1–12.5.7 PASS for v1 starter-pack activate boundary (dashboard + onboarding confirmation UX; AuditLog + starter-pack telemetry; quota/retry untouched).
+- Prior Decision locks preserved; deferred Review findings left intentionally untouched except new residual deferrals from re-run.
 
 ## Validation Evidence
 
-- `python3 -m pytest tests/test_story_12_4_india_d2c_starter_template_pack.py tests/test_story_12_5_messaging_cost_guardrails_v1.py` -> 19 passed
-- `DATABASE_URL='sqlite:///:memory:' python3 -m pytest tests/test_retry_escalation_contract.py` -> 23 passed
-- AC 12.5.1: operator-visible India-only estimate on dashboard/onboarding starter-pack activate cards (`starter_pack_cost_guardrails.js` + UI test)
-- AC 12.5.2: estimate recalculates on recipient/category change (preview API + UI binding); preview allowed before sendability-ready
-- AC 12.5.3: threshold confirmation at `>=` warning threshold with explicit second confirmation UX/API
-- AC 12.5.4: fail-closed for missing/non-integer/non-finite/over-max recipient, unknown category, non-IN country
-- AC 12.5.5: AuditLog + starter-pack telemetry persist category, recipient_count (including estimation_failed when parseable), spend, threshold, confirmation, correlation_id
-- AC 12.5.6: India-only price table scope; category allowlist; UI copy labels India-only estimate
-- AC 12.5.7: retry/escalation contract suite remains green (23 passed); quota path untouched
+- `python3 -m pytest tests/test_story_12_4_india_d2c_starter_template_pack.py tests/test_story_12_5_messaging_cost_guardrails_v1.py` -> 19 passed (re-run 2026-07-25)
+- `DATABASE_URL='sqlite:///:memory:' python3 -m pytest tests/test_retry_escalation_contract.py` -> 23 passed (re-run 2026-07-25)
+- AC 12.5.1 PASS: operator-visible India-only estimate on dashboard/onboarding starter-pack activate cards (`starter_pack_cost_guardrails.js` + templates)
+- AC 12.5.2 PASS: estimate recalculates on recipient/category change (preview API + UI binding); preview allowed before sendability-ready
+- AC 12.5.3 PASS: threshold confirmation at `>=` warning threshold with explicit second confirmation UX/API
+- AC 12.5.4 PASS: fail-closed for missing/non-integer/non-finite/over-max recipient, unknown category, non-IN country
+- AC 12.5.5 PASS: AuditLog + starter-pack telemetry persist category, recipient_count (including estimation_failed when parseable), spend, threshold, confirmation, correlation_id
+- AC 12.5.6 PASS: India-only price table scope; category allowlist; UI copy labels India-only estimate
+- AC 12.5.7 PASS: retry/escalation contract suite remains green (23 passed); quota path untouched
 
 ## Code Review Record (2026-07-25)
 
 - Reviewer: Quinn (bmad-code-review / agent-qa CR)
 - Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor — all completed
-- Outcome: **Issues remain** (initial review) — story returned to `in-progress`; sprint status synced to `in-progress`
-- Follow-up: 2026-07-25 remediation addressed all unchecked `[Review][Patch]` items and both `[Review][Decision]` defaults; status returned to `review` for Quinn CR re-run
+- Outcome (initial): **Issues remain** — story returned to `in-progress`
+- Outcome (re-run after remediation): **Approved** — all prior `[Review][Patch]` / `[Review][Decision]` items verified in code + tests; ACs 12.5.1–12.5.7 PASS; residual findings deferred; status `done`
 - Prior AC snapshot at initial review: 12.5.4 PASS, 12.5.6 PASS, 12.5.7 PASS; 12.5.2/12.5.3/12.5.5 PARTIAL; 12.5.1 FAIL
+- Re-run AC snapshot: 12.5.1–12.5.7 PASS
 
 ## Dev Agent Record
 
@@ -253,3 +261,4 @@ GPT-5.4 / Composer
 | 2026-05-15 | Implemented Story 12.5 messaging cost guardrails for starter-pack activation with India-only estimation, threshold confirmation, fail-closed handling, audit or telemetry tagging, and focused tests. |
 | 2026-07-25 | Code review (Quinn / bmad-code-review): not approved. Added Review Findings, reconciled status `done`→`in-progress`, synced sprint tracker. |
 | 2026-07-25 | Addressed code review findings - 12 patch/decision items resolved (Date: 2026-07-25). Operator UX + estimator fail-closed hardening + expanded tests; status returned to `review`. |
+| 2026-07-25 | Code review re-run (Quinn / bmad-code-review): approved. Prior patches verified; ACs 12.5.1–12.5.7 PASS; residual polish deferred; status `review`→`done`. |

@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of next-cycle-12-5-messaging-cost-guardrails-v1.md (2026-07-25)
+
+- **Confirm box not cleared on non-cost activate failures** — `starter_pack_cost_guardrails.js` leaves the second-confirm box visible when activate fails for consent/approval/sendability after a threshold preview. Server still blocks; UX polish only.
+- **Below-threshold Activate not hard-gated on completed preview** — Activate can POST before debounce preview finishes; server still estimates before commit and auto-preview covers the typical path.
+- **Over-max/non-positive recipient parse omits integer from estimation_failed payload** — `_parse_recipient_count` returns `None` on range failure after parsing; prior remediation scoped persistence to category/country failures.
+- **In-flight preview can apply stale recipient estimate** — no sequence/abort token when recipient input changes mid-request; Activate still posts current input.
+- **Operator UI test is script/string presence, not DOM interaction** — asserts JS/HTML markers rather than recipient→preview→confirm→activate browser flow.
+- **postForm assumes JSON body on every response** — non-JSON CSRF/HTML/5xx responses lose structured `blocked_reason` and fall into generic catch.
+
 ## Deferred from: code review of next-cycle-9-1-governance-baseline-upgrade (2026-05-08)
 
 - **`glob("test_*.py")` not recursive** — `validate_contract_test_categories.py` only discovers test files one level deep. Any future test files placed under `tests/subpackages/` would be silently missed. Widen to `rglob` when subdirectories are introduced.
