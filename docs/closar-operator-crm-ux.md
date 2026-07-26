@@ -223,7 +223,7 @@ flowchart LR
 | Setup lead-gen block | Read-only env orientation |
 | Setup webhook checklist | Live |
 | Overview bot status | Driven by runtime health + `OUTBOUND_CHANNEL` |
-| Billing confirmation copy | Paddle |
+| Billing confirmation copy | Stripe |
 
 ---
 

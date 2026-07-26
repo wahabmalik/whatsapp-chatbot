@@ -121,19 +121,12 @@ class OperatorCrmSheetTests(unittest.TestCase):
         self.assertNotIn("Save lead gen settings", body)
         self.assertNotIn("data-leadgen-form", body)
 
-    def test_billing_processing_mentions_paddle(self):
-        response = self.client.get("/billing/processing")
-        # Route may require auth; fall back to template string contract via open file.
-        if response.status_code >= 400:
-            from pathlib import Path
+    def test_billing_processing_mentions_stripe(self):
+        from pathlib import Path
 
-            html = Path("app/templates/billing_processing.html").read_text(encoding="utf-8")
-            self.assertIn("Paddle", html)
-            self.assertNotIn("Stripe", html)
-        else:
-            body = response.get_data(as_text=True)
-            self.assertIn("Paddle", body)
-            self.assertNotIn("Stripe", body)
+        html = Path("app/templates/billing_processing.html").read_text(encoding="utf-8")
+        self.assertIn("Stripe", html)
+        self.assertNotIn("Paddle", html)
 
 
 if __name__ == "__main__":
