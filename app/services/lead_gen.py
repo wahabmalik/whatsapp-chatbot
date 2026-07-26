@@ -30,19 +30,33 @@ from app.scrapers.stealth import random_delay
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_PLATFORMS: dict[str, Callable[[str], Optional[dict]]] = {
-    "instagram": scrape_instagram,
-    "tiktok": scrape_tiktok,
-    "linkedin": scrape_linkedin,
-    "github": scrape_github,
-    "youtube": scrape_youtube,
-    "twitch": scrape_twitch,
-    "linktree": scrape_linkbio,
-    "pinterest": scrape_pinterest,
-}
+SUPPORTED_PLATFORM_KEYS = (
+    "instagram",
+    "tiktok",
+    "linkedin",
+    "github",
+    "youtube",
+    "twitch",
+    "linktree",
+    "pinterest",
+)
 
 MAX_USERNAMES_PER_REQUEST = 10
 DEFAULT_DELAY_RANGE = (0.4, 1.0)
+
+
+def _platform_scrapers() -> dict[str, Callable[[str], Optional[dict]]]:
+    # Resolve at call time so tests can patch scraper callables on this module.
+    return {
+        "instagram": scrape_instagram,
+        "tiktok": scrape_tiktok,
+        "linkedin": scrape_linkedin,
+        "github": scrape_github,
+        "youtube": scrape_youtube,
+        "twitch": scrape_twitch,
+        "linktree": scrape_linkbio,
+        "pinterest": scrape_pinterest,
+    }
 
 
 class LeadGenError(Exception):
@@ -233,7 +247,7 @@ def scrape_and_store(
     _sync_scout_env(app)
 
     platform_key = str(platform or "").strip().lower()
-    scraper = SUPPORTED_PLATFORMS.get(platform_key)
+    scraper = _platform_scrapers().get(platform_key)
     if scraper is None:
         raise UnsupportedPlatformError(platform_key)
 

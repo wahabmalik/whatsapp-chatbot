@@ -4,6 +4,21 @@ Reference analysis of [kiryano/Scout](https://github.com/kiryano/Scout) (v1.3.1)
 
 Source inspected: `https://github.com/kiryano/Scout` on `main`.
 
+## Integration in this app
+
+Scout scrapers are vendored under `app/scrapers/` (MIT attribution in `app/scrapers/NOTICE`) and wired for operator lead generation:
+
+| Piece | Path |
+|-------|------|
+| Scrapers + enrichment | `app/scrapers/` |
+| Service | `app/services/lead_gen.py` |
+| Routes / API | `app/lead_gen/routes.py` |
+| UI | `app/templates/leads.html` (`/leads`) |
+| Model | `Lead` in `app/models/__init__.py` |
+| Migration | `migrations/versions/002_leads_table.py` |
+
+Operator flow: open **Leads** → pick platform → enter usernames → scrape (optional enrich) → filter / export CSV. Config knobs live in `example.env` (`LINKEDIN_COOKIE`, `HUNTER_API_KEY`, `SCOUT_*`).
+
 ## Overview
 
 Scout is a flat CLI monorepo:
