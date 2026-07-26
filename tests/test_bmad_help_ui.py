@@ -38,14 +38,19 @@ class BmadHelpUiTests(unittest.TestCase):
         self.assertIn("BH", codes)
         self.assertIn("CP", codes)
 
-    def test_bmad_help_page_renders(self):
-        response = self.client.get("/bmad-help")
+    def test_bmad_help_page_renders_without_prior_operator_session(self):
+        # Fresh client: no dashboard_role cookie — page should still render (soft enter).
+        fresh = self.app.test_client()
+        response = fresh.get("/bmad-help")
         self.assertEqual(response.status_code, 200)
         body = response.get_data(as_text=True)
         self.assertIn("BMAD Help", body)
         self.assertIn("bmad-help", body)
         self.assertIn("Recommended next", body)
-        self.assertIn("/bmad-help", body)
+        self.assertIn("data-bmad-dialog", body)
+        self.assertIn("Tap for details", body)
+        self.assertIn("Open BH details", body)
+        self.assertNotIn("Redirecting", body)
 
     def test_agents_page_links_to_bmad_help(self):
         response = self.client.get("/agents")

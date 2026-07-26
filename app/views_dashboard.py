@@ -827,9 +827,9 @@ def agents_page():
 
 @dashboard_blueprint.route("/bmad-help", methods=["GET"])
 def bmad_help_page():
-    guarded = _require_operator_access()
-    if guarded is not None:
-        return guarded
+    # Soft-enter operator mode so phone deep links do not bounce through redirects.
+    if _current_dashboard_role() != ROLE_OPERATOR:
+        _set_dashboard_role(ROLE_OPERATOR)
 
     catalog = load_bmad_help_catalog()
     module = (request.args.get("module") or "all").strip()

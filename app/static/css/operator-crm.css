@@ -713,9 +713,46 @@
   font-size: 0.78rem;
 }
 
+.bmad-help-panel {
+  padding-bottom: 96px;
+}
+
 .bmad-help-panel h1,
-.bmad-help-panel h2 {
+.bmad-help-panel h2,
+.bmad-section-title {
   font-family: var(--display);
+  color: #fafafa;
+}
+
+.bmad-help-hero {
+  margin: 8px 0 20px;
+  padding: 20px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(17, 217, 202, 0.35);
+  background:
+    radial-gradient(circle at 90% 10%, rgba(0, 229, 199, 0.18), transparent 42%),
+    rgba(7, 20, 35, 0.92);
+}
+
+.bmad-help-hero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  line-height: 1.05;
+}
+
+.bmad-help-lead {
+  margin: 0 0 14px;
+  color: var(--muted);
+  max-width: 42ch;
+}
+
+.bmad-help-lead code {
+  color: #ffe2b0;
+}
+
+.bmad-section-title {
+  margin: 22px 0 12px;
+  font-size: 1.15rem;
 }
 
 .bmad-help-filters {
@@ -743,16 +780,33 @@
 
 .bmad-help-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin: 12px 0 8px;
 }
 
-.bmad-help-card {
-  border: 1px solid rgba(17, 217, 202, 0.25);
+.bmad-help-card,
+.bmad-help-row {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(17, 217, 202, 0.28);
   border-radius: 16px;
   padding: 14px;
-  background: rgba(3, 14, 24, 0.76);
+  background: rgba(3, 14, 24, 0.92);
+  color: #e8eef3;
+  cursor: pointer;
+  font: inherit;
+}
+
+.bmad-help-card:hover,
+.bmad-help-row:hover,
+.bmad-help-card:focus-visible,
+.bmad-help-row:focus-visible {
+  border-color: rgba(0, 229, 199, 0.7);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 229, 199, 0.2);
 }
 
 .bmad-help-card.is-required {
@@ -764,20 +818,84 @@
 }
 
 .bmad-help-card .menu-code,
-.bmad-help-table .menu-code {
+.bmad-help-row .menu-code {
   color: #b7fff8;
   font-weight: 700;
-  margin-right: 6px;
 }
 
-.bmad-help-card .invoke-line {
-  margin: 8px 0;
-}
-
-.bmad-help-card code,
-.bmad-help-table code {
+.bmad-help-card .tap-hint,
+.bmad-help-row .tap-hint {
   color: #ffe2b0;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.bmad-help-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bmad-help-row {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.bmad-help-row-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bmad-help-row-copy small {
+  color: var(--muted);
+}
+
+.bmad-help-dialog {
+  width: min(92vw, 420px);
+  border: 1px solid rgba(17, 217, 202, 0.35);
+  border-radius: 20px;
+  padding: 0;
+  background: #071322;
+  color: #e8eef3;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.bmad-help-dialog::backdrop {
+  background: rgba(2, 8, 16, 0.72);
+}
+
+.bmad-dialog-inner {
+  margin: 0;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.bmad-dialog-inner h2 {
+  margin: 0;
+  font-family: var(--display);
+}
+
+.bmad-dialog-invoke label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.bmad-dialog-invoke .copy-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.bmad-dialog-invoke input {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(157, 180, 195, 0.35);
+  background: rgba(3, 14, 24, 0.85);
+  color: #ffe2b0;
+  padding: 0 12px;
 }
 
 .top-nav a.nav-bmad.active,
