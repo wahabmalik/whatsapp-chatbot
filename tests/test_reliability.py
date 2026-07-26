@@ -1163,6 +1163,8 @@ class OperatorMobileNavTests(unittest.TestCase):
         self.assertIn("/operator", body)
         self.assertIn("/leads", body)
         self.assertIn("/sales", body)
+        self.assertIn("/agents", body)
+        self.assertIn("BMAD", body)
         self.assertIn("/channels", body)
         self.assertIn("/setup", body)
 

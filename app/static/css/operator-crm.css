@@ -709,7 +709,29 @@
 }
 
 .bottom-nav-operator {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.top-nav a.nav-bmad.active,
+.bottom-nav a.nav-bmad.active {
+  color: #b7fff8;
+}
+
+.bmad-agents-panel h1 {
+  font-family: var(--display);
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.bmad-agents-panel .agent-code {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.agent-card.bmad-core {
+  border-color: rgba(17, 217, 202, 0.28);
 }
 
 @media (max-width: 1100px) {

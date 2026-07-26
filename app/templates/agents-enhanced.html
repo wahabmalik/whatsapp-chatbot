@@ -1,30 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Agents{% endblock %}
+{% block title %}BMAD Agents{% endblock %}
+{% block meta_description %}Select the active BMAD agent for Closar message routing and operator workflows.{% endblock %}
 {% block content %}
-<section class="panel">
-  <h2>Agent selector</h2>
-  <p>Pick the active runtime agent. Changes apply to the next inbound message.</p>
+<section class="panel panel-enter bmad-agents-panel" aria-labelledby="bmad-agents-title">
+  <header class="panel-head">
+    <div>
+      <p class="sheet-kicker">BMAD runtime</p>
+      <h1 id="bmad-agents-title">BMAD Agents</h1>
+    </div>
+    <span class="subtle-help">{{ agents|length }} available</span>
+  </header>
+  <p class="subtle-help">Pick the active agent for the next inbound message. Loaded from `_bmad` and `skills/agent-*`.</p>
 
   {% if agents %}
   <form id="agent-form" class="agent-grid" method="post" action="{{ url_for('dashboard.set_agent_selection') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% for agent in agents %}
-    <label class="agent-card {% if agent.code == selected_agent_code %}active{% endif %}">
+    <label class="agent-card {% if agent.code == selected_agent_code %}active{% endif %}{% if agent.code.startswith('bmad-') %} bmad-core{% endif %}">
       <input type="radio" name="agent_code" value="{{ agent.code }}" {% if agent.code == selected_agent_code %}checked{% endif %}>
       <span class="agent-name">{{ agent.name }}</span>
       {% if agent.title %}<span class="agent-title">{{ agent.title }}</span>{% endif %}
+      <span class="agent-code mono-ish">{{ agent.code }}</span>
       {% if agent.description %}<span class="agent-description">{{ agent.description }}</span>{% endif %}
       {% if agent.code == selected_agent_code %}<span class="badge">Active</span>{% endif %}
     </label>
     {% endfor %}
     <div class="form-actions">
-      <button id="save-agent" type="submit" {% if agents|length <= 1 %}disabled{% endif %}>Save Selection</button>
+      <button id="save-agent" class="button-link" type="submit" {% if agents|length <= 1 %}disabled{% endif %}>Save BMAD selection</button>
     </div>
   </form>
   {% else %}
     <div class="empty-state-box">
-      <p>No BMAD agents are available yet. Finish setup, then add or enable an agent skill to start routing live messages.</p>
-      <a href="{{ url_for('dashboard.setup') }}">Open setup checklist</a>
-      <a href="docs/botpress_connection.md">Read integration docs</a>
+      <p>No BMAD agents are available yet. Confirm `_bmad/_config/agent-manifest.csv` or `skills/agent-*/customize.toml` exist, then refresh.</p>
+      <a class="button-link" href="{{ url_for('dashboard.setup') }}">Open setup checklist</a>
     </div>
   {% endif %}
 </section>
