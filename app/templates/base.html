@@ -37,7 +37,8 @@
         <a href="{{ url_for('dashboard.leads_sheet') }}" class="nav-leads {% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
         <a href="{{ url_for('dashboard.sales_sheet') }}" class="nav-sales {% if page_key == 'sales' %}active{% endif %}" {% if page_key == 'sales' %}aria-current="page"{% endif %}>Sales</a>
         <a href="{{ url_for('dashboard.channels_page') }}" class="{% if page_key == 'channels' %}active{% endif %}" {% if page_key == 'channels' %}aria-current="page"{% endif %}>Channels</a>
-        <a href="{{ url_for('dashboard.agents_page') }}" class="nav-bmad {% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>BMAD</a>
+        <a href="{{ url_for('dashboard.agents_page') }}" class="nav-bmad {% if page_key in ['agents', 'bmad-help'] %}active{% endif %}" {% if page_key in ['agents', 'bmad-help'] %}aria-current="page"{% endif %}>BMAD</a>
+        <a href="{{ url_for('dashboard.bmad_help_page') }}" class="{% if page_key == 'bmad-help' %}active{% endif %}" {% if page_key == 'bmad-help' %}aria-current="page"{% endif %}>Help</a>
         <a href="{{ url_for('dashboard.setup') }}" class="{% if page_key == 'setup' %}active{% endif %}" {% if page_key == 'setup' %}aria-current="page"{% endif %}>Setup</a>
         <a href="{{ url_for('dashboard.operator_leave', next=url_for('dashboard.dashboard_home')) }}">End User</a>
         {% endif %}
@@ -79,8 +80,8 @@
       <a href="{{ url_for('dashboard.operator_dashboard') }}" class="{% if page_key == 'dashboard' %}active{% endif %}" {% if page_key == 'dashboard' %}aria-current="page"{% endif %}>Overview</a>
       <a href="{{ url_for('dashboard.leads_sheet') }}" class="nav-leads {% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
       <a href="{{ url_for('dashboard.sales_sheet') }}" class="nav-sales {% if page_key == 'sales' %}active{% endif %}" {% if page_key == 'sales' %}aria-current="page"{% endif %}>Sales</a>
-      <a href="{{ url_for('dashboard.agents_page') }}" class="nav-bmad {% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>BMAD</a>
-      <a href="{{ url_for('dashboard.channels_page') }}" class="{% if page_key == 'channels' %}active{% endif %}" {% if page_key == 'channels' %}aria-current="page"{% endif %}>Channels</a>
+      <a href="{{ url_for('dashboard.agents_page') }}" class="nav-bmad {% if page_key in ['agents', 'bmad-help'] %}active{% endif %}" {% if page_key in ['agents', 'bmad-help'] %}aria-current="page"{% endif %}>BMAD</a>
+      <a href="{{ url_for('dashboard.bmad_help_page') }}" class="{% if page_key == 'bmad-help' %}active{% endif %}" {% if page_key == 'bmad-help' %}aria-current="page"{% endif %}>Help</a>
       <a href="{{ url_for('dashboard.setup') }}" class="{% if page_key == 'setup' %}active{% endif %}" {% if page_key == 'setup' %}aria-current="page"{% endif %}>Setup</a>
     </nav>
     {% endif %}

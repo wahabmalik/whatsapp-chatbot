@@ -1165,7 +1165,7 @@ class OperatorMobileNavTests(unittest.TestCase):
         self.assertIn("/sales", body)
         self.assertIn("/agents", body)
         self.assertIn("BMAD", body)
-        self.assertIn("/channels", body)
+        self.assertIn("/bmad-help", body)
         self.assertIn("/setup", body)
 
     def test_operator_dashboard_has_bottom_nav(self):

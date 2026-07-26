@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}BMAD Help{% endblock %}
+{% block meta_description %}BMAD Help catalog — menu codes, next recommended skills, and how to run bmad-help in Cursor.{% endblock %}
+{% block content %}
+<section class="panel panel-enter bmad-help-panel" aria-labelledby="bmad-help-title">
+  <header class="panel-head">
+    <div>
+      <p class="sheet-kicker">Core · menu code BH</p>
+      <h1 id="bmad-help-title">BMAD Help</h1>
+    </div>
+    <a class="ghost-link" href="{{ url_for('dashboard.agents_page') }}">Back to BMAD Agents</a>
+  </header>
+
+  <aside class="demo-banner" role="note">
+    <strong>How to run skills</strong>
+    <span>{{ catalog.how_to.cursor }} On phone, use this page to pick the next step, then run it in Cursor.</span>
+  </aside>
+
+  {% if catalog.recommended %}
+  <section class="bmad-recommend" aria-label="Recommended next steps">
+    <h2>Recommended next</h2>
+    <div class="bmad-help-grid">
+      {% for row in catalog.recommended %}
+      <article class="bmad-help-card {% if row.required %}is-required{% endif %} {% if row.completed %}is-done{% endif %}">
+        <header>
+          <span class="menu-code">[{{ row.menu_code }}]</span>
+          <strong>{{ row.display_name }}</strong>
+        </header>
+        <p class="subtle-help">{{ row.description or 'Open this skill in Cursor for guided next steps.' }}</p>
+        <p class="invoke-line"><code>{{ row.invoke }}</code></p>
+        <p class="subtle-help">{{ row.module }} · {{ row.phase }}{% if row.required %} · required{% endif %}{% if row.completed %} · artifacts found{% endif %}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <form class="bmad-help-filters" method="get" action="{{ url_for('dashboard.bmad_help_page') }}">
+    <label>
+      <span class="visually-hidden">Module</span>
+      <select name="module" aria-label="Filter by module">
+        <option value="all" {% if filter_module == 'all' %}selected{% endif %}>All modules</option>
+        {% for module in catalog.modules %}
+        <option value="{{ module }}" {% if filter_module == module %}selected{% endif %}>{{ module }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="visually-hidden">Phase</span>
+      <select name="phase" aria-label="Filter by phase">
+        <option value="all" {% if filter_phase == 'all' %}selected{% endif %}>All phases</option>
+        {% for phase in phases %}
+        <option value="{{ phase }}" {% if filter_phase == phase %}selected{% endif %}>{{ phase }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="grow">
+      <span class="visually-hidden">Search</span>
+      <input type="search" name="q" value="{{ filter_q }}" placeholder="Search BH, Create PRD, Quinn…" autocomplete="off">
+    </label>
+    <button class="button-link" type="submit">Filter</button>
+  </form>
+
+  {% if entries %}
+  <div class="table-wrap sheet-table-wrap">
+    <table class="data-table bmad-help-table" id="bmad-help-table">
+      <thead>
+        <tr>
+          <th scope="col">Code</th>
+          <th scope="col">Name</th>
+          <th scope="col">Skill</th>
+          <th scope="col">Module</th>
+          <th scope="col">Phase</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in entries %}
+        <tr>
+          <td><span class="menu-code">[{{ row.menu_code }}]</span></td>
+          <td>
+            <strong>{{ row.display_name }}</strong>
+            {% if row.description %}<div class="subtle-help clamp-cell">{{ row.description }}</div>{% endif %}
+          </td>
+          <td class="mono-ish"><code>{{ row.invoke }}</code></td>
+          <td>{{ row.module }}</td>
+          <td>{{ row.phase }}</td>
+          <td>
+            {% if row.completed %}
+            <span class="stage-badge stage-chat">Artifacts found</span>
+            {% elif row.required %}
+            <span class="stage-badge stage-followup">Required next</span>
+            {% else %}
+            <span class="channel-tag">Optional</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="subtle-help">{{ entries|length }} skills shown · catalog {{ catalog.catalog_path }}</p>
+  {% else %}
+  <div class="empty-panel" role="status">
+    <h2>No matching BMAD Help entries</h2>
+    <p>Try clearing filters, or confirm <code>_bmad/_config/bmad-help.csv</code> is installed.</p>
+  </div>
+  {% endif %}
+
+  {% if catalog.module_docs %}
+  <section class="panel" aria-label="Module docs">
+    <header class="panel-head"><h2>Module docs</h2></header>
+    <ul class="activity-list">
+      {% for doc in catalog.module_docs %}
+      <li>
+        <span>{{ doc.module }}</span>
+        <span></span>
+        <span><a class="ghost-link" href="{{ doc.docs_url }}" target="_blank" rel="noopener noreferrer">Open docs</a></span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</section>
+{% endblock %}

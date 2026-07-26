@@ -8,9 +8,12 @@
       <p class="sheet-kicker">BMAD runtime</p>
       <h1 id="bmad-agents-title">BMAD Agents</h1>
     </div>
-    <span class="subtle-help">{{ agents|length }} available</span>
+    <div class="sheet-actions">
+      <a class="button-link" href="{{ url_for('dashboard.bmad_help_page') }}">Open BMAD Help</a>
+      <span class="subtle-help">{{ agents|length }} available</span>
+    </div>
   </header>
-  <p class="subtle-help">Pick the active agent for the next inbound message. Loaded from `_bmad` and `skills/agent-*`.</p>
+  <p class="subtle-help">Pick the active agent for the next inbound message. For workflow menu codes and “what next”, use <a href="{{ url_for('dashboard.bmad_help_page') }}">BMAD Help</a> (Cursor skill <code>bmad-help</code> / code <strong>BH</strong>).</p>
 
   {% if agents %}
   <form id="agent-form" class="agent-grid" method="post" action="{{ url_for('dashboard.set_agent_selection') }}">

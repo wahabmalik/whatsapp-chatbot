@@ -82,6 +82,7 @@ from app.services.reconnection_assistant import (
     sync_reconnection_notifications,
 )
 from app.models import ConversationMessage, ConversationSummary
+from app.services.bmad_help import filter_catalog, load_bmad_help_catalog
 from app.services.crm_export import crm_export_enabled
 from app.services.operator_crm import (
     build_channel_status,
@@ -821,6 +822,32 @@ def agents_page():
         setup_complete=_is_setup_complete(),
         agents=agents,
         selected_agent_code=selected_agent_code,
+    )
+
+
+@dashboard_blueprint.route("/bmad-help", methods=["GET"])
+def bmad_help_page():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    catalog = load_bmad_help_catalog()
+    module = (request.args.get("module") or "all").strip()
+    phase = (request.args.get("phase") or "all").strip()
+    query = (request.args.get("q") or "").strip()
+    entries = filter_catalog(catalog, module=module, phase=phase, q=query)
+    phases = sorted({row["phase"] for row in catalog.get("entries") or []})
+
+    return render_template(
+        "bmad_help.html",
+        page_key="bmad-help",
+        nav_mode="operator",
+        catalog=catalog,
+        entries=entries,
+        phases=phases,
+        filter_module=module,
+        filter_phase=phase,
+        filter_q=query,
     )
 
 

@@ -710,6 +710,74 @@
 
 .bottom-nav-operator {
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  font-size: 0.78rem;
+}
+
+.bmad-help-panel h1,
+.bmad-help-panel h2 {
+  font-family: var(--display);
+}
+
+.bmad-help-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 20px;
+  align-items: center;
+}
+
+.bmad-help-filters .grow {
+  flex: 1 1 180px;
+}
+
+.bmad-help-filters select,
+.bmad-help-filters input[type="search"] {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(157, 180, 195, 0.35);
+  background: rgba(3, 14, 24, 0.85);
+  color: #e8eef3;
+  padding: 0 12px;
+}
+
+.bmad-help-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 8px;
+}
+
+.bmad-help-card {
+  border: 1px solid rgba(17, 217, 202, 0.25);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(3, 14, 24, 0.76);
+}
+
+.bmad-help-card.is-required {
+  border-color: rgba(232, 184, 109, 0.45);
+}
+
+.bmad-help-card.is-done {
+  border-color: rgba(75, 226, 160, 0.4);
+}
+
+.bmad-help-card .menu-code,
+.bmad-help-table .menu-code {
+  color: #b7fff8;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.bmad-help-card .invoke-line {
+  margin: 8px 0;
+}
+
+.bmad-help-card code,
+.bmad-help-table code {
+  color: #ffe2b0;
+  font-size: 0.85rem;
 }
 
 .top-nav a.nav-bmad.active,
