@@ -25,6 +25,7 @@ _REQUIRED_TABLES = (
     "tenant_notifications",
     "conversation_summaries",
     "conversation_messages",
+    "leads",
 )
 
 

@@ -15,6 +15,7 @@ from .views import webhook_blueprint
 from .views_auth import auth_blueprint
 from .views_dashboard import dashboard_api, dashboard_blueprint
 from .onboarding import onboarding_blueprint
+from .lead_gen import lead_gen_blueprint
 import logging
 from flask import g, request
 
@@ -109,6 +110,7 @@ def create_app(config_name=None):
     app.register_blueprint(dashboard_blueprint)
     app.register_blueprint(dashboard_api)
     app.register_blueprint(onboarding_blueprint)
+    app.register_blueprint(lead_gen_blueprint)
 
     app.cli.add_command(db_cli)
 

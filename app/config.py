@@ -400,6 +400,14 @@ def load_configurations(app):
     app.config["CRM_EXPORT_TIMEOUT_SECONDS"] = _as_float(
         "CRM_EXPORT_TIMEOUT_SECONDS", default=5.0, minimum=0.1
     )
+    # Scout lead generation (https://github.com/kiryano/Scout)
+    app.config["LINKEDIN_COOKIE"] = os.getenv("LINKEDIN_COOKIE")
+    app.config["HUNTER_API_KEY"] = os.getenv("HUNTER_API_KEY")
+    app.config["SCOUT_PROXY"] = os.getenv("SCOUT_PROXY")
+    app.config["SCOUT_PROXY_FILE"] = os.getenv("SCOUT_PROXY_FILE")
+    app.config["SCOUT_FREE_PROXY"] = _as_bool("SCOUT_FREE_PROXY", default=False)
+    app.config["SCOUT_DELAY_MIN"] = _as_float("SCOUT_DELAY_MIN", default=0.4, minimum=0.0)
+    app.config["SCOUT_DELAY_MAX"] = _as_float("SCOUT_DELAY_MAX", default=1.0, minimum=0.0)
     app.config["STATE_STORE_BACKEND"] = os.getenv("STATE_STORE_BACKEND", "memory")
     sqlite_path = os.getenv("STATE_STORE_SQLITE_PATH", "data/runtime_state.db")
     app.config["STATE_STORE_SQLITE_PATH"] = sqlite_path
