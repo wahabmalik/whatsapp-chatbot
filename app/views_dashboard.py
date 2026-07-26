@@ -82,6 +82,14 @@ from app.services.reconnection_assistant import (
     sync_reconnection_notifications,
 )
 from app.models import ConversationMessage, ConversationSummary
+from app.services.bmad_help import filter_catalog, load_bmad_help_catalog
+from app.services.crm_export import crm_export_enabled
+from app.services.operator_crm import (
+    build_channel_status,
+    build_operator_crm_context,
+    demo_leads,
+    demo_sales,
+)
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
 dashboard_api = Blueprint("dashboard_api", __name__)
@@ -114,9 +122,20 @@ def _validate_csrf_token() -> bool:
     return hmac.compare_digest(session_token, submitted)
 
 
+def _onboarding_url() -> str:
+    """Prefer WhatsApp onboarding; fall back to Setup when blueprint is absent."""
+    try:
+        return url_for("onboarding.onboarding_page")
+    except BuildError:
+        return url_for("dashboard.setup")
+
+
 @dashboard_blueprint.app_context_processor
 def _inject_csrf_token():
-    context: dict[str, Any] = {"csrf_token": _get_csrf_token()}
+    context: dict[str, Any] = {
+        "csrf_token": _get_csrf_token(),
+        "onboarding_url": _onboarding_url(),
+    }
 
     identity = current_identity(session)
     context["auth_logged_in"] = identity is not None
@@ -600,6 +619,7 @@ def operator_dashboard():
             )
         notifications = list_tenant_notifications(db, identity.tenant_id)
 
+    crm_context = build_operator_crm_context(current_app)
     return render_template(
         "dashboard.html",
         page_key="dashboard",
@@ -607,8 +627,85 @@ def operator_dashboard():
         setup_complete=True,
         escalation=_build_operator_escalation_context(),
         notifications=notifications,
+        crm=crm_context["crm"],
+        is_demo=crm_context["is_demo"],
         **starter_pack_context,
         **context,
+    )
+
+
+@dashboard_blueprint.route("/leads", methods=["GET"])
+def leads_sheet():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    filter_key = (request.args.get("filter") or "all").strip().lower()
+    if filter_key not in {"all", "follow-up"}:
+        filter_key = "all"
+
+    leads = demo_leads()
+    if filter_key == "follow-up":
+        leads = [row for row in leads if row.get("stage") == "Follow-up"]
+
+    return render_template(
+        "leads.html",
+        page_key="leads",
+        nav_mode="operator",
+        leads=leads,
+        lead_filter=filter_key,
+        empty=len(leads) == 0,
+        is_demo=True,
+    )
+
+
+@dashboard_blueprint.route("/sales", methods=["GET"])
+def sales_sheet():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    filter_key = (request.args.get("filter") or "all").strip().lower()
+    if filter_key not in {"all", "closed", "build"}:
+        filter_key = "all"
+
+    sales = demo_sales()
+    if filter_key == "closed":
+        sales = [row for row in sales if row.get("sale_type") == "Closed sale"]
+    elif filter_key == "build":
+        sales = [row for row in sales if row.get("sale_type") == "Build what they want"]
+
+    return render_template(
+        "sales.html",
+        page_key="sales",
+        nav_mode="operator",
+        sales=sales,
+        sales_filter=filter_key,
+        empty=len(sales) == 0,
+        is_demo=True,
+    )
+
+
+@dashboard_blueprint.route("/channels", methods=["GET"])
+def channels_page():
+    guarded = _require_operator_access()
+    if guarded is not None:
+        return guarded
+
+    crm_context = build_operator_crm_context(current_app)
+    channels = build_channel_status(
+        current_app.config,
+        setup_url=url_for("dashboard.setup"),
+        onboarding_url=_onboarding_url(),
+    )
+    return render_template(
+        "channels.html",
+        page_key="channels",
+        nav_mode="operator",
+        channels=channels,
+        active_channel=crm_context["crm"]["active_channel"],
+        bot_online=crm_context["crm"]["bot_online"],
+        is_demo=False,
     )
 
 
@@ -623,6 +720,12 @@ def setup():
     if not complete:
         session.pop(_SETUP_VERIFIED_SESSION_KEY, None)
 
+    crm_context = build_operator_crm_context(current_app)
+    channel_options = build_channel_status(
+        current_app.config,
+        setup_url=url_for("dashboard.setup"),
+        onboarding_url=_onboarding_url(),
+    )
     return render_template(
         "setup.html",
         page_key="setup",
@@ -634,6 +737,11 @@ def setup():
         setup_missing_keys=_setup_missing_keys(),
         setup_status_url=url_for("dashboard.setup_status_legacy_api"),
         webhook_url=_webhook_url(),
+        crm=crm_context["crm"],
+        channel_options=[row for row in channel_options if row.get("supported")],
+        outbound_channel=str(current_app.config.get("OUTBOUND_CHANNEL") or "whatsapp"),
+        crm_export_on=crm_export_enabled(current_app),
+        is_demo=True,
     )
 
 
@@ -714,6 +822,32 @@ def agents_page():
         setup_complete=_is_setup_complete(),
         agents=agents,
         selected_agent_code=selected_agent_code,
+    )
+
+
+@dashboard_blueprint.route("/bmad-help", methods=["GET"])
+def bmad_help_page():
+    # Soft-enter operator mode so phone deep links do not bounce through redirects.
+    if _current_dashboard_role() != ROLE_OPERATOR:
+        _set_dashboard_role(ROLE_OPERATOR)
+
+    catalog = load_bmad_help_catalog()
+    module = (request.args.get("module") or "all").strip()
+    phase = (request.args.get("phase") or "all").strip()
+    query = (request.args.get("q") or "").strip()
+    entries = filter_catalog(catalog, module=module, phase=phase, q=query)
+    phases = sorted({row["phase"] for row in catalog.get("entries") or []})
+
+    return render_template(
+        "bmad_help.html",
+        page_key="bmad-help",
+        nav_mode="operator",
+        catalog=catalog,
+        entries=entries,
+        phases=phases,
+        filter_module=module,
+        filter_phase=phase,
+        filter_q=query,
     )
 
 

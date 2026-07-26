@@ -682,7 +682,7 @@ class MetricsEndpointTests(unittest.TestCase):
 
 class DashboardRouteGuardTests(unittest.TestCase):
     def setUp(self):
-        from app.views_dashboard import dashboard_blueprint
+        from app.views_dashboard import dashboard_api, dashboard_blueprint
         from app.onboarding import onboarding_blueprint
 
         self.app = Flask(__name__, template_folder="../app/templates", static_folder="../app/static")
@@ -699,6 +699,7 @@ class DashboardRouteGuardTests(unittest.TestCase):
             }
         )
         self.app.register_blueprint(dashboard_blueprint)
+        self.app.register_blueprint(dashboard_api)
         self.app.register_blueprint(onboarding_blueprint)
         self.client = self.app.test_client()
 
@@ -1135,7 +1136,7 @@ class OperatorMobileNavTests(unittest.TestCase):
     """Mobile nav contract — bottom nav present for all operator page_key values."""
 
     def setUp(self):
-        from app.views_dashboard import dashboard_blueprint
+        from app.views_dashboard import dashboard_api, dashboard_blueprint
 
         self.app = Flask(__name__, template_folder="../app/templates", static_folder="../app/static")
         self.app.config.update(
@@ -1151,18 +1152,21 @@ class OperatorMobileNavTests(unittest.TestCase):
             }
         )
         self.app.register_blueprint(dashboard_blueprint)
+        self.app.register_blueprint(dashboard_api)
         self.client = self.app.test_client()
         with self.client.session_transaction() as sess:
             sess["dashboard_role"] = "operator"
 
     def _assert_bottom_nav_links(self, response):
         body = response.get_data(as_text=True)
-        self.assertIn('class="bottom-nav"', body)
-        self.assertIn('/operator', body)
-        self.assertIn('/setup', body)
-        self.assertIn('/agents', body)
-        self.assertIn('/metrics', body)
-        self.assertIn('/logs', body)
+        self.assertIn("bottom-nav", body)
+        self.assertIn("/operator", body)
+        self.assertIn("/leads", body)
+        self.assertIn("/sales", body)
+        self.assertIn("/agents", body)
+        self.assertIn("BMAD", body)
+        self.assertIn("/bmad-help", body)
+        self.assertIn("/setup", body)
 
     def test_operator_dashboard_has_bottom_nav(self):
         response = self.client.get("/operator")
@@ -1182,10 +1186,13 @@ class OperatorMobileNavTests(unittest.TestCase):
     def test_mobile_nav_present_for_all_operator_page_keys(self):
         page_routes = {
             "dashboard": "/operator",
+            "leads": "/leads",
+            "sales": "/sales",
+            "channels": "/channels",
+            "setup": "/setup",
             "metrics": "/operator/metrics",
             "logs": "/logs",
             "agents": "/agents",
-            "setup": "/setup",
         }
 
         for page_key, route in page_routes.items():

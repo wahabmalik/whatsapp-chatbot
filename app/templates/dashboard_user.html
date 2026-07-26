@@ -1,14 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Customer Dashboard{% endblock %}
 {% block content %}
-<section class="agency-hero" id="overview">
+<section class="agency-hero panel-enter" id="overview">
   <div class="hero-copy">
-    <p class="eyebrow">CUSTOMER DASHBOARD</p>
-    <h1>
-      Track Your WhatsApp Growth
-      <span class="accent-text">In One Place</span>
-    </h1>
-    <p class="hero-lead">See conversation outcomes, response performance, and your next best actions without digging through technical screens.</p>
+    <p class="eyebrow">Closar</p>
+    <h1>Built to close.</h1>
+    <p class="hero-lead">Generate leads. Close deals.</p>
 
     <div class="hero-actions">
       <a class="button-link" href="#results">View results</a>
@@ -46,7 +43,7 @@
       </a>
       <a class="metric-card" href="{{ url_for('dashboard.logs_page') }}">
         <strong data-metric-counter="webhook.internal_errors_total">{{ metrics.counters.get('webhook.internal_errors_total', 0) }}</strong>
-        <h3>Follow-ups needed</h3>
+        <h3>Internal errors</h3>
       </a>
       <a class="metric-card" href="{{ url_for('dashboard.metrics_page') }}">
         <strong data-metric-counter="ai.reply_success">{{ metrics.counters.get('ai.reply_success', 0) }}</strong>
@@ -87,17 +84,17 @@
       <a href="{{ url_for('dashboard.metrics_page') }}">Open details</a>
     </header>
     <ul class="check-grid">
-      <li class="ok"><span class="dot dot-green"></span><span>Review this week's conversion trend</span></li>
-      <li class="ok"><span class="dot dot-green"></span><span>Follow up with unresponded leads</span></li>
-      <li class="ok"><span class="dot dot-green"></span><span>Check response times during peak hours</span></li>
-      <li class="ok"><span class="dot dot-green"></span><span>Share weekly snapshot with your team</span></li>
+      <li class="missing"><span class="dot"></span><span>Connect WhatsApp if you have not already</span></li>
+      <li class="missing"><span class="dot"></span><span>Review recent activity for delivery issues</span></li>
+      <li class="missing"><span class="dot"></span><span>Check runtime status when replies look slow</span></li>
+      <li class="missing"><span class="dot"></span><span>Open operator Overview for live conversations</span></li>
     </ul>
   </section>
 
   <section class="panel" id="help">
     <header class="panel-head">
       <h3>Need help?</h3>
-      <a href="{{ url_for('dashboard.setup') }}">Contact support</a>
+      <a href="{{ onboarding_url }}">Connect WhatsApp</a>
     </header>
     <dl class="meta-grid">
       <div><dt>System status</dt><dd class="status-line"><span class="dot {{ 'dot-green' if health.status == 'running' else 'dot-red' }}"></span><span>{{ health.status|title }}</span></dd></div>

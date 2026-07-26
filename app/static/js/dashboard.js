@@ -14,11 +14,17 @@
     node.setAttribute("role", isError ? "alert" : "status");
     node.textContent = message;
     region.appendChild(node);
-    window.setTimeout(function () {
-      if (node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
-    }, 3000);
+    var reduceMotion =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      function () {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      },
+      reduceMotion ? 4000 : 3200
+    );
   }
 
   function withBusy(button, callback) {
@@ -715,4 +721,43 @@
   if (refreshButton) {
     refreshButton.addEventListener("click", refreshMetrics);
   }
+
+  function csvEscape(value) {
+    var text = String(value == null ? "" : value);
+    if (/[",\n]/.test(text)) {
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+    return text;
+  }
+
+  document.querySelectorAll("[data-download-csv]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var tableId = button.getAttribute("data-download-csv");
+      var filename = button.getAttribute("data-filename") || "closar-export.csv";
+      var table = document.getElementById(tableId);
+      if (!table) {
+        showToast("Nothing to download yet", true);
+        return;
+      }
+      var rows = [];
+      table.querySelectorAll("tr").forEach(function (tr) {
+        var cells = [];
+        tr.querySelectorAll("th, td").forEach(function (cell) {
+          cells.push(csvEscape(cell.innerText.trim()));
+        });
+        rows.push(cells.join(","));
+      });
+      var blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast("Download started", false);
+    });
+  });
+
 })();

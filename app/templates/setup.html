@@ -1,9 +1,66 @@
 {% extends "base.html" %}
 {% block title %}Setup{% endblock %}
+{% block meta_description %}Closar channel setup, webhook checklist, and CRM configuration status.{% endblock %}
 {% block content %}
-<section class="panel wizard">
-  <h2>Setup wizard</h2>
-  <p>Use this operator-only checklist to move from missing environment values to a verified webhook without leaving the dashboard.</p>
+<section class="panel panel-enter leadgen-settings" aria-labelledby="leadgen-title">
+  <header class="panel-head">
+    <div>
+      <p class="sheet-kicker">CRM orientation</p>
+      <h1 id="leadgen-title">Setup</h1>
+    </div>
+  </header>
+  <p class="subtle-help">
+    Lead gen sheet settings are not persisted yet. The values below reflect live environment config.
+    Use the webhook checklist to get WhatsApp (or your active outbound channel) ready.
+  </p>
+
+  <aside class="demo-banner" role="note">
+    <strong>Read-only until persistence ships</strong>
+    <span>Leads/Sales sheets remain a sample preview. Change outbound channel or CRM export via environment variables.</span>
+  </aside>
+
+  <dl class="meta-grid leadgen-status-grid">
+    <div>
+      <dt>Lead generation UI</dt>
+      <dd>{% if crm.lead_generation_enabled %}Preview enabled{% else %}Preview off{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Active outbound channel</dt>
+      <dd>{{ crm.active_channel }} <span class="subtle-help">(OUTBOUND_CHANNEL={{ outbound_channel }})</span></dd>
+    </div>
+    <div>
+      <dt>CRM export</dt>
+      <dd>{% if crm_export_on %}ON via CRM_EXPORT_ENABLED{% else %}OFF (default){% endif %}</dd>
+    </div>
+    <div>
+      <dt>Service offering focus</dt>
+      <dd>{{ crm.service_offering }}</dd>
+    </div>
+  </dl>
+
+  <div class="action-row">
+    <a class="button-link" href="{{ onboarding_url }}">Connect WhatsApp</a>
+    <a class="ghost-link" href="{{ url_for('dashboard.channels_page') }}">View channel status</a>
+    <a class="ghost-link" href="{{ url_for('dashboard.leads_sheet') }}">Open Leads Sheet preview</a>
+  </div>
+
+  <details class="supported-channels-details">
+    <summary>Supported product channels</summary>
+    <ul class="check-grid">
+      {% for channel in channel_options %}
+      <li class="{{ 'ok' if channel.status != 'not_connected' else 'missing' }}">
+        <span>{{ '✓' if channel.status != 'not_connected' else '○' }}</span>
+        <strong>{{ channel.label }}</strong>
+        <span class="subtle-help">{{ channel.status_label }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+</section>
+
+<section class="panel wizard panel-enter">
+  <h2>Channel &amp; webhook checklist</h2>
+  <p>Use this operator checklist to move from missing environment values to a verified webhook without leaving the dashboard.</p>
 
   <div class="copy-row" data-setup-status-url="{{ setup_status_url }}">
     <h3>Guided completion signals</h3>
@@ -31,12 +88,13 @@
 
   <h3>Set OpenAI key</h3>
   <form class="copy-row" data-openai-key-form data-save-url="{{ url_for('dashboard.setup_save_openai_key') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="openai-key-input">OPENAI_API_KEY</label>
     <input
       id="openai-key-input"
       type="password"
       name="openai_api_key"
-      placeholder="Paste OpenAI key"
+      placeholder="Paste OpenAI key..."
       autocomplete="off"
       required
     >
@@ -70,8 +128,8 @@
   </div>
 
   {% if setup_complete %}
-    <p class="ok-text">Setup is complete. You can move into the operator dashboard and start validating live traffic.</p>
-    <a class="button-link" href="{{ url_for('dashboard.operator_dashboard') }}">Go to Dashboard</a>
+    <p class="ok-text">Webhook setup is complete. Open Conversations on Overview for live traffic, or explore the Leads Sheet preview.</p>
+    <a class="button-link" href="{{ url_for('dashboard.operator_dashboard') }}">Go to Overview</a>
   {% else %}
     <p class="warning-text">Complete all five required keys before you run the verification step.</p>
     {% if setup_missing_keys %}

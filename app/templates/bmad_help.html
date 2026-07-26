@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}BMAD Help{% endblock %}
+{% block meta_description %}BMAD Help catalog — tap a skill for menu codes and how to run it in Cursor.{% endblock %}
+{% block content %}
+<section class="bmad-help-panel" aria-labelledby="bmad-help-title" data-bmad-help>
+  <header class="bmad-help-hero">
+    <p class="sheet-kicker">Core · menu code BH</p>
+    <h1 id="bmad-help-title">BMAD Help</h1>
+    <p class="bmad-help-lead">
+      Tap any skill below to open details. Skills run in <strong>Cursor chat</strong>
+      (type <code>bmad-help</code> or the menu code). This page is your phone catalog.
+    </p>
+    <div class="action-row">
+      <button type="button" class="button-link" data-open-skill="bmad-help">Open BH details</button>
+      <a class="ghost-link" href="{{ url_for('dashboard.agents_page') }}">BMAD Agents</a>
+    </div>
+    <p class="subtle-help">{{ entries|length }} skills shown · {{ catalog.entries|length }} in catalog</p>
+  </header>
+
+  {% if not catalog.available or not catalog.entries %}
+  <div class="empty-panel" role="alert">
+    <h2>BMAD Help catalog missing</h2>
+    <p>Could not load <code>_bmad/_config/bmad-help.csv</code>. Reinstall BMAD modules and refresh.</p>
+  </div>
+  {% else %}
+
+  {% if catalog.recommended %}
+  <section aria-label="Recommended next steps">
+    <h2 class="bmad-section-title">Recommended next</h2>
+    <div class="bmad-help-grid">
+      {% for row in catalog.recommended %}
+      <button
+        type="button"
+        class="bmad-help-card {% if row.required %}is-required{% endif %} {% if row.completed %}is-done{% endif %}"
+        data-open-skill="{{ row.skill }}"
+        data-skill-payload='{{ row|tojson }}'
+      >
+        <span class="menu-code">[{{ row.menu_code }}]</span>
+        <strong>{{ row.display_name }}</strong>
+        <span class="subtle-help">{{ row.module }} · {{ row.phase }}</span>
+        <span class="tap-hint">Tap for details</span>
+      </button>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <form class="bmad-help-filters" method="get" action="{{ url_for('dashboard.bmad_help_page') }}">
+    <label class="grow">
+      <span class="visually-hidden">Search</span>
+      <input type="search" name="q" value="{{ filter_q }}" placeholder="Search BH, Create PRD, Quinn…" autocomplete="off">
+    </label>
+    <label>
+      <span class="visually-hidden">Module</span>
+      <select name="module" aria-label="Filter by module">
+        <option value="all" {% if filter_module == 'all' %}selected{% endif %}>All modules</option>
+        {% for module in catalog.modules %}
+        <option value="{{ module }}" {% if filter_module == module %}selected{% endif %}>{{ module }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="visually-hidden">Phase</span>
+      <select name="phase" aria-label="Filter by phase">
+        <option value="all" {% if filter_phase == 'all' %}selected{% endif %}>All phases</option>
+        {% for phase in phases %}
+        <option value="{{ phase }}" {% if filter_phase == phase %}selected{% endif %}>{{ phase }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="button-link" type="submit">Filter</button>
+  </form>
+
+  <section aria-label="All matching skills">
+    <h2 class="bmad-section-title">Skills</h2>
+    <div class="bmad-help-list">
+      {% for row in entries %}
+      <button
+        type="button"
+        class="bmad-help-row"
+        data-open-skill="{{ row.skill }}"
+        data-skill-payload='{{ row|tojson }}'
+      >
+        <span class="menu-code">[{{ row.menu_code }}]</span>
+        <span class="bmad-help-row-copy">
+          <strong>{{ row.display_name }}</strong>
+          <small>{{ row.module }} · {{ row.phase }}{% if row.required %} · required{% endif %}</small>
+        </span>
+        <span class="tap-hint" aria-hidden="true">›</span>
+      </button>
+      {% else %}
+      <div class="empty-panel" role="status">
+        <h2>No matches</h2>
+        <p>Clear filters to see all BMAD Help skills.</p>
+        <a class="button-link" href="{{ url_for('dashboard.bmad_help_page') }}">Reset filters</a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</section>
+
+<dialog class="bmad-help-dialog" data-bmad-dialog aria-labelledby="bmad-dialog-title">
+  <form method="dialog" class="bmad-dialog-inner">
+    <header>
+      <p class="sheet-kicker" data-dialog-code>[BH]</p>
+      <h2 id="bmad-dialog-title" data-dialog-title>BMAD Help</h2>
+    </header>
+    <p class="subtle-help" data-dialog-meta></p>
+    <p data-dialog-desc></p>
+    <div class="bmad-dialog-invoke">
+      <label for="bmad-invoke-input">Run in Cursor</label>
+      <div class="copy-row">
+        <input id="bmad-invoke-input" type="text" readonly data-dialog-invoke value="bmad-help">
+        <button type="button" class="button-link" data-copy-invoke>Copy</button>
+      </div>
+    </div>
+    <p class="subtle-help">Paste into a new Cursor chat, or type the menu code.</p>
+    <div class="action-row">
+      <button type="submit" class="button-link" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var root = document.querySelector("[data-bmad-help]");
+  var dialog = document.querySelector("[data-bmad-dialog]");
+  if (!root || !dialog) return;
+
+  var titleEl = dialog.querySelector("[data-dialog-title]");
+  var codeEl = dialog.querySelector("[data-dialog-code]");
+  var metaEl = dialog.querySelector("[data-dialog-meta]");
+  var descEl = dialog.querySelector("[data-dialog-desc]");
+  var invokeEl = dialog.querySelector("[data-dialog-invoke]");
+  var copyBtn = dialog.querySelector("[data-copy-invoke]");
+
+  var catalogBySkill = {};
+  root.querySelectorAll("[data-skill-payload]").forEach(function (node) {
+    try {
+      var payload = JSON.parse(node.getAttribute("data-skill-payload") || "{}");
+      if (payload && payload.skill) {
+        catalogBySkill[payload.skill] = payload;
+      }
+    } catch (err) {}
+  });
+
+  // Ensure BH always has a payload even if not in filtered list.
+  if (!catalogBySkill["bmad-help"]) {
+    catalogBySkill["bmad-help"] = {
+      skill: "bmad-help",
+      display_name: "BMAD Help",
+      menu_code: "BH",
+      module: "Core",
+      phase: "anytime",
+      description: "Ask what to do next in your BMAD workflow, or get a skill recommendation.",
+      invoke: "bmad-help",
+      required: false
+    };
+  }
+
+  function openSkill(skillKey) {
+    var row = catalogBySkill[skillKey] || catalogBySkill["bmad-help"];
+    if (!row) return;
+    titleEl.textContent = row.display_name || row.skill;
+    codeEl.textContent = "[" + (row.menu_code || "—") + "]";
+    metaEl.textContent = [row.module, row.phase, row.required ? "required" : "optional"]
+      .filter(Boolean)
+      .join(" · ");
+    descEl.textContent = row.description || "Open this skill in Cursor for guided next steps.";
+    invokeEl.value = row.invoke || row.skill || "bmad-help";
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute("open", "open");
+    }
+  }
+
+  root.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-open-skill]");
+    if (!button || !root.contains(button)) return;
+    openSkill(button.getAttribute("data-open-skill"));
+  });
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function () {
+      var value = invokeEl.value || "";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(function () {
+          copyBtn.textContent = "Copied";
+          window.setTimeout(function () { copyBtn.textContent = "Copy"; }, 1200);
+        }).catch(function () {
+          invokeEl.select();
+          document.execCommand("copy");
+        });
+      } else {
+        invokeEl.select();
+        document.execCommand("copy");
+      }
+    });
+  }
+
+  // Auto-open BH when arriving with ?skill=bmad-help or bare help intent.
+  var params = new URLSearchParams(window.location.search);
+  var autofocus = params.get("skill") || params.get("open");
+  if (autofocus) {
+    openSkill(autofocus);
+  }
+})();
+</script>
+{% endblock %}
