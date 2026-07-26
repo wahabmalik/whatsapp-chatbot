@@ -41,6 +41,7 @@
         <a href="{{ url_for('dashboard.agents_page') }}" class="{% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>Agents</a>
         <a href="{{ url_for('dashboard.metrics_page') }}" class="{% if page_key == 'metrics' %}active{% endif %}" {% if page_key == 'metrics' %}aria-current="page"{% endif %}>Metrics</a>
         <a href="{{ url_for('dashboard.logs_page') }}" class="{% if page_key == 'logs' %}active{% endif %}" {% if page_key == 'logs' %}aria-current="page"{% endif %}>Logs</a>
+        <a href="{{ url_for('lead_gen.leads_page') }}" class="{% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
         <a href="{{ url_for('dashboard.operator_leave', next=url_for('dashboard.dashboard_home')) }}">End User</a>
         {% endif %}
       </nav>
@@ -82,6 +83,7 @@
       <a href="{{ url_for('dashboard.agents_page') }}" class="{% if page_key == 'agents' %}active{% endif %}" {% if page_key == 'agents' %}aria-current="page"{% endif %}>Agents</a>
       <a href="{{ url_for('dashboard.metrics_page') }}" class="{% if page_key == 'metrics' %}active{% endif %}" {% if page_key == 'metrics' %}aria-current="page"{% endif %}>Metrics</a>
       <a href="{{ url_for('dashboard.logs_page') }}" class="{% if page_key == 'logs' %}active{% endif %}" {% if page_key == 'logs' %}aria-current="page"{% endif %}>Logs</a>
+      <a href="{{ url_for('lead_gen.leads_page') }}" class="{% if page_key == 'leads' %}active{% endif %}" {% if page_key == 'leads' %}aria-current="page"{% endif %}>Leads</a>
     </nav>
     {% endif %}
   </div>

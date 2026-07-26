@@ -111,3 +111,5 @@ test-*.txt
 
 # Temporary provider docker directories
 .tmp-evolution-api*/
+# Local Flask session cache
+data/flask_session/

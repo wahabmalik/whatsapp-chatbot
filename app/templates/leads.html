@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Lead generation{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head">
+    <h2>Scout lead generation</h2>
+  </header>
+  <p class="subtle-help">
+    Scrape social profiles, enrich contact info (SMTP / optional Hunter.io), and export CSV.
+    Powered by <a href="https://github.com/kiryano/Scout" target="_blank" rel="noopener">kiryano/Scout</a> scrapers.
+    Max {{ max_usernames }} usernames per run.
+  </p>
+
+  <form class="filter-row" data-lead-scrape-form data-endpoint="{{ url_for('lead_gen.leads_scrape_api') }}">
+    <label for="lead-platform">Platform</label>
+    <select id="lead-platform" name="platform" required>
+      {% for platform in platforms %}
+      <option value="{{ platform.key }}">{{ platform.label }}{% if platform.auth_required %} (cookie){% endif %}</option>
+      {% endfor %}
+    </select>
+
+    <label for="lead-enrich" class="checkbox-inline">
+      <input id="lead-enrich" name="enrich" type="checkbox" checked>
+      Enrich emails
+    </label>
+
+    <button type="submit">Scrape leads</button>
+  </form>
+
+  <label for="lead-usernames">Usernames (one per line)</label>
+  <textarea id="lead-usernames" name="usernames" rows="5" placeholder="creator1&#10;creator2" data-lead-usernames required></textarea>
+
+  <p class="hide warning-text" data-lead-scrape-error role="alert"></p>
+  <p class="hide ok-text" data-lead-scrape-success role="status"></p>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Saved leads</h2>
+    <form class="filter-row" data-lead-filter-form>
+      <label for="lead-filter-platform">Platform</label>
+      <select id="lead-filter-platform" name="platform">
+        <option value="">All</option>
+        {% for platform in platforms %}
+        <option value="{{ platform.key }}">{{ platform.label }}</option>
+        {% endfor %}
+      </select>
+      <label for="lead-filter-email">Email</label>
+      <select id="lead-filter-email" name="has_email">
+        <option value="">Any</option>
+        <option value="true">Has email</option>
+        <option value="false">Missing email</option>
+      </select>
+      <button type="submit">Filter</button>
+      <a
+        class="cta-link"
+        data-lead-export
+        href="{{ url_for('lead_gen.leads_export_csv') }}"
+      >Export CSV</a>
+    </form>
+  </header>
+
+  <p class="subtle-help" data-lead-count>Loading leads…</p>
+  <div class="table-wrap">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th>Username</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Followers</th>
+          <th>Lead score</th>
+          <th>Scraped</th>
+        </tr>
+      </thead>
+      <tbody data-lead-table-body>
+        <tr><td colspan="8">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const listEndpoint = {{ url_for('lead_gen.leads_list_api')|tojson }};
+  const exportBase = {{ url_for('lead_gen.leads_export_csv')|tojson }};
+  const csrfToken = {{ csrf_token|tojson }};
+  const scrapeForm = document.querySelector("[data-lead-scrape-form]");
+  const filterForm = document.querySelector("[data-lead-filter-form]");
+  const usernamesEl = document.querySelector("[data-lead-usernames]");
+  const errorEl = document.querySelector("[data-lead-scrape-error]");
+  const successEl = document.querySelector("[data-lead-scrape-success]");
+  const tableBody = document.querySelector("[data-lead-table-body]");
+  const countEl = document.querySelector("[data-lead-count]");
+  const exportLink = document.querySelector("[data-lead-export]");
+
+  function hide(el) {
+    if (!el) return;
+    el.classList.add("hide");
+    el.textContent = "";
+  }
+
+  function show(el, text, className) {
+    if (!el) return;
+    el.classList.remove("hide");
+    if (className) el.className = className;
+    el.textContent = text;
+  }
+
+  function filterParams() {
+    const params = new URLSearchParams();
+    if (!filterForm) return params;
+    const platform = filterForm.platform.value;
+    const hasEmail = filterForm.has_email.value;
+    if (platform) params.set("platform", platform);
+    if (hasEmail) params.set("has_email", hasEmail);
+    return params;
+  }
+
+  function refreshExportHref() {
+    if (!exportLink) return;
+    const params = filterParams();
+    exportLink.href = params.toString() ? `${exportBase}?${params}` : exportBase;
+  }
+
+  function renderRows(items) {
+    if (!tableBody) return;
+    if (!items.length) {
+      tableBody.innerHTML = '<tr><td colspan="8">No leads yet. Scrape a username to get started.</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = items.map((lead) => {
+      const profile = lead.profile_url
+        ? `<a href="${lead.profile_url}" target="_blank" rel="noopener">@${lead.username}</a>`
+        : `@${lead.username}`;
+      return `<tr>
+        <td>${lead.platform || ""}</td>
+        <td>${profile}</td>
+        <td>${lead.full_name || "-"}</td>
+        <td>${lead.email || "-"}</td>
+        <td>${lead.phone || "-"}</td>
+        <td>${lead.follower_count != null ? lead.follower_count : "-"}</td>
+        <td>${lead.lead_score != null ? lead.lead_score : "-"}</td>
+        <td>${lead.scraped_at ? lead.scraped_at.replace("T", " ").slice(0, 19) : "-"}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function loadLeads() {
+    refreshExportHref();
+    const params = filterParams();
+    params.set("page", "1");
+    params.set("per_page", "50");
+    try {
+      const response = await fetch(`${listEndpoint}?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || "Failed to load leads");
+      }
+      if (countEl) countEl.textContent = `${payload.total} lead${payload.total === 1 ? "" : "s"}`;
+      renderRows(payload.items || []);
+    } catch (err) {
+      if (countEl) countEl.textContent = "Could not load leads";
+      if (tableBody) {
+        tableBody.innerHTML = `<tr><td colspan="8">${err.message || "Load failed"}</td></tr>`;
+      }
+    }
+  }
+
+  if (scrapeForm) {
+    scrapeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hide(errorEl);
+      hide(successEl);
+
+      const usernames = (usernamesEl && usernamesEl.value) || "";
+      if (!usernames.trim()) {
+        show(errorEl, "Enter at least one username.", "warning-text");
+        return;
+      }
+
+      const submitBtn = scrapeForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Scraping…";
+      }
+
+      try {
+        const response = await fetch(scrapeForm.dataset.endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-CSRFToken": csrfToken || "",
+          },
+          body: JSON.stringify({
+            platform: scrapeForm.platform.value,
+            usernames,
+            enrich: Boolean(scrapeForm.enrich && scrapeForm.enrich.checked),
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.message || "Scrape failed");
+        }
+        show(
+          successEl,
+          `Stored ${payload.stored} of ${payload.requested} profile${payload.requested === 1 ? "" : "s"}.`,
+          "ok-text"
+        );
+        await loadLeads();
+      } catch (err) {
+        show(errorEl, err.message || "Scrape failed", "warning-text");
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Scrape leads";
+        }
+      }
+    });
+  }
+
+  if (filterForm) {
+    filterForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadLeads();
+    });
+  }
+
+  loadLeads();
+})();
+</script>
+{% endblock %}

@@ -665,6 +665,27 @@ button[disabled] {
   color: #4be2a0;
 }
 
+textarea#lead-usernames,
+textarea[data-lead-usernames] {
+  width: 100%;
+  margin: 10px 0 14px;
+  min-height: 110px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 178, 198, 0.28);
+  background: rgba(7, 18, 30, 0.72);
+  color: #e8f1f7;
+  padding: 12px 14px;
+  font: inherit;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
 .signal-banner h2 {
   margin: 0 0 10px;
 }

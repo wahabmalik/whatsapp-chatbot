@@ -33,6 +33,7 @@ class Tenant(Base):
     consent_ledger_entries = relationship("ConsentLedger", back_populates="tenant")
     notifications = relationship("TenantNotification", back_populates="tenant")
     conversation_summaries = relationship("ConversationSummary", back_populates="tenant")
+    leads = relationship("Lead", back_populates="tenant")
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +301,46 @@ class ConversationMessage(Base):
         Index("ix_conversation_message_summary_id", "conversation_summary_id"),
         Index("ix_conversation_message_tenant_conversation", "tenant_id", "conversation_key"),
         Index("ix_conversation_message_tenant_timestamp", "tenant_id", "timestamp"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# leads  (Scout-powered social lead generation)
+# ---------------------------------------------------------------------------
+class Lead(Base):
+    """Tenant-scoped social profile lead scraped via Scout scrapers."""
+
+    __tablename__ = "leads"
+
+    id = Column(String(36), primary_key=True, default=new_uuid)
+    tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
+    platform = Column(String(50), nullable=False)
+    username = Column(String(255), nullable=False)
+    full_name = Column(String(255), nullable=True)
+    bio = Column(Text, nullable=True)
+    profile_url = Column(String(500), nullable=True)
+    website = Column(String(500), nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(64), nullable=True)
+    follower_count = Column(Integer, nullable=True)
+    following_count = Column(Integer, nullable=True)
+    email_score = Column(Integer, nullable=True)
+    email_source = Column(String(80), nullable=True)
+    email_verified = Column(Boolean, nullable=False, default=False)
+    lead_score = Column(Integer, nullable=True)
+    company_domain = Column(String(255), nullable=True)
+    raw_json = Column(Text, nullable=True)
+    scraped_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+    tenant = relationship("Tenant", back_populates="leads")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "platform", "username", name="uq_leads_tenant_platform_username"),
+        Index("ix_leads_tenant_platform", "tenant_id", "platform"),
+        Index("ix_leads_tenant_email", "tenant_id", "email"),
+        Index("ix_leads_tenant_scraped_at", "tenant_id", "scraped_at"),
     )
 
 
